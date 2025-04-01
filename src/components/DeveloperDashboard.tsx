@@ -9,6 +9,7 @@ import { PullRequestItem, DeveloperStats } from "../lib/types";
 import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
+import { ActivityCharts } from "./ActivityCharts";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -19,6 +20,10 @@ export default function DeveloperDashboard() {
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
     undefined
   );
+
+  // State for real commit data from PR metrics
+  const [realCommitCount, setRealCommitCount] = useState(0);
+  const [isLoadingCommits, setIsLoadingCommits] = useState(false);
 
   // For handling PR metrics
   const { enhancePRsWithMetrics, calculateFilteredStats } = usePRMetrics();
@@ -139,6 +144,20 @@ export default function DeveloperDashboard() {
               stats={developerData.stats}
               filteredStats={filteredStats}
               showFiltered={showOnlyImportantPRs}
+              realCommitCount={realCommitCount}
+              isLoadingCommits={isLoadingCommits}
+            />
+          )}
+
+          {/* Activity Charts */}
+          {filteredPRs.length > 0 && (
+            <ActivityCharts
+              pullRequests={filteredPRs}
+              showOnlyImportantPRs={showOnlyImportantPRs}
+              onCommitDataLoaded={(count, isLoading) => {
+                setRealCommitCount(count);
+                setIsLoadingCommits(isLoading);
+              }}
             />
           )}
 
