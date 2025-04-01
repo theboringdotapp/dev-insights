@@ -1,5 +1,7 @@
 import { PullRequestItem } from "../lib/types";
 import { useMemo } from "react";
+import { usePRMetrics } from "../lib/usePRMetrics";
+import { PRMetricsBadge } from "./ui/PRMetricsBadge";
 
 interface TimelineProps {
   pullRequests: PullRequestItem[];
@@ -7,6 +9,9 @@ interface TimelineProps {
 }
 
 export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
+  // Use the PR metrics hook for lazy loading
+  const { getPRMetrics, loadPRMetrics } = usePRMetrics();
+
   // Extract unique repositories and assign colors
   const { repoColors, getRepoName } = useMemo(() => {
     const repos = new Set<string>();
@@ -137,6 +142,7 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
                 const repoName = getRepoName(pr.html_url);
                 const colorClass =
                   repoColors[repoName] || "bg-gray-100 text-gray-800";
+                const metrics = getPRMetrics(pr);
 
                 return (
                   <div
@@ -153,12 +159,15 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
                         >
                           {pr.title}
                         </a>
-                        <div className="flex mt-1.5 space-x-2">
+                        <div className="flex flex-wrap mt-1.5 gap-2">
+                          {/* Repository badge */}
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}
                           >
                             {repoName}
                           </span>
+
+                          {/* PR state badge */}
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               pr.state === "open"
@@ -168,6 +177,12 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
                           >
                             {pr.state}
                           </span>
+
+                          {/* PR metrics with lazy loading */}
+                          <PRMetricsBadge
+                            metrics={metrics}
+                            onClick={() => loadPRMetrics(pr)}
+                          />
                         </div>
                       </div>
                       <div className="text-sm text-gray-500">

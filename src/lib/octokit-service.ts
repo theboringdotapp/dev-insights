@@ -170,7 +170,7 @@ export class GitHubDevService {
     pullNumber: number;
   }) {
     try {
-      const [pullRequest, reviews] = await Promise.all([
+      const [pullRequest, reviews, comments] = await Promise.all([
         this.octokit.rest.pulls.get({
           owner,
           repo,
@@ -181,11 +181,18 @@ export class GitHubDevService {
           repo,
           pull_number: pullNumber,
         }),
+        this.octokit.rest.pulls.listReviewComments({
+          owner,
+          repo,
+          pull_number: pullNumber,
+          per_page: 100, // Fetch up to 100 review comments
+        }),
       ]);
 
       return {
         pullRequest: pullRequest.data,
         reviews: reviews.data,
+        comments: comments.data,
       };
     } catch (error) {
       const octokitError = error as OctokitError;

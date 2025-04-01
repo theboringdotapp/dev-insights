@@ -15,6 +15,19 @@ export interface PullRequestItem {
   title: string;
   state: string;
   created_at: string;
+  closed_at?: string;
+  number?: number;
+  repository_url?: string;
+}
+
+// Pull Request metrics
+export interface PullRequestMetrics {
+  changeRequestCount: number;
+  durationInDays: number;
+  commentCount: number;
+  isLoaded: boolean;
+  isLoading: boolean;
+  error?: string;
 }
 
 // Developer statistics

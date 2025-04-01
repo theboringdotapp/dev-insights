@@ -9,6 +9,7 @@ import { Timeline } from "./Timeline";
 import { PullRequestItem } from "../lib/types";
 import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
+import { usePRMetrics } from "../lib/usePRMetrics";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -19,6 +20,9 @@ export default function DeveloperDashboard() {
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
     undefined
   );
+
+  // For handling PR metrics
+  const { enhancePRsWithMetrics } = usePRMetrics();
 
   // Only fetch data when the search trigger changes
   const developerData = useDeveloperPerformance(
@@ -39,8 +43,11 @@ export default function DeveloperDashboard() {
     const importantPRs = allPRs.filter(isImportantPR);
     const filteredPRs = showOnlyImportantPRs ? importantPRs : allPRs;
 
+    // We don't need to store the enhanced PRs since Timeline handles this internally
+    enhancePRsWithMetrics(filteredPRs);
+
     return { allPRs, importantPRs, filteredPRs };
-  }, [developerData, showOnlyImportantPRs, showData]);
+  }, [developerData, showOnlyImportantPRs, showData, enhancePRsWithMetrics]);
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     setUsername(newUsername);
@@ -114,6 +121,18 @@ export default function DeveloperDashboard() {
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
               No important PRs (feat/fix) found in the selected timeframe.
               Toggle the filter to see all PRs.
+            </div>
+          )}
+
+          {/* Metrics note */}
+          {filteredPRs.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
+              <p className="font-medium">PR Metrics</p>
+              <p className="text-sm mt-1">
+                Click "Load metrics" on any PR to see additional data like
+                change requests and PR duration. Data is loaded on-demand to
+                minimize API requests.
+              </p>
             </div>
           )}
 
