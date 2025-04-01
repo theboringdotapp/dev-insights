@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "../lib/auth";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
 import { SearchForm } from "./SearchForm";
@@ -7,12 +7,15 @@ import { PullRequestList } from "./PullRequestList";
 import { Timeframe } from "./TimeframeSelector";
 import { Timeline } from "./Timeline";
 import { PullRequestItem } from "../lib/types";
+import { FilterToggle } from "./FilterToggle";
+import { isImportantPR } from "../lib/prUtils";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
   const [username, setUsername] = useState(userProfile?.login || "");
   const [timeframe, setTimeframe] = useState<Timeframe>("1month");
   const [showData, setShowData] = useState(false);
+  const [showOnlyImportantPRs, setShowOnlyImportantPRs] = useState(true);
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
     undefined
   );
@@ -26,12 +29,29 @@ export default function DeveloperDashboard() {
     searchTrigger
   );
 
+  // Compute PR counts
+  const { allPRs, importantPRs, filteredPRs } = useMemo(() => {
+    if (!showData || developerData.isLoading || developerData.error) {
+      return { allPRs: [], importantPRs: [], filteredPRs: [] };
+    }
+
+    const allPRs = developerData.pullRequests as PullRequestItem[];
+    const importantPRs = allPRs.filter(isImportantPR);
+    const filteredPRs = showOnlyImportantPRs ? importantPRs : allPRs;
+
+    return { allPRs, importantPRs, filteredPRs };
+  }, [developerData, showOnlyImportantPRs, showData]);
+
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     setUsername(newUsername);
     setTimeframe(newTimeframe);
     // Increment the search trigger to cause a re-fetch
     setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
     setShowData(true);
+  };
+
+  const handleFilterChange = (showOnlyImportant: boolean) => {
+    setShowOnlyImportantPRs(showOnlyImportant);
   };
 
   if (!isAuthenticated) {
@@ -70,24 +90,44 @@ export default function DeveloperDashboard() {
         <div className="space-y-8">
           {/* Current timeframe indicator */}
           <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
-            Showing data for:{" "}
-            <span className="font-medium">{timeframeLabel}</span>
+            <div className="flex justify-between items-center">
+              <span>
+                Showing data for:{" "}
+                <span className="font-medium">{timeframeLabel}</span>
+              </span>
+
+              {/* PR Filter Toggle */}
+              <FilterToggle
+                showOnlyImportantPRs={showOnlyImportantPRs}
+                onChange={handleFilterChange}
+                importantCount={importantPRs.length}
+                totalCount={allPRs.length}
+              />
+            </div>
           </div>
 
           {/* Stats Summary */}
           {developerData.stats && <StatsDisplay stats={developerData.stats} />}
 
+          {/* No PRs after filtering message */}
+          {allPRs.length > 0 && filteredPRs.length === 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
+              No important PRs (feat/fix) found in the selected timeframe.
+              Toggle the filter to see all PRs.
+            </div>
+          )}
+
           {/* Pull Requests */}
-          {developerData.pullRequests.length > 0 && (
+          {filteredPRs.length > 0 && (
             <>
               <PullRequestList
-                pullRequests={developerData.pullRequests}
+                pullRequests={filteredPRs}
                 timeframeLabel={timeframeLabel}
               />
 
               {/* Timeline View */}
               <Timeline
-                pullRequests={developerData.pullRequests as PullRequestItem[]}
+                pullRequests={filteredPRs}
                 timeframeLabel={timeframeLabel}
               />
             </>
