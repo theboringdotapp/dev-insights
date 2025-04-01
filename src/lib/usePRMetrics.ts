@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { PullRequestItem, PullRequestMetrics } from "./types";
+import { PullRequestItem, PullRequestMetrics, DeveloperStats } from "./types";
 import { useGitHubService } from "./useGitHubService";
 
 export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
@@ -130,11 +130,35 @@ export function usePRMetrics() {
     [metricsCache]
   );
 
+  // Function to calculate filtered stats based on filtered PRs
+  const calculateFilteredStats = (
+    prs: PullRequestItem[],
+    originalStats: DeveloperStats
+  ): DeveloperStats => {
+    // For pull request count, we can use the length of filtered PRs
+    const pullRequestCount = prs.length;
+
+    // For commit count, we estimate based on the ratio of PRs
+    const commitRatio = prs.length / originalStats.pullRequestCount;
+    const commitCount = Math.round(originalStats.commitCount * commitRatio);
+
+    // For review count, we use the same ratio as PR count
+    // This is an approximation as we don't know exactly which reviews are for which PRs
+    const reviewCount = Math.round(originalStats.reviewCount * commitRatio);
+
+    return {
+      pullRequestCount,
+      commitCount: isNaN(commitCount) ? 0 : commitCount,
+      reviewCount: isNaN(reviewCount) ? 0 : reviewCount,
+    };
+  };
+
   return {
     getPRMetrics,
     loadPRMetrics,
     enhancePRsWithMetrics,
     metricsCache,
+    calculateFilteredStats,
   };
 }
 

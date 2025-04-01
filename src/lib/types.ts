@@ -45,7 +45,7 @@ export interface PullRequestMetrics {
 // Developer statistics
 export interface DeveloperStats {
   pullRequestCount: number;
-  issueCount: number;
+  commitCount: number;
   reviewCount: number;
 }
 

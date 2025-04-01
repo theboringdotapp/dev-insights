@@ -144,9 +144,16 @@ export function Timeline({
         </div>
       )}
 
-      {/* PR count summary */}
-      <div className="mb-4 text-sm text-gray-600">
-        Showing {pullRequests.length} pull requests
+      {/* PR count summary - now aligned right with percentage */}
+      <div className="mb-4 text-sm text-gray-600 flex justify-end">
+        <span className="bg-gray-100 px-2 py-1 rounded">
+          Showing {pullRequests.length} pull requests
+          {isLikelyHittingLimit && maxItems > 0 && (
+            <span className="text-blue-600 ml-1">
+              (~{Math.round((pullRequests.length / maxItems) * 100)}% of limit)
+            </span>
+          )}
+        </span>
       </div>
 
       <div className="relative">

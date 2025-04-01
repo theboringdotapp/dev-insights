@@ -283,27 +283,27 @@ export class GitHubDevService {
       const prQuery = `author:${username} type:pr${org ? ` org:${org}` : ""}${
         repo ? ` repo:${org}/${repo}` : ""
       }${since ? ` created:>=${since}` : ""}`;
-      const issueQuery = `author:${username} type:issue${
-        org ? ` org:${org}` : ""
-      }${repo ? ` repo:${org}/${repo}` : ""}${
-        since ? ` created:>=${since}` : ""
-      }`;
+
       const reviewQuery = `reviewed-by:${username} type:pr${
         org ? ` org:${org}` : ""
       }${repo ? ` repo:${org}/${repo}` : ""}${
         since ? ` updated:>=${since}` : ""
       }`;
 
+      // We'll calculate commit count from PRs
       // Run queries in parallel
-      const [prs, issues, reviews] = await Promise.all([
+      const [prs, reviews] = await Promise.all([
         this.octokit.rest.search.issuesAndPullRequests({ q: prQuery }),
-        this.octokit.rest.search.issuesAndPullRequests({ q: issueQuery }),
         this.octokit.rest.search.issuesAndPullRequests({ q: reviewQuery }),
       ]);
 
+      // Estimate commit count based on PRs - real commit data would require
+      // individual repo API calls which could hit rate limits
+      const estimatedCommitCount = Math.round(prs.data.total_count * 2.5);
+
       return {
         pullRequestCount: prs.data.total_count,
-        issueCount: issues.data.total_count,
+        commitCount: estimatedCommitCount,
         reviewCount: reviews.data.total_count,
       };
     } catch (error) {

@@ -5,7 +5,7 @@ import { SearchForm } from "./SearchForm";
 import { StatsDisplay } from "./StatsDisplay";
 import { Timeframe } from "./TimeframeSelector";
 import { Timeline } from "./Timeline";
-import { PullRequestItem } from "../lib/types";
+import { PullRequestItem, DeveloperStats } from "../lib/types";
 import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
@@ -21,7 +21,7 @@ export default function DeveloperDashboard() {
   );
 
   // For handling PR metrics
-  const { enhancePRsWithMetrics } = usePRMetrics();
+  const { enhancePRsWithMetrics, calculateFilteredStats } = usePRMetrics();
 
   // Only fetch data when the search trigger changes
   const developerData = useDeveloperPerformance(
@@ -32,21 +32,42 @@ export default function DeveloperDashboard() {
     searchTrigger
   );
 
-  // Compute PR counts
-  const { allPRs, importantPRs, filteredPRs } = useMemo(() => {
+  // Compute PR counts and filtered stats
+  const { allPRs, importantPRs, filteredPRs, filteredStats } = useMemo(() => {
     if (!showData || developerData.isLoading || developerData.error) {
-      return { allPRs: [], importantPRs: [], filteredPRs: [] };
+      return {
+        allPRs: [],
+        importantPRs: [],
+        filteredPRs: [],
+        filteredStats: null,
+      };
     }
 
     const allPRs = developerData.pullRequests as PullRequestItem[];
     const importantPRs = allPRs.filter(isImportantPR);
     const filteredPRs = showOnlyImportantPRs ? importantPRs : allPRs;
 
+    // Calculate filtered stats when showing only important PRs
+    let filteredStats: DeveloperStats | null = null;
+    if (
+      developerData.stats &&
+      importantPRs.length > 0 &&
+      importantPRs.length < allPRs.length
+    ) {
+      filteredStats = calculateFilteredStats(importantPRs, developerData.stats);
+    }
+
     // We don't need to store the enhanced PRs since Timeline handles this internally
     enhancePRsWithMetrics(filteredPRs);
 
-    return { allPRs, importantPRs, filteredPRs };
-  }, [developerData, showOnlyImportantPRs, showData, enhancePRsWithMetrics]);
+    return { allPRs, importantPRs, filteredPRs, filteredStats };
+  }, [
+    developerData,
+    showOnlyImportantPRs,
+    showData,
+    enhancePRsWithMetrics,
+    calculateFilteredStats,
+  ]);
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     setUsername(newUsername);
@@ -113,25 +134,19 @@ export default function DeveloperDashboard() {
           </div>
 
           {/* Stats Summary */}
-          {developerData.stats && <StatsDisplay stats={developerData.stats} />}
+          {developerData.stats && (
+            <StatsDisplay
+              stats={developerData.stats}
+              filteredStats={filteredStats}
+              showFiltered={showOnlyImportantPRs}
+            />
+          )}
 
           {/* No PRs after filtering message */}
           {allPRs.length > 0 && filteredPRs.length === 0 && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
               No important PRs (feat/fix) found in the selected timeframe.
               Toggle the filter to see all PRs.
-            </div>
-          )}
-
-          {/* Metrics note */}
-          {filteredPRs.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
-              <p className="font-medium">PR Metrics</p>
-              <p className="text-sm mt-1">
-                Click "Load metrics" on any PR to see additional data like
-                change requests and PR duration. Data is loaded on-demand to
-                minimize API requests.
-              </p>
             </div>
           )}
 
