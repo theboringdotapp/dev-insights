@@ -3,15 +3,35 @@ import { useMemo } from "react";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { PRMetricsBadge } from "./ui/PRMetricsBadge";
 import { CommitsList } from "./ui/CommitsList";
+import { Timeframe } from "../components/TimeframeSelector";
 
 interface TimelineProps {
   pullRequests: PullRequestItem[];
   timeframeLabel: string;
+  timeframe?: Timeframe;
 }
 
-export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
+export function Timeline({
+  pullRequests,
+  timeframeLabel,
+  timeframe = "1month",
+}: TimelineProps) {
   // Use the PR metrics hook for lazy loading
   const { getPRMetrics, loadPRMetrics } = usePRMetrics();
+
+  // Calculate max items based on timeframe (matching the values in useGitHubService.ts)
+  const maxItems = useMemo(() => {
+    switch (timeframe) {
+      case "3months":
+        return 300;
+      case "6months":
+        return 500;
+      case "1year":
+        return 750;
+      default:
+        return 150;
+    }
+  }, [timeframe]);
 
   // Extract unique repositories and assign colors
   const { repoColors, getRepoName } = useMemo(() => {
@@ -103,6 +123,9 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
     });
   }, [groupedPRs]);
 
+  // Determine if we're likely hitting the limit
+  const isLikelyHittingLimit = pullRequests.length >= maxItems - 5; // Using a small buffer
+
   return (
     <div className="mt-8">
       <h3 className="text-xl font-semibold mb-4">{timeframeLabel} Timeline</h3>
@@ -121,6 +144,11 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
         </div>
       )}
 
+      {/* PR count summary */}
+      <div className="mb-4 text-sm text-gray-600">
+        Showing {pullRequests.length} pull requests
+      </div>
+
       <div className="relative">
         {/* Timeline line */}
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
@@ -135,6 +163,9 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
                 </span>
               </div>
               <h4 className="text-lg font-medium ml-4">{month}</h4>
+              <span className="ml-2 text-sm text-gray-500">
+                ({groupedPRs[month].length} PRs)
+              </span>
             </div>
 
             {/* PR items for this month */}
@@ -208,6 +239,22 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
             </div>
           </div>
         ))}
+
+        {/* Show message if we're likely hitting the API limit */}
+        {isLikelyHittingLimit && (
+          <div className="ml-12 mt-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-sm">
+            <p className="font-semibold">Pagination Limit</p>
+            <p>
+              Showing up to {maxItems} PRs from the selected timeframe (
+              {timeframeLabel}). There might be more PRs available that aren't
+              displayed here.
+            </p>
+            <p className="mt-1">
+              Try selecting a shorter timeframe for more complete results or use
+              more specific search criteria.
+            </p>
+          </div>
+        )}
 
         {sortedMonths.length === 0 && (
           <div className="p-4 bg-gray-50 rounded-md text-center text-gray-500">

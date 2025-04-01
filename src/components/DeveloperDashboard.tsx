@@ -148,6 +148,7 @@ export default function DeveloperDashboard() {
               <Timeline
                 pullRequests={filteredPRs}
                 timeframeLabel={timeframeLabel}
+                timeframe={timeframe}
               />
             </>
           )}

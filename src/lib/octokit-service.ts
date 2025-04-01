@@ -32,14 +32,16 @@ export class GitHubDevService {
 
   /**
    * Fetches pull requests created by a specific user
+   * Handles pagination to fetch all PRs when maxItems > perPage
    */
   async getUserPullRequests({
     org,
     repo,
     username,
-    perPage = 30,
+    perPage = 50, // Increased from 30 for efficiency
     page = 1,
     since,
+    maxItems = 150,
   }: {
     org?: string;
     repo?: string;
@@ -47,6 +49,7 @@ export class GitHubDevService {
     perPage?: number;
     page?: number;
     since?: string; // ISO 8601 date format
+    maxItems?: number; // Maximum number of items to retrieve across all pages
   }) {
     try {
       // Search for PRs authored by the user
@@ -54,15 +57,66 @@ export class GitHubDevService {
         repo ? ` repo:${org}/${repo}` : ""
       }${since ? ` created:>=${since}` : ""}`;
 
-      const response = await this.octokit.rest.search.issuesAndPullRequests({
-        q: query,
-        per_page: perPage,
-        page,
-        sort: "created",
-        order: "desc",
-      });
+      // Fetch first page
+      const firstResponse =
+        await this.octokit.rest.search.issuesAndPullRequests({
+          q: query,
+          per_page: perPage,
+          page,
+          sort: "created",
+          order: "desc",
+        });
 
-      return response.data.items;
+      let allItems = [...firstResponse.data.items];
+      const totalCount = Math.min(firstResponse.data.total_count, maxItems);
+
+      // If we have more items and haven't reached maxItems, fetch additional pages
+      if (totalCount > perPage && allItems.length < maxItems) {
+        // Calculate how many pages we should fetch (but limit to avoid excessive requests)
+        const totalPages = Math.min(
+          Math.ceil(totalCount / perPage),
+          Math.ceil(maxItems / perPage),
+          10 // Maximum 10 pages to avoid rate limiting issues
+        );
+
+        // Prepare all requests at once for better performance
+        const additionalRequests = [];
+
+        // Start from page 2 since we already have page 1
+        for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
+          if ((currentPage - 1) * perPage >= maxItems) break;
+
+          additionalRequests.push(
+            this.octokit.rest.search.issuesAndPullRequests({
+              q: query,
+              per_page: perPage,
+              page: currentPage,
+              sort: "created",
+              order: "desc",
+            })
+          );
+        }
+
+        // Execute all requests in parallel
+        if (additionalRequests.length > 0) {
+          // Add a small delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const additionalResponses = await Promise.all(additionalRequests);
+
+          // Merge all responses
+          for (const response of additionalResponses) {
+            allItems = [...allItems, ...response.data.items];
+          }
+
+          // Trim to maxItems if needed
+          if (allItems.length > maxItems) {
+            allItems = allItems.slice(0, maxItems);
+          }
+        }
+      }
+
+      return allItems;
     } catch (error) {
       const octokitError = error as OctokitError;
       throw new GitHubServiceError(

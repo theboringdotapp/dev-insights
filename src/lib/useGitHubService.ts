@@ -101,7 +101,21 @@ export function useDeveloperPerformance(
 
         // Get data in parallel
         const [pullRequests, reviews, stats] = await Promise.all([
-          service!.getUserPullRequests({ username, org, repo, since }),
+          service!.getUserPullRequests({
+            username,
+            org,
+            repo,
+            since,
+            // Increase maxItems for longer timeframes
+            maxItems:
+              timeframe === "3months"
+                ? 300
+                : timeframe === "6months"
+                ? 500
+                : timeframe === "1year"
+                ? 750
+                : 150,
+          }),
           service!.getUserReviews({ username, org, repo, since }),
           service!.getUserStats({
             username,
