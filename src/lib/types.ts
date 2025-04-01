@@ -57,3 +57,31 @@ export interface DeveloperPerformanceData {
   isLoading: boolean;
   error: string | null;
 }
+
+// AI Code Analysis types
+export interface AICodeFeedback {
+  strengths: string[];
+  areas_for_improvement: string[];
+  growth_opportunities: string[];
+  career_impact_summary: string;
+  overall_quality?: number;
+}
+
+export interface PRAnalysisResult {
+  prId: number;
+  prTitle: string;
+  feedback: AICodeFeedback;
+}
+
+export interface FeedbackFrequency {
+  text: string;
+  count: number;
+}
+
+export interface AggregatedFeedback {
+  commonStrengths: FeedbackFrequency[];
+  commonWeaknesses: FeedbackFrequency[];
+  commonSuggestions: FeedbackFrequency[];
+  overallSummary: string;
+  averageScore: number;
+}

@@ -11,6 +11,7 @@ import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { ActivityCharts } from "./ActivityCharts";
 import { PerformanceMetrics } from "./PerformanceMetrics";
+import { CodeQualityInsights } from "./CodeQualityInsights";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -189,6 +190,14 @@ export default function DeveloperDashboard() {
                 timeframeLabel={timeframeLabel}
                 timeframe={timeframe}
               />
+
+              {/* AI Code Quality Analysis */}
+              <div className="mt-8">
+                <h3 className="text-xl font-semibold mb-4">
+                  Code Quality Analysis
+                </h3>
+                <CodeQualityInsights pullRequests={filteredPRs} />
+              </div>
             </>
           )}
         </div>

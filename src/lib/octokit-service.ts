@@ -265,6 +265,36 @@ export class GitHubDevService {
   }
 
   /**
+   * Fetches code changes (files and diffs) for a specific pull request
+   */
+  async getPullRequestFiles({
+    owner,
+    repo,
+    pullNumber,
+  }: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+  }) {
+    try {
+      const response = await this.octokit.rest.pulls.listFiles({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        per_page: 100, // Fetch up to 100 files
+      });
+
+      return response.data;
+    } catch (error) {
+      const octokitError = error as OctokitError;
+      throw new GitHubServiceError(
+        `Failed to fetch pull request files: ${octokitError.message}`,
+        octokitError.status
+      );
+    }
+  }
+
+  /**
    * Get a user's contribution stats (commits, issues, PRs)
    */
   async getUserStats({

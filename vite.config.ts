@@ -10,6 +10,33 @@ export default defineConfig({
     watch: {
       ignored: ["./specstory/**"],
     },
+    proxy: {
+      "/api/anthropic": {
+        target: "https://api.anthropic.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/anthropic/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", function (proxyReq, req) {
+            // Make sure the dangerous-direct-browser-access header gets passed through
+            if (req.headers["anthropic-dangerous-direct-browser-access"]) {
+              proxyReq.setHeader(
+                "anthropic-dangerous-direct-browser-access",
+                req.headers["anthropic-dangerous-direct-browser-access"]
+              );
+            }
+          });
+        },
+        headers: {
+          Accept: "application/json",
+          "anthropic-version": "2023-06-01",
+        },
+      },
+      "/api/openai": {
+        target: "https://api.openai.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openai/, ""),
+      },
+    },
   },
   resolve: {
     alias: {

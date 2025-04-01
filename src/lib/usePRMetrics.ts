@@ -1,17 +1,31 @@
 import { useState, useCallback } from "react";
 import { PullRequestItem, PullRequestMetrics, DeveloperStats } from "./types";
 import { useGitHubService } from "./useGitHubService";
+import {
+  AIAnalysisConfig,
+  PRAnalysisResult,
+  analyzePRWithAI,
+  aggregateFeedback,
+  formatPRFilesForAnalysis,
+} from "./aiAnalysisService";
 
 export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
 
 /**
- * Hook for lazy-loading PR metrics
+ * Hook for lazy-loading PR metrics and AI analysis
  */
 export function usePRMetrics() {
   const { service, isReady } = useGitHubService();
   const [metricsCache, setMetricsCache] = useState<
     Record<number, PullRequestMetrics>
   >({});
+  const [prAnalysisCache, setPRAnalysisCache] = useState<
+    Record<number, PRAnalysisResult>
+  >({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<
+    typeof aggregateFeedback
+  > | null>(null);
 
   /**
    * Load metrics for a specific PR
@@ -153,12 +167,127 @@ export function usePRMetrics() {
     };
   };
 
+  /**
+   * Analyzes a PR's code with AI
+   */
+  const analyzePRCode = useCallback(
+    async (
+      pr: PullRequestItem,
+      config: AIAnalysisConfig
+    ): Promise<PRAnalysisResult | null> => {
+      if (!isReady || !service || !pr.number) return null;
+
+      try {
+        // Extract repo owner and name
+        const repoInfo = extractRepoInfo(pr);
+        if (!repoInfo) {
+          throw new Error("Could not extract repository information from PR");
+        }
+
+        // Get PR files
+        const files = await service.getPullRequestFiles({
+          owner: repoInfo.owner,
+          repo: repoInfo.repo,
+          pullNumber: pr.number,
+        });
+
+        // Format the PR content for analysis
+        const prContent = formatPRFilesForAnalysis(files, pr.title, pr.number);
+
+        // Analyze with AI
+        const feedback = await analyzePRWithAI(prContent, config);
+
+        // Cache and return result
+        const result: PRAnalysisResult = {
+          prId: pr.id,
+          prNumber: pr.number,
+          prTitle: pr.title,
+          feedback,
+        };
+
+        setPRAnalysisCache((prev) => ({
+          ...prev,
+          [pr.id]: result,
+        }));
+
+        return result;
+      } catch (error) {
+        console.error("Error analyzing PR code:", error);
+        const errorResult: PRAnalysisResult = {
+          prId: pr.id,
+          prNumber: pr.number || 0,
+          prTitle: pr.title,
+          feedback: {
+            strengths: [],
+            weaknesses: ["Analysis failed"],
+            suggestions: [],
+            summary: "Failed to analyze PR",
+          },
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+
+        setPRAnalysisCache((prev) => ({
+          ...prev,
+          [pr.id]: errorResult,
+        }));
+
+        return errorResult;
+      }
+    },
+    [isReady, service]
+  );
+
+  /**
+   * Analyzes multiple PRs and aggregates the results
+   */
+  const analyzeMultiplePRs = useCallback(
+    async (
+      prs: PullRequestItem[],
+      config: AIAnalysisConfig,
+      maxPRs = 10
+    ): Promise<void> => {
+      if (!prs.length || !isReady || !service) return;
+
+      try {
+        setIsAnalyzing(true);
+        setAnalysisSummary(null);
+
+        // Select a subset of PRs if there are too many
+        const prsToAnalyze = prs.length > maxPRs ? prs.slice(0, maxPRs) : prs;
+
+        // Analyze PRs in sequence to avoid rate limits
+        const results: PRAnalysisResult[] = [];
+
+        for (const pr of prsToAnalyze) {
+          const result = await analyzePRCode(pr, config);
+          if (result) results.push(result);
+        }
+
+        // Aggregate results
+        const summary = aggregateFeedback(results);
+        setAnalysisSummary(summary);
+      } catch (error) {
+        console.error("Error analyzing multiple PRs:", error);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [isReady, service, analyzePRCode]
+  );
+
+  // Return the extended hook functionality
   return {
     getPRMetrics,
     loadPRMetrics,
     enhancePRsWithMetrics,
     metricsCache,
     calculateFilteredStats,
+    // AI analysis methods
+    analyzePRCode,
+    analyzeMultiplePRs,
+    prAnalysisCache,
+    isAnalyzing,
+    analysisSummary,
   };
 }
 
