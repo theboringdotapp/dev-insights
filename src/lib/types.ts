@@ -20,11 +20,23 @@ export interface PullRequestItem {
   repository_url?: string;
 }
 
+// Commit item
+export interface CommitItem {
+  sha: string;
+  url: string;
+  html_url?: string;
+  commit: {
+    message: string;
+    url: string;
+  };
+}
+
 // Pull Request metrics
 export interface PullRequestMetrics {
   changeRequestCount: number;
   durationInDays: number;
   commentCount: number;
+  commits: CommitItem[];
   isLoaded: boolean;
   isLoading: boolean;
   error?: string;

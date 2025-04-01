@@ -39,6 +39,7 @@ export function usePRMetrics() {
             changeRequestCount: 0,
             durationInDays: 0,
             commentCount: 0,
+            commits: [],
             isLoading: true,
             isLoaded: false,
           },
@@ -64,6 +65,7 @@ export function usePRMetrics() {
           changeRequestCount,
           commentCount,
           durationInDays,
+          commits: prDetails.commits || [],
           isLoading: false,
           isLoaded: true,
         };
@@ -82,6 +84,7 @@ export function usePRMetrics() {
           changeRequestCount: 0,
           durationInDays: 0,
           commentCount: 0,
+          commits: [],
           isLoading: false,
           isLoaded: false,
           error: error instanceof Error ? error.message : "Unknown error",

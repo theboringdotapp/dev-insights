@@ -2,6 +2,7 @@ import { PullRequestItem } from "../lib/types";
 import { useMemo } from "react";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { PRMetricsBadge } from "./ui/PRMetricsBadge";
+import { CommitsList } from "./ui/CommitsList";
 
 interface TimelineProps {
   pullRequests: PullRequestItem[];
@@ -193,6 +194,14 @@ export function Timeline({ pullRequests, timeframeLabel }: TimelineProps) {
                         })}
                       </div>
                     </div>
+
+                    {/* Commits list (only shown if metrics are loaded) */}
+                    {metrics && metrics.isLoaded && !metrics.error && (
+                      <CommitsList
+                        commits={metrics.commits}
+                        isLoaded={metrics.isLoaded}
+                      />
+                    )}
                   </div>
                 );
               })}
