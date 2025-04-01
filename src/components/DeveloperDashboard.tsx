@@ -3,7 +3,6 @@ import { useAuth } from "../lib/auth";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
 import { SearchForm } from "./SearchForm";
 import { StatsDisplay } from "./StatsDisplay";
-import { PullRequestList } from "./PullRequestList";
 import { Timeframe } from "./TimeframeSelector";
 import { Timeline } from "./Timeline";
 import { PullRequestItem } from "../lib/types";
@@ -139,11 +138,6 @@ export default function DeveloperDashboard() {
           {/* Pull Requests */}
           {filteredPRs.length > 0 && (
             <>
-              <PullRequestList
-                pullRequests={filteredPRs}
-                timeframeLabel={timeframeLabel}
-              />
-
               {/* Timeline View */}
               <Timeline
                 pullRequests={filteredPRs}
