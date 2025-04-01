@@ -10,6 +10,7 @@ import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { ActivityCharts } from "./ActivityCharts";
+import { PerformanceMetrics } from "./PerformanceMetrics";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -158,6 +159,16 @@ export default function DeveloperDashboard() {
                 setRealCommitCount(count);
                 setIsLoadingCommits(isLoading);
               }}
+            />
+          )}
+
+          {/* Performance Metrics */}
+          {filteredPRs.length > 0 && (
+            <PerformanceMetrics
+              pullRequests={filteredPRs}
+              timeframe={timeframe}
+              realCommitCount={realCommitCount}
+              isLoadingCommits={isLoadingCommits}
             />
           )}
 

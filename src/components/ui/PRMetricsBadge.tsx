@@ -85,7 +85,15 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
       </div>
 
       {/* Change requests badge */}
-      <div className="text-xs bg-amber-100 text-amber-800 py-0.5 px-2 rounded inline-flex items-center">
+      <div
+        className={`text-xs py-0.5 px-2 rounded inline-flex items-center ${
+          metrics.changeRequestCount === 0
+            ? "bg-green-100 text-green-800"
+            : metrics.changeRequestCount <= 2
+            ? "bg-amber-100 text-amber-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
         <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
