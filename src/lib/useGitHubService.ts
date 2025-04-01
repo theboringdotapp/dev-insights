@@ -1,22 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "./auth";
 import { GitHubDevService, GitHubServiceError } from "./octokit-service";
-
-// Stats type
-interface DeveloperStats {
-  pullRequestCount: number;
-  issueCount: number;
-  reviewCount: number;
-}
-
-// Type for the developer performance data
-interface DeveloperPerformanceData {
-  pullRequests: unknown[];
-  reviews: unknown[];
-  stats: DeveloperStats | null;
-  isLoading: boolean;
-  error: string | null;
-}
+import { DeveloperPerformanceData } from "./types";
 
 /**
  * Hook for using the GitHub service with authentication

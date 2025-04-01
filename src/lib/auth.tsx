@@ -6,17 +6,7 @@ import {
   useEffect,
 } from "react";
 import { GitHubAPI } from "./github";
-
-// GitHub user profile type
-interface GitHubUser {
-  login: string;
-  id: number;
-  avatar_url: string;
-  name: string | null;
-  email: string | null;
-  // Add more specific properties as needed
-  [key: string]: string | number | boolean | null | undefined;
-}
+import { GitHubUser } from "./types";
 
 // Define the auth context type
 type AuthContextType = {
