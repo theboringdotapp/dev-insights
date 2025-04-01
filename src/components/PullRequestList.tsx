@@ -2,12 +2,18 @@ import { PullRequestItem } from "../lib/types";
 
 interface PullRequestListProps {
   pullRequests: unknown[];
+  timeframeLabel?: string;
 }
 
-export function PullRequestList({ pullRequests }: PullRequestListProps) {
+export function PullRequestList({
+  pullRequests,
+  timeframeLabel = "Recent",
+}: PullRequestListProps) {
   return (
     <div>
-      <h3 className="text-xl font-semibold mb-3">Recent Pull Requests</h3>
+      <h3 className="text-xl font-semibold mb-3">
+        {timeframeLabel} Pull Requests
+      </h3>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

@@ -39,18 +39,20 @@ export class GitHubDevService {
     username,
     perPage = 30,
     page = 1,
+    since,
   }: {
     org?: string;
     repo?: string;
     username: string;
     perPage?: number;
     page?: number;
+    since?: string; // ISO 8601 date format
   }) {
     try {
       // Search for PRs authored by the user
       const query = `author:${username} type:pr${org ? ` org:${org}` : ""}${
         repo ? ` repo:${org}/${repo}` : ""
-      }`;
+      }${since ? ` created:>=${since}` : ""}`;
 
       const response = await this.octokit.rest.search.issuesAndPullRequests({
         q: query,
@@ -120,18 +122,22 @@ export class GitHubDevService {
     username,
     perPage = 30,
     page = 1,
+    since,
   }: {
     org?: string;
     repo?: string;
     username: string;
     perPage?: number;
     page?: number;
+    since?: string; // ISO 8601 date format
   }) {
     try {
       // Search for PRs reviewed by the user
       const query = `reviewed-by:${username} type:pr${
         org ? ` org:${org}` : ""
-      }${repo ? ` repo:${org}/${repo}` : ""}`;
+      }${repo ? ` repo:${org}/${repo}` : ""}${
+        since ? ` updated:>=${since}` : ""
+      }`;
 
       const response = await this.octokit.rest.search.issuesAndPullRequests({
         q: query,
