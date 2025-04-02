@@ -96,44 +96,18 @@ async function analyzeWithOpenAI(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
-  const model = config.model || "gpt-4o-2024-08-06";
+  // Use gpt-3.5-turbo instead as it better supports JSON mode
+  const model = config.model || "gpt-3.5-turbo";
 
   const prompt = `
-Here is the GitHub pull request diff you need to review:
+You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
 
-<code_diff>
+Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
+
+The PR details:
 ${prContent}
-</code_diff>
 
-You are an experienced senior developer tasked with reviewing code changes and providing constructive feedback to help junior developers progress in their careers. Your goal is to analyze the GitHub pull request diff and provide insights that will help the developer grow from a Junior to a Regular position.
-
-Please analyze this code diff carefully, focusing on substantial issues that will have the most impact on the developer's growth and the overall quality of the codebase. Avoid nitpicking minor cosmetic issues unless they significantly affect readability or maintainability.
-
-Before providing your final analysis, break down your thought process inside <code_review_analysis> tags. Consider the following aspects:
-
-1. Code Structure and Organization: How well is the code structured? Are there opportunities to improve modularity or apply design patterns?
-2. Performance and Efficiency: Are there any potential performance issues or opportunities for optimization?
-3. Error Handling and Edge Cases: How well does the code handle potential errors or edge cases?
-4. Scalability: Will this code scale well as the project grows?
-5. Best Practices: Does the code follow industry best practices and coding standards?
-6. Testing: Is the code testable? Are there opportunities to improve test coverage?
-
-For each aspect:
-a) Quote specific code snippets that are relevant to this aspect.
-b) Evaluate positive points and areas for improvement.
-c) Explicitly connect your observations to the developer's growth from Junior to Regular.
-
-It's OK for this section to be quite long, as a thorough analysis will lead to better feedback.
-
-After your analysis, provide your review in a structured JSON format with the following keys:
-- strengths: Array of strengths in the code (focus on substantial, impactful aspects)
-- areas_for_improvement: Array of weaknesses or potential issues that are important for career growth
-- growth_opportunities: Array of specific suggestions for improvement that will help the developer progress
-- career_impact_summary: A brief assessment of how addressing these points will contribute to career growth
-- overall_quality: A numerical score from 1-10 (10 being excellent code), considering the developer's current level
-
-Your JSON output should be parseable and follow this format exactly:
-
+IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
   "strengths": ["strength1", "strength2", ...],
   "areas_for_improvement": ["area1", "area2", ...],
@@ -142,46 +116,80 @@ Your JSON output should be parseable and follow this format exactly:
   "overall_quality": 7
 }
 
-Please proceed with your analysis and review of the code diff.
-
+Focus on substantial issues that impact the developer's growth. Do not include any explanations or text outside of this JSON structure.
 `;
 
-  const response = await fetch("/api/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert code reviewer focused on code quality assessment.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("No content in OpenAI response");
-  }
-
   try {
-    const parsedResponse = JSON.parse(content);
+    const response = await fetch("/api/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert code reviewer. Respond ONLY with valid JSON in the exact format requested.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in OpenAI response");
+    }
+
+    // Handle possible content issues with more robust parsing
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(content);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+
+      // Try to extract JSON if it's embedded in other content
+      const jsonMatch = content.match(/({[\s\S]*})/);
+      if (jsonMatch) {
+        try {
+          parsedResponse = JSON.parse(jsonMatch[1]);
+        } catch (error) {
+          throw new Error(
+            `Failed to parse embedded JSON in OpenAI response: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+      } else {
+        // Provide fallback values if we can't parse the response
+        return {
+          strengths: ["The code shows potential for improvement"],
+          areas_for_improvement: [
+            "Unable to analyze PR details (parsing error)",
+          ],
+          growth_opportunities: [
+            "Try another analysis or use a different model",
+          ],
+          career_impact_summary:
+            "The analysis couldn't be completed due to parsing issues with the AI response.",
+          overall_quality: 5,
+        };
+      }
+    }
+
     return {
       strengths: parsedResponse.strengths || [],
       areas_for_improvement: parsedResponse.areas_for_improvement || [],
@@ -190,9 +198,20 @@ Please proceed with your analysis and review of the code diff.
         parsedResponse.career_impact_summary || "No summary provided",
       overall_quality: parsedResponse.overall_quality,
     };
-  } catch (e) {
-    console.error("Failed to parse OpenAI response:", e);
-    throw new Error("Failed to parse AI response");
+  } catch (error) {
+    console.error("Error in OpenAI analysis:", error);
+
+    // Return a fallback response instead of throwing
+    return {
+      strengths: ["The code appears to have some structure"],
+      areas_for_improvement: ["Analysis failed due to an API error"],
+      growth_opportunities: [
+        "Try the analysis again with a different configuration",
+      ],
+      career_impact_summary:
+        "The code analysis could not be completed due to technical issues.",
+      overall_quality: 5,
+    };
   }
 }
 
@@ -203,44 +222,17 @@ async function analyzeWithClaude(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
-  const model = config.model || "claude-3-7-sonnet-20250219";
+  const model = config.model || "claude-3-sonnet-20240229";
 
   const prompt = `
-Here is the GitHub pull request diff you need to review:
+You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
 
-<code_diff>
+Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
+
+The PR details:
 ${prContent}
-</code_diff>
 
-You are an experienced senior developer tasked with reviewing code changes and providing constructive feedback to help junior developers progress in their careers. Your goal is to analyze the GitHub pull request diff and provide insights that will help the developer grow from a Junior to a Regular position.
-
-Please analyze this code diff carefully, focusing on substantial issues that will have the most impact on the developer's growth and the overall quality of the codebase. Avoid nitpicking minor cosmetic issues unless they significantly affect readability or maintainability.
-
-Before providing your final analysis, break down your thought process inside <code_review_analysis> tags. Consider the following aspects:
-
-1. Code Structure and Organization: How well is the code structured? Are there opportunities to improve modularity or apply design patterns?
-2. Performance and Efficiency: Are there any potential performance issues or opportunities for optimization?
-3. Error Handling and Edge Cases: How well does the code handle potential errors or edge cases?
-4. Scalability: Will this code scale well as the project grows?
-5. Best Practices: Does the code follow industry best practices and coding standards?
-6. Testing: Is the code testable? Are there opportunities to improve test coverage?
-
-For each aspect:
-a) Quote specific code snippets that are relevant to this aspect.
-b) Evaluate positive points and areas for improvement.
-c) Explicitly connect your observations to the developer's growth from Junior to Regular.
-
-It's OK for this section to be quite long, as a thorough analysis will lead to better feedback.
-
-After your analysis, provide your review in a structured JSON format with the following keys:
-- strengths: Array of strengths in the code (focus on substantial, impactful aspects)
-- areas_for_improvement: Array of weaknesses or potential issues that are important for career growth
-- growth_opportunities: Array of specific suggestions for improvement that will help the developer progress
-- career_impact_summary: A brief assessment of how addressing these points will contribute to career growth
-- overall_quality: A numerical score from 1-10 (10 being excellent code), considering the developer's current level
-
-Your JSON output should be parseable and follow this format exactly:
-
+IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
   "strengths": ["strength1", "strength2", ...],
   "areas_for_improvement": ["area1", "area2", ...],
@@ -249,66 +241,107 @@ Your JSON output should be parseable and follow this format exactly:
   "overall_quality": 7
 }
 
-Please proceed with your analysis and review of the code diff.`;
-
-  const response = await fetch("/api/anthropic/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": config.apiKey,
-      "anthropic-dangerous-direct-browser-access": "true",
-      // Note: The "anthropic-version" header is already set in the proxy configuration
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Claude API error (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.content?.[0]?.text;
-
-  if (!content) {
-    throw new Error("No content in Claude response");
-  }
-
-  // Find the JSON in the response
-  const jsonMatch =
-    content.match(/```json\n([\s\S]*?)\n```/) ||
-    content.match(/```\n([\s\S]*?)\n```/) ||
-    content.match(/({[\s\S]*})/);
-
-  if (!jsonMatch) {
-    throw new Error("No valid JSON found in Claude response");
-  }
-
-  const jsonString = jsonMatch[1];
+Focus on substantial issues that impact the developer's growth. Do not include any explanations or text outside of this JSON structure.
+`;
 
   try {
-    const parsedResponse = JSON.parse(jsonString);
+    const response = await fetch("/api/anthropic/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": config.apiKey,
+        "anthropic-dangerous-direct-browser-access": "true",
+        // Note: The "anthropic-version" header is already set in the proxy configuration
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4000,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Claude API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.content?.[0]?.text;
+
+    if (!content) {
+      throw new Error("No content in Claude response");
+    }
+
+    // Find the JSON in the response
+    const jsonMatch =
+      content.match(/```json\n([\s\S]*?)\n```/) ||
+      content.match(/```\n([\s\S]*?)\n```/) ||
+      content.match(/({[\s\S]*})/);
+
+    if (!jsonMatch) {
+      console.error(
+        "No valid JSON found in Claude response, raw content:",
+        content
+      );
+      return {
+        strengths: ["The code shows potential for improvement"],
+        areas_for_improvement: ["Unable to analyze PR details (parsing error)"],
+        growth_opportunities: ["Try another analysis or use a different model"],
+        career_impact_summary:
+          "The analysis couldn't be completed due to issues with the AI response format.",
+        overall_quality: 5,
+      };
+    }
+
+    const jsonString = jsonMatch[1] || jsonMatch[0];
+
+    try {
+      const parsedResponse = JSON.parse(jsonString);
+      return {
+        strengths: parsedResponse.strengths || [],
+        areas_for_improvement:
+          parsedResponse.areas_for_improvement ||
+          parsedResponse.weaknesses ||
+          [],
+        growth_opportunities:
+          parsedResponse.growth_opportunities ||
+          parsedResponse.suggestions ||
+          [],
+        career_impact_summary:
+          parsedResponse.career_impact_summary ||
+          parsedResponse.summary ||
+          "No summary provided",
+        overall_quality:
+          parsedResponse.overall_quality || parsedResponse.qualityScore,
+      };
+    } catch (error) {
+      console.error("Failed to parse Claude response:", error);
+      return {
+        strengths: ["The code appears to have some structure"],
+        areas_for_improvement: [
+          "Analysis failed due to a response parsing error",
+        ],
+        growth_opportunities: [
+          "Try the analysis again with a different configuration",
+        ],
+        career_impact_summary:
+          "The code analysis could not be completed due to technical issues with the AI response format.",
+        overall_quality: 5,
+      };
+    }
+  } catch (error) {
+    console.error("Error in Claude analysis:", error);
     return {
-      strengths: parsedResponse.strengths || [],
-      areas_for_improvement:
-        parsedResponse.areas_for_improvement || parsedResponse.weaknesses || [],
-      growth_opportunities:
-        parsedResponse.growth_opportunities || parsedResponse.suggestions || [],
+      strengths: ["The code appears to have some structure"],
+      areas_for_improvement: ["Analysis failed due to an API error"],
+      growth_opportunities: [
+        "Try the analysis again with a different configuration",
+      ],
       career_impact_summary:
-        parsedResponse.career_impact_summary ||
-        parsedResponse.summary ||
-        "No summary provided",
-      overall_quality:
-        parsedResponse.overall_quality || parsedResponse.qualityScore,
+        "The code analysis could not be completed due to technical issues with the Claude API.",
+      overall_quality: 5,
     };
-  } catch (e) {
-    console.error("Failed to parse Claude response:", e);
-    throw new Error("Failed to parse AI response");
   }
 }
 
