@@ -173,6 +173,21 @@ export default function DeveloperDashboard() {
             />
           )}
 
+          {/* AI Code Quality Analysis */}
+          {filteredPRs.length > 0 && (
+            <div>
+              <h3 className="text-xl font-semibold mb-4">
+                Code Quality Analysis
+              </h3>
+              <CodeQualityInsights
+                pullRequests={filteredPRs}
+                allPRs={allPRs}
+                showOnlyImportantPRs={showOnlyImportantPRs}
+                onToggleFilter={handleFilterChange}
+              />
+            </div>
+          )}
+
           {/* No PRs after filtering message */}
           {allPRs.length > 0 && filteredPRs.length === 0 && (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
@@ -190,14 +205,6 @@ export default function DeveloperDashboard() {
                 timeframeLabel={timeframeLabel}
                 timeframe={timeframe}
               />
-
-              {/* AI Code Quality Analysis */}
-              <div className="mt-8">
-                <h3 className="text-xl font-semibold mb-4">
-                  Code Quality Analysis
-                </h3>
-                <CodeQualityInsights pullRequests={filteredPRs} />
-              </div>
             </>
           )}
         </div>

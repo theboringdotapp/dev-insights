@@ -1,14 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PullRequestItem } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { AIAnalysisConfig } from "../lib/aiAnalysisService";
 
+// Local storage keys
+const OPENAI_KEY_STORAGE = "github-review-openai-key";
+const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
+
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
+  allPRs?: PullRequestItem[];
+  showOnlyImportantPRs?: boolean;
+  onToggleFilter?: (showOnlyImportant: boolean) => void;
 }
 
 export function CodeQualityInsights({
   pullRequests,
+  allPRs,
+  showOnlyImportantPRs = true,
+  onToggleFilter,
 }: CodeQualityInsightsProps) {
   const { analyzeMultiplePRs, isAnalyzing, analysisSummary } = usePRMetrics();
   const [apiKey, setApiKey] = useState("");
@@ -17,6 +27,23 @@ export function CodeQualityInsights({
   );
   const [maxPRs, setMaxPRs] = useState(5);
   const [isConfigVisible, setIsConfigVisible] = useState(false);
+  const [saveToken, setSaveToken] = useState(true);
+  const [useAllPRs, setUseAllPRs] = useState(false);
+
+  // Determine which PRs to analyze
+  const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
+
+  // Load saved API key when provider changes or on initial load
+  useEffect(() => {
+    const storageKey =
+      apiProvider === "openai" ? OPENAI_KEY_STORAGE : ANTHROPIC_KEY_STORAGE;
+    const savedKey = localStorage.getItem(storageKey);
+    if (savedKey) {
+      setApiKey(savedKey);
+    } else {
+      setApiKey("");
+    }
+  }, [apiProvider]);
 
   // Handle analyze button click
   const handleAnalyze = () => {
@@ -25,12 +52,50 @@ export function CodeQualityInsights({
       return;
     }
 
+    // Save API key to local storage if opted in
+    if (saveToken) {
+      const storageKey =
+        apiProvider === "openai" ? OPENAI_KEY_STORAGE : ANTHROPIC_KEY_STORAGE;
+      localStorage.setItem(storageKey, apiKey);
+    }
+
     const config: AIAnalysisConfig = {
       apiKey,
       provider: apiProvider,
     };
 
-    analyzeMultiplePRs(pullRequests, config, maxPRs);
+    analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
+
+    // Update filter if analyzing all PRs and not already showing all
+    if (useAllPRs && showOnlyImportantPRs && onToggleFilter) {
+      onToggleFilter(false);
+    }
+  };
+
+  // Handle clearing the saved API key
+  const handleResetApiKey = () => {
+    const storageKey =
+      apiProvider === "openai" ? OPENAI_KEY_STORAGE : ANTHROPIC_KEY_STORAGE;
+    localStorage.removeItem(storageKey);
+    setApiKey("");
+  };
+
+  // Change provider without losing saved token
+  const handleProviderChange = (newProvider: "openai" | "anthropic") => {
+    // If saveToken is enabled, save the current key before switching
+    if (saveToken && apiKey) {
+      const currentStorageKey =
+        apiProvider === "openai" ? OPENAI_KEY_STORAGE : ANTHROPIC_KEY_STORAGE;
+      localStorage.setItem(currentStorageKey, apiKey);
+    }
+
+    // Update the provider
+    setApiProvider(newProvider);
+  };
+
+  // Toggle between filtered PRs and all PRs
+  const handleToggleAllPRs = () => {
+    setUseAllPRs(!useAllPRs);
   };
 
   return (
@@ -60,7 +125,7 @@ export function CodeQualityInsights({
                   name="apiProvider"
                   value="openai"
                   checked={apiProvider === "openai"}
-                  onChange={() => setApiProvider("openai")}
+                  onChange={() => handleProviderChange("openai")}
                 />
                 <span className="ml-2">OpenAI</span>
               </label>
@@ -71,7 +136,7 @@ export function CodeQualityInsights({
                   name="apiProvider"
                   value="anthropic"
                   checked={apiProvider === "anthropic"}
-                  onChange={() => setApiProvider("anthropic")}
+                  onChange={() => handleProviderChange("anthropic")}
                 />
                 <span className="ml-2">Anthropic (Claude)</span>
               </label>
@@ -82,19 +147,38 @@ export function CodeQualityInsights({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               API Key
             </label>
-            <input
-              type="password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={`Enter your ${
-                apiProvider === "openai" ? "OpenAI" : "Anthropic"
-              } API key`}
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Your API key is used only for processing requests and is not
-              stored.
-            </p>
+            <div className="flex items-center">
+              <input
+                type="password"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={`Enter your ${
+                  apiProvider === "openai" ? "OpenAI" : "Anthropic"
+                } API key`}
+              />
+              {apiKey && (
+                <button
+                  onClick={handleResetApiKey}
+                  className="ml-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md"
+                  title="Clear API key"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <div className="mt-2 flex items-center">
+              <input
+                type="checkbox"
+                id="saveToken"
+                checked={saveToken}
+                onChange={() => setSaveToken(!saveToken)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="saveToken" className="ml-2 text-xs text-gray-500">
+                Save API key in browser for future sessions
+              </label>
+            </div>
           </div>
 
           <div className="mb-4">
@@ -116,6 +200,36 @@ export function CodeQualityInsights({
               and use more API credits.
             </p>
           </div>
+
+          {/* PR selection option */}
+          {allPRs && allPRs.length > pullRequests.length && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                PRs to Analyze
+              </label>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="useAllPRs"
+                  checked={useAllPRs}
+                  onChange={handleToggleAllPRs}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="useAllPRs"
+                  className="ml-2 text-sm text-gray-600"
+                >
+                  Include all PRs ({allPRs.length} total) instead of only{" "}
+                  {pullRequests.length}{" "}
+                  {showOnlyImportantPRs ? "important" : "filtered"} PRs
+                </label>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                When enabled, analysis will include all PRs, not just the
+                filtered ones. The dashboard will update to show all PRs.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <button

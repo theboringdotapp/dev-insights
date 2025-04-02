@@ -1,5 +1,5 @@
 import { PullRequestItem } from "../lib/types";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { PRMetricsBadge } from "./ui/PRMetricsBadge";
 import { CommitsList } from "./ui/CommitsList";
@@ -17,7 +17,7 @@ export function Timeline({
   timeframe = "1month",
 }: TimelineProps) {
   // Use the PR metrics hook for lazy loading
-  const { getPRMetrics, loadPRMetrics } = usePRMetrics();
+  const { getPRMetrics, loadPRMetrics, metricsCache } = usePRMetrics();
 
   // Calculate max items based on timeframe (matching the values in useGitHubService.ts)
   const maxItems = useMemo(() => {
@@ -125,6 +125,26 @@ export function Timeline({
 
   // Determine if we're likely hitting the limit
   const isLikelyHittingLimit = pullRequests.length >= maxItems - 5; // Using a small buffer
+
+  // Only load metrics for visible PRs
+  useEffect(() => {
+    // Preload metrics only for visible PRs instead of all PRs
+    const visiblePRs = pullRequests;
+
+    // Only preload for PRs that don't already have metrics
+    const prsToLoad = visiblePRs.filter(
+      (pr) =>
+        !metricsCache[pr.id] ||
+        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading)
+    );
+
+    // Load metrics for first 10 visible PRs to improve initial display
+    if (prsToLoad.length > 0) {
+      prsToLoad.slice(0, 10).forEach((pr) => {
+        loadPRMetrics(pr);
+      });
+    }
+  }, [pullRequests, metricsCache, loadPRMetrics]);
 
   return (
     <div className="mt-8">
