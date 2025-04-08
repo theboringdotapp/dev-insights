@@ -173,17 +173,12 @@ export default function DeveloperDashboard() {
 
           {/* AI Code Quality Analysis */}
           {filteredPRs.length > 0 && (
-            <div>
-              <h3 className="text-xl font-semibold mb-4">
-                Code Quality Analysis
-              </h3>
-              <CodeQualityInsights
-                pullRequests={filteredPRs}
-                allPRs={allPRs}
-                showOnlyImportantPRs={showOnlyImportantPRs}
-                onToggleFilter={handleFilterChange}
-              />
-            </div>
+            <CodeQualityInsights
+              pullRequests={filteredPRs}
+              allPRs={allPRs}
+              showOnlyImportantPRs={showOnlyImportantPRs}
+              onToggleFilter={handleFilterChange}
+            />
           )}
 
           {/* No PRs after filtering message */}

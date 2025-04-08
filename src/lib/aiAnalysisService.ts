@@ -110,14 +110,21 @@ ${prContent}
 
 IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
-  "strengths": ["strength1", "strength2", ...],
-  "areas_for_improvement": ["area1", "area2", ...],
-  "growth_opportunities": ["opportunity1", "opportunity2", ...],
+  "strengths": ["Strength 1", "Strength 2", ...],
+  "areas_for_improvement": ["Area 1", "Area 2", ...],
+  "growth_opportunities": ["Opportunity 1", "Opportunity 2", ...],
   "career_impact_summary": "Summary of how addressing these points will help career progression",
   "overall_quality": 7
 }
 
-Focus on substantial issues that impact the developer's growth. Do not include any explanations or text outside of this JSON structure.
+Follow these important guidelines:
+1. Each item should begin with a capital letter
+2. Focus on substantial issues that impact the developer's growth
+3. Be specific in your feedback - identify exactly what the developer is doing well or could improve
+4. Connect each point to career development and professional growth
+5. Provide actionable insights that will help the developer improve
+
+Do not include any explanations or text outside of this JSON structure.
 `;
 
   try {
@@ -235,14 +242,21 @@ ${prContent}
 
 IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
-  "strengths": ["strength1", "strength2", ...],
-  "areas_for_improvement": ["area1", "area2", ...],
-  "growth_opportunities": ["opportunity1", "opportunity2", ...],
+  "strengths": ["Strength 1", "Strength 2", ...],
+  "areas_for_improvement": ["Area 1", "Area 2", ...],
+  "growth_opportunities": ["Opportunity 1", "Opportunity 2", ...],
   "career_impact_summary": "Summary of how addressing these points will help career progression",
   "overall_quality": 7
 }
 
-Focus on substantial issues that impact the developer's growth. Do not include any explanations or text outside of this JSON structure.
+Follow these important guidelines:
+1. Each item should begin with a capital letter
+2. Focus on substantial issues that impact the developer's growth
+3. Be specific in your feedback - identify exactly what the developer is doing well or could improve
+4. Connect each point to career development and professional growth
+5. Provide actionable insights that will help the developer improve
+
+Do not include any explanations or text outside of this JSON structure.
 `;
 
   try {

@@ -321,19 +321,13 @@ export function CodeQualityInsights({
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-800 text-base">
-                        {strength.text}
+                        {strength.text.charAt(0).toUpperCase() +
+                          strength.text.slice(1)}
                       </h5>
                     </div>
                   </div>
 
                   <div className="ml-8">
-                    <p className="text-sm text-gray-600 mb-3">
-                      This coding practice demonstrates good software
-                      engineering principles and contributes to maintainable,
-                      reliable code. Consistently applying this strength helps
-                      establish you as a more senior developer.
-                    </p>
-
                     <div className="text-xs text-gray-500">
                       Found in {strength.count} PR
                       {strength.count !== 1 ? "s" : ""}:
@@ -391,19 +385,13 @@ export function CodeQualityInsights({
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-800 text-base">
-                        {weakness.text}
+                        {weakness.text.charAt(0).toUpperCase() +
+                          weakness.text.slice(1)}
                       </h5>
                     </div>
                   </div>
 
                   <div className="ml-8">
-                    <p className="text-sm text-gray-600 mb-3">
-                      Addressing this pattern will significantly improve your
-                      code quality and readability. This is an opportunity to
-                      level up your technical skills and produce more
-                      professional code that meets industry standards.
-                    </p>
-
                     <div className="text-xs text-gray-500">
                       Found in {weakness.count} PR
                       {weakness.count !== 1 ? "s" : ""}:
@@ -457,19 +445,13 @@ export function CodeQualityInsights({
                     </div>
                     <div>
                       <h5 className="font-medium text-gray-800 text-base">
-                        {suggestion.text}
+                        {suggestion.text.charAt(0).toUpperCase() +
+                          suggestion.text.slice(1)}
                       </h5>
                     </div>
                   </div>
 
                   <div className="ml-8">
-                    <p className="text-sm text-gray-600 mb-3">
-                      Implementing this suggestion will enhance your development
-                      skills and make your code more efficient and maintainable.
-                      This represents a specific growth opportunity that will
-                      help you advance in your career.
-                    </p>
-
                     <div className="text-xs text-gray-500">
                       Suggested in {suggestion.count} PR
                       {suggestion.count !== 1 ? "s" : ""}:
@@ -535,4 +517,179 @@ export function CodeQualityInsights({
       )}
     </div>
   );
+}
+
+// Helper functions to generate tailored descriptions for each type of feedback
+function getStrengthDescription(strength: string): string {
+  const lowercaseStrength = strength.toLowerCase();
+
+  if (
+    lowercaseStrength.includes("test") ||
+    lowercaseStrength.includes("coverage")
+  ) {
+    return "Your consistent approach to testing demonstrates professionalism and quality focus. This practice significantly reduces bugs in production and builds confidence in your code among team members.";
+  }
+
+  if (
+    lowercaseStrength.includes("document") ||
+    lowercaseStrength.includes("comment")
+  ) {
+    return "Clear documentation shows your commitment to code maintainability and team collaboration. This practice helps onboard new team members and ensures your code remains understandable over time.";
+  }
+
+  if (
+    lowercaseStrength.includes("performance") ||
+    lowercaseStrength.includes("optimi")
+  ) {
+    return "Your attention to performance optimization demonstrates technical depth and user experience focus. This skill is highly valued in more senior roles where system efficiency becomes critical.";
+  }
+
+  if (
+    lowercaseStrength.includes("refactor") ||
+    lowercaseStrength.includes("clean")
+  ) {
+    return "Your dedication to code quality through refactoring shows engineering maturity and long-term thinking. This practice prevents technical debt and improves the codebase for everyone.";
+  }
+
+  if (
+    lowercaseStrength.includes("modular") ||
+    lowercaseStrength.includes("component") ||
+    lowercaseStrength.includes("reusab")
+  ) {
+    return "Creating modular, reusable components demonstrates architectural thinking and efficiency. This approach accelerates development and ensures consistency across your applications.";
+  }
+
+  if (
+    lowercaseStrength.includes("error") ||
+    lowercaseStrength.includes("exception") ||
+    lowercaseStrength.includes("handling")
+  ) {
+    return "Your thorough error handling shows attention to edge cases and user experience. This practice creates more robust applications and prevents unexpected crashes in production.";
+  }
+
+  if (
+    lowercaseStrength.includes("security") ||
+    lowercaseStrength.includes("validat")
+  ) {
+    return "Your focus on security and validation protects both users and the business. This critical skill is increasingly important as applications face more sophisticated threats.";
+  }
+
+  // Default description for other strengths
+  return "This coding practice demonstrates good software engineering principles and contributes to maintainable, reliable code. Consistently applying this strength helps establish you as a more senior developer.";
+}
+
+function getWeaknessDescription(weakness: string): string {
+  const lowercaseWeakness = weakness.toLowerCase();
+
+  if (
+    lowercaseWeakness.includes("test") ||
+    lowercaseWeakness.includes("coverage")
+  ) {
+    return "Improving test coverage will significantly reduce bugs and regressions while demonstrating your commitment to code quality. This skill is essential for progression to more senior roles.";
+  }
+
+  if (
+    lowercaseWeakness.includes("document") ||
+    lowercaseWeakness.includes("comment")
+  ) {
+    return "Better documentation and comments will make your code more maintainable and show your ability to collaborate effectively with your team. This is a key skill for professional development.";
+  }
+
+  if (
+    lowercaseWeakness.includes("complex") ||
+    lowercaseWeakness.includes("simplif")
+  ) {
+    return "Reducing code complexity will make your solutions more maintainable and easier to reason about. This skill distinguishes more experienced developers who can find elegant solutions to difficult problems.";
+  }
+
+  if (
+    lowercaseWeakness.includes("naming") ||
+    lowercaseWeakness.includes("variable") ||
+    lowercaseWeakness.includes("function")
+  ) {
+    return "Improving naming conventions makes your code self-documenting and shows attention to detail. Clear, consistent naming is a hallmark of professional code that others enjoy working with.";
+  }
+
+  if (
+    lowercaseWeakness.includes("error") ||
+    lowercaseWeakness.includes("exception") ||
+    lowercaseWeakness.includes("handling")
+  ) {
+    return "More robust error handling will improve application reliability and user experience. This practice demonstrates foresight and thoroughness that are valued in more senior positions.";
+  }
+
+  if (
+    lowercaseWeakness.includes("duplicate") ||
+    lowercaseWeakness.includes("repetit") ||
+    lowercaseWeakness.includes("dry")
+  ) {
+    return "Reducing code duplication through proper abstraction will improve maintainability and reduce bugs. This skill shows your ability to recognize patterns and architect more elegant solutions.";
+  }
+
+  if (
+    lowercaseWeakness.includes("security") ||
+    lowercaseWeakness.includes("validat")
+  ) {
+    return "Addressing security and validation concerns will protect your users and the business from vulnerabilities. This area is increasingly important and demonstrates professional responsibility.";
+  }
+
+  // Default description for other weaknesses
+  return "Addressing this pattern will significantly improve your code quality and readability. This is an opportunity to level up your technical skills and produce more professional code that meets industry standards.";
+}
+
+function getGrowthOpportunityDescription(opportunity: string): string {
+  const lowercaseOpportunity = opportunity.toLowerCase();
+
+  if (
+    lowercaseOpportunity.includes("design pattern") ||
+    lowercaseOpportunity.includes("architect")
+  ) {
+    return "Learning and applying proven design patterns will elevate your code organization and demonstrate architectural thinking. This advanced skill is highly valued in senior developers who need to build scalable systems.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("test") ||
+    lowercaseOpportunity.includes("tdd") ||
+    lowercaseOpportunity.includes("coverage")
+  ) {
+    return "Adopting test-driven development or improving test coverage will strengthen your code quality and confidence. This practice is essential for career advancement and working on mission-critical systems.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("review") ||
+    lowercaseOpportunity.includes("feedback")
+  ) {
+    return "Engaging more deeply in code reviews will expand your knowledge and improve team collaboration. This skill helps you build influence and mentorship abilities needed for senior roles.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("refactor") ||
+    lowercaseOpportunity.includes("technical debt")
+  ) {
+    return "Proactively refactoring code and addressing technical debt shows engineering maturity and ownership. This practice improves the codebase for everyone and demonstrates leadership qualities.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("performance") ||
+    lowercaseOpportunity.includes("optimi")
+  ) {
+    return "Developing expertise in performance optimization will set you apart as you tackle more complex systems. This technical skill becomes increasingly critical at higher levels of software engineering.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("document") ||
+    lowercaseOpportunity.includes("comment")
+  ) {
+    return "Creating more comprehensive documentation shows your commitment to code maintainability and knowledge sharing. This practice helps your team work more effectively and demonstrates professional communication.";
+  }
+
+  if (
+    lowercaseOpportunity.includes("security") ||
+    lowercaseOpportunity.includes("best practice")
+  ) {
+    return "Incorporating security best practices and defensive coding techniques protects users and demonstrates professional responsibility. This increasingly critical skill is highly valued as applications face more sophisticated threats.";
+  }
+
+  // Default description for other opportunities
+  return "Implementing this suggestion will enhance your development skills and make your code more efficient and maintainable. This represents a specific growth opportunity that will help you advance in your career.";
 }
