@@ -20,7 +20,8 @@ export function CodeQualityInsights({
   showOnlyImportantPRs = true,
   onToggleFilter,
 }: CodeQualityInsightsProps) {
-  const { analyzeMultiplePRs, isAnalyzing, analysisSummary } = usePRMetrics();
+  const { analyzeMultiplePRs, isAnalyzing, analysisSummary, getAnalysisForPR } =
+    usePRMetrics();
   const [apiKey, setApiKey] = useState("");
   const [apiProvider, setApiProvider] = useState<"openai" | "anthropic">(
     "openai"
@@ -29,9 +30,37 @@ export function CodeQualityInsights({
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [saveToken, setSaveToken] = useState(true);
   const [useAllPRs, setUseAllPRs] = useState(false);
+  const [cachedCount, setCachedCount] = useState(0);
 
   // Determine which PRs to analyze
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
+
+  // Check how many PRs already have analysis
+  useEffect(() => {
+    if (prsToAnalyze.length === 0) return;
+
+    const checkCachedCount = async () => {
+      let count = 0;
+      const cachedIds: number[] = [];
+
+      for (const pr of prsToAnalyze.slice(0, maxPRs)) {
+        const isAnalyzed = await getAnalysisForPR(pr.id);
+        if (isAnalyzed) {
+          count++;
+          cachedIds.push(pr.id);
+        }
+      }
+
+      setCachedCount(count);
+      setCachedPRIds(cachedIds);
+    };
+
+    checkCachedCount();
+  }, [prsToAnalyze, maxPRs, getAnalysisForPR]);
+
+  // Keep track of which PRs were loaded from cache vs newly analyzed
+  const [cachedPRIds, setCachedPRIds] = useState<number[]>([]);
+  const [newlyAnalyzedPRIds, setNewlyAnalyzedPRIds] = useState<number[]>([]);
 
   // Load saved API key when provider changes or on initial load
   useEffect(() => {
@@ -46,7 +75,7 @@ export function CodeQualityInsights({
   }, [apiProvider]);
 
   // Handle analyze button click
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!apiKey) {
       alert("Please enter an API key");
       return;
@@ -64,7 +93,23 @@ export function CodeQualityInsights({
       provider: apiProvider,
     };
 
-    analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
+    // Reset state for newly analyzed PRs
+    setNewlyAnalyzedPRIds([]);
+
+    // Get the current state of analyzed PRs before starting
+    const prIdsToAnalyze = prsToAnalyze.slice(0, maxPRs).map((pr) => pr.id);
+
+    // We already have the cached IDs from our useEffect
+
+    // Call analyzeMultiplePRs in both cases - it will handle cache usage
+    const results = await analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
+
+    // Determine which PRs were newly analyzed - only if they weren't in the initial cached list
+    const newlyAnalyzed = results
+      .map((r) => r.prId)
+      .filter((id) => !cachedPRIds.includes(id));
+
+    setNewlyAnalyzedPRIds(newlyAnalyzed);
 
     // Update filter if analyzing all PRs and not already showing all
     if (useAllPRs && showOnlyImportantPRs && onToggleFilter) {
@@ -231,6 +276,35 @@ export function CodeQualityInsights({
             </div>
           )}
 
+          {/* Caching information */}
+          {cachedCount > 0 && (
+            <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {cachedCount === maxPRs ? (
+                <span>
+                  All selected PRs ({cachedCount}) already analyzed and cached
+                </span>
+              ) : (
+                <span>
+                  {cachedCount} of {maxPRs} PRs already analyzed and cached
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button
               onClick={handleAnalyze}
@@ -247,15 +321,67 @@ export function CodeQualityInsights({
         </div>
       )}
 
-      {/* Analysis Loading Indicator */}
-      {isAnalyzing && (
-        <div className="flex flex-col items-center justify-center py-10">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">
-            Analyzing PRs for code quality patterns...
+      {/* Analysis status and message */}
+      {!analysisSummary && !isAnalyzing && (
+        <div className="my-6 text-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+          <p className="text-gray-500">
+            AI analysis will examine your PRs and provide insights on code
+            quality, patterns, and career growth opportunities.
           </p>
-          <p className="text-sm text-gray-500">
-            This may take a minute or two as we run each PR through AI analysis.
+          <button
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !apiKey}
+            className={`mt-4 px-4 py-2 rounded-md text-white ${
+              isAnalyzing || !apiKey
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {cachedCount === maxPRs
+              ? "Show Analysis (Using Cached Results)"
+              : isAnalyzing
+              ? "Analyzing..."
+              : cachedCount > 0
+              ? `Analyze (${maxPRs - cachedCount} New PRs)`
+              : `Analyze ${maxPRs} PRs`}
+          </button>
+        </div>
+      )}
+
+      {/* Analysis loading indicator */}
+      {isAnalyzing && (
+        <div className="my-6 p-4 bg-blue-50 rounded-lg text-center">
+          <div className="flex justify-center mb-4">
+            <svg
+              className="animate-spin h-8 w-8 text-blue-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+          <p className="text-blue-700 font-medium">
+            Analyzing your pull requests with AI...
+          </p>
+          <p className="text-blue-600 text-sm mt-1">
+            {cachedCount > 0 && (
+              <span>
+                Using {cachedCount} cached results to speed up analysis.
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -289,6 +415,46 @@ export function CodeQualityInsights({
               </div>
               <div className="ml-2 font-medium">
                 {analysisSummary.averageScore.toFixed(1)}/10
+              </div>
+            </div>
+          </div>
+
+          {/* Cache status legend */}
+          <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
+            <div className="font-medium mb-1">Cache Status Legend:</div>
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 mr-1 text-green-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+                </svg>
+                <span className="text-gray-600">Loaded from cache</span>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 mr-1 text-blue-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-gray-600">Newly analyzed</span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-gray-600">
+                  {cachedPRIds.length} of{" "}
+                  {cachedPRIds.length + newlyAnalyzedPRIds.length} PRs loaded
+                  from cache
+                </span>
               </div>
             </div>
           </div>
@@ -332,18 +498,55 @@ export function CodeQualityInsights({
                       Found in {strength.count} PR
                       {strength.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
-                        {strength.prUrls.map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-green-200 text-green-700 hover:bg-green-50"
-                            title={strength.prTitles[idx]}
-                          >
-                            #{url.split("/").pop()}
-                          </a>
-                        ))}
+                        {strength.prUrls.map((url, idx) => {
+                          const prId = strength.prIds[idx];
+                          const isCached = cachedPRIds.includes(prId);
+                          const isNewlyAnalyzed =
+                            newlyAnalyzedPRIds.includes(prId);
+
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center px-2 py-1 bg-white rounded border ${
+                                isCached
+                                  ? "border-green-200 text-green-700"
+                                  : "border-green-200 text-green-700"
+                              } hover:bg-green-50`}
+                              title={`${strength.prTitles[idx]}${
+                                isCached ? " (loaded from cache)" : ""
+                              }`}
+                            >
+                              #{url.split("/").pop()}
+                              {isCached && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-green-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+                                </svg>
+                              )}
+                              {isNewlyAnalyzed && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-blue-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -396,18 +599,51 @@ export function CodeQualityInsights({
                       Found in {weakness.count} PR
                       {weakness.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
-                        {weakness.prUrls.map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-red-200 text-red-700 hover:bg-red-50"
-                            title={weakness.prTitles[idx]}
-                          >
-                            #{url.split("/").pop()}
-                          </a>
-                        ))}
+                        {weakness.prUrls.map((url, idx) => {
+                          const prId = weakness.prIds[idx];
+                          const isCached = cachedPRIds.includes(prId);
+                          const isNewlyAnalyzed =
+                            newlyAnalyzedPRIds.includes(prId);
+
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 bg-white rounded border border-red-200 text-red-700 hover:bg-red-50"
+                              title={`${weakness.prTitles[idx]}${
+                                isCached ? " (loaded from cache)" : ""
+                              }`}
+                            >
+                              #{url.split("/").pop()}
+                              {isCached && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-green-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+                                </svg>
+                              )}
+                              {isNewlyAnalyzed && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-blue-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -456,18 +692,51 @@ export function CodeQualityInsights({
                       Suggested in {suggestion.count} PR
                       {suggestion.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
-                        {suggestion.prUrls.map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
-                            title={suggestion.prTitles[idx]}
-                          >
-                            #{url.split("/").pop()}
-                          </a>
-                        ))}
+                        {suggestion.prUrls.map((url, idx) => {
+                          const prId = suggestion.prIds[idx];
+                          const isCached = cachedPRIds.includes(prId);
+                          const isNewlyAnalyzed =
+                            newlyAnalyzedPRIds.includes(prId);
+
+                          return (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 bg-white rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                              title={`${suggestion.prTitles[idx]}${
+                                isCached ? " (loaded from cache)" : ""
+                              }`}
+                            >
+                              #{url.split("/").pop()}
+                              {isCached && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-green-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+                                </svg>
+                              )}
+                              {isNewlyAnalyzed && (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-3 w-3 ml-1 text-blue-500"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -517,179 +786,4 @@ export function CodeQualityInsights({
       )}
     </div>
   );
-}
-
-// Helper functions to generate tailored descriptions for each type of feedback
-function getStrengthDescription(strength: string): string {
-  const lowercaseStrength = strength.toLowerCase();
-
-  if (
-    lowercaseStrength.includes("test") ||
-    lowercaseStrength.includes("coverage")
-  ) {
-    return "Your consistent approach to testing demonstrates professionalism and quality focus. This practice significantly reduces bugs in production and builds confidence in your code among team members.";
-  }
-
-  if (
-    lowercaseStrength.includes("document") ||
-    lowercaseStrength.includes("comment")
-  ) {
-    return "Clear documentation shows your commitment to code maintainability and team collaboration. This practice helps onboard new team members and ensures your code remains understandable over time.";
-  }
-
-  if (
-    lowercaseStrength.includes("performance") ||
-    lowercaseStrength.includes("optimi")
-  ) {
-    return "Your attention to performance optimization demonstrates technical depth and user experience focus. This skill is highly valued in more senior roles where system efficiency becomes critical.";
-  }
-
-  if (
-    lowercaseStrength.includes("refactor") ||
-    lowercaseStrength.includes("clean")
-  ) {
-    return "Your dedication to code quality through refactoring shows engineering maturity and long-term thinking. This practice prevents technical debt and improves the codebase for everyone.";
-  }
-
-  if (
-    lowercaseStrength.includes("modular") ||
-    lowercaseStrength.includes("component") ||
-    lowercaseStrength.includes("reusab")
-  ) {
-    return "Creating modular, reusable components demonstrates architectural thinking and efficiency. This approach accelerates development and ensures consistency across your applications.";
-  }
-
-  if (
-    lowercaseStrength.includes("error") ||
-    lowercaseStrength.includes("exception") ||
-    lowercaseStrength.includes("handling")
-  ) {
-    return "Your thorough error handling shows attention to edge cases and user experience. This practice creates more robust applications and prevents unexpected crashes in production.";
-  }
-
-  if (
-    lowercaseStrength.includes("security") ||
-    lowercaseStrength.includes("validat")
-  ) {
-    return "Your focus on security and validation protects both users and the business. This critical skill is increasingly important as applications face more sophisticated threats.";
-  }
-
-  // Default description for other strengths
-  return "This coding practice demonstrates good software engineering principles and contributes to maintainable, reliable code. Consistently applying this strength helps establish you as a more senior developer.";
-}
-
-function getWeaknessDescription(weakness: string): string {
-  const lowercaseWeakness = weakness.toLowerCase();
-
-  if (
-    lowercaseWeakness.includes("test") ||
-    lowercaseWeakness.includes("coverage")
-  ) {
-    return "Improving test coverage will significantly reduce bugs and regressions while demonstrating your commitment to code quality. This skill is essential for progression to more senior roles.";
-  }
-
-  if (
-    lowercaseWeakness.includes("document") ||
-    lowercaseWeakness.includes("comment")
-  ) {
-    return "Better documentation and comments will make your code more maintainable and show your ability to collaborate effectively with your team. This is a key skill for professional development.";
-  }
-
-  if (
-    lowercaseWeakness.includes("complex") ||
-    lowercaseWeakness.includes("simplif")
-  ) {
-    return "Reducing code complexity will make your solutions more maintainable and easier to reason about. This skill distinguishes more experienced developers who can find elegant solutions to difficult problems.";
-  }
-
-  if (
-    lowercaseWeakness.includes("naming") ||
-    lowercaseWeakness.includes("variable") ||
-    lowercaseWeakness.includes("function")
-  ) {
-    return "Improving naming conventions makes your code self-documenting and shows attention to detail. Clear, consistent naming is a hallmark of professional code that others enjoy working with.";
-  }
-
-  if (
-    lowercaseWeakness.includes("error") ||
-    lowercaseWeakness.includes("exception") ||
-    lowercaseWeakness.includes("handling")
-  ) {
-    return "More robust error handling will improve application reliability and user experience. This practice demonstrates foresight and thoroughness that are valued in more senior positions.";
-  }
-
-  if (
-    lowercaseWeakness.includes("duplicate") ||
-    lowercaseWeakness.includes("repetit") ||
-    lowercaseWeakness.includes("dry")
-  ) {
-    return "Reducing code duplication through proper abstraction will improve maintainability and reduce bugs. This skill shows your ability to recognize patterns and architect more elegant solutions.";
-  }
-
-  if (
-    lowercaseWeakness.includes("security") ||
-    lowercaseWeakness.includes("validat")
-  ) {
-    return "Addressing security and validation concerns will protect your users and the business from vulnerabilities. This area is increasingly important and demonstrates professional responsibility.";
-  }
-
-  // Default description for other weaknesses
-  return "Addressing this pattern will significantly improve your code quality and readability. This is an opportunity to level up your technical skills and produce more professional code that meets industry standards.";
-}
-
-function getGrowthOpportunityDescription(opportunity: string): string {
-  const lowercaseOpportunity = opportunity.toLowerCase();
-
-  if (
-    lowercaseOpportunity.includes("design pattern") ||
-    lowercaseOpportunity.includes("architect")
-  ) {
-    return "Learning and applying proven design patterns will elevate your code organization and demonstrate architectural thinking. This advanced skill is highly valued in senior developers who need to build scalable systems.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("test") ||
-    lowercaseOpportunity.includes("tdd") ||
-    lowercaseOpportunity.includes("coverage")
-  ) {
-    return "Adopting test-driven development or improving test coverage will strengthen your code quality and confidence. This practice is essential for career advancement and working on mission-critical systems.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("review") ||
-    lowercaseOpportunity.includes("feedback")
-  ) {
-    return "Engaging more deeply in code reviews will expand your knowledge and improve team collaboration. This skill helps you build influence and mentorship abilities needed for senior roles.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("refactor") ||
-    lowercaseOpportunity.includes("technical debt")
-  ) {
-    return "Proactively refactoring code and addressing technical debt shows engineering maturity and ownership. This practice improves the codebase for everyone and demonstrates leadership qualities.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("performance") ||
-    lowercaseOpportunity.includes("optimi")
-  ) {
-    return "Developing expertise in performance optimization will set you apart as you tackle more complex systems. This technical skill becomes increasingly critical at higher levels of software engineering.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("document") ||
-    lowercaseOpportunity.includes("comment")
-  ) {
-    return "Creating more comprehensive documentation shows your commitment to code maintainability and knowledge sharing. This practice helps your team work more effectively and demonstrates professional communication.";
-  }
-
-  if (
-    lowercaseOpportunity.includes("security") ||
-    lowercaseOpportunity.includes("best practice")
-  ) {
-    return "Incorporating security best practices and defensive coding techniques protects users and demonstrates professional responsibility. This increasingly critical skill is highly valued as applications face more sophisticated threats.";
-  }
-
-  // Default description for other opportunities
-  return "Implementing this suggestion will enhance your development skills and make your code more efficient and maintainable. This represents a specific growth opportunity that will help you advance in your career.";
 }

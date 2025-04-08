@@ -1,9 +1,11 @@
 import { PullRequestItem } from "../lib/types";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { PRMetricsBadge } from "./ui/PRMetricsBadge";
 import { CommitsList } from "./ui/CommitsList";
 import { Timeframe } from "../components/TimeframeSelector";
+import { AIAnalysisConfig } from "../lib/aiAnalysisService";
+import cacheService from "../lib/cacheService";
 
 interface TimelineProps {
   pullRequests: PullRequestItem[];
@@ -17,7 +19,50 @@ export function Timeline({
   timeframe = "1month",
 }: TimelineProps) {
   // Use the PR metrics hook for lazy loading
-  const { getPRMetrics, loadPRMetrics, metricsCache } = usePRMetrics();
+  const {
+    getPRMetrics,
+    loadPRMetrics,
+    metricsCache,
+    analyzeAdditionalPR,
+    getAnalysisForPR,
+    getAnalysisFromMemoryCache,
+    isAnalyzing,
+  } = usePRMetrics();
+
+  // State for tracking which PR is being analyzed
+  const [analyzingPrId, setAnalyzingPrId] = useState<number | null>(null);
+  // State to track analyzed PR IDs
+  const [analyzedPRIds, setAnalyzedPRIds] = useState<Record<number, boolean>>(
+    {}
+  );
+
+  // State to track if API keys are available
+  const [hasApiKeys, setHasApiKeys] = useState<boolean>(false);
+
+  // Check for saved API keys on component mount
+  useEffect(() => {
+    const openaiKey = localStorage.getItem("github-review-openai-key");
+    const anthropicKey = localStorage.getItem("github-review-anthropic-key");
+    setHasApiKeys(!!(openaiKey || anthropicKey));
+  }, []);
+
+  // Check for cached PR analyses when component mounts or PRs change
+  useEffect(() => {
+    const checkCachedPRs = async () => {
+      const newAnalyzedPRIds: Record<number, boolean> = {};
+
+      for (const pr of pullRequests) {
+        const isAnalyzed = await getAnalysisForPR(pr.id);
+        if (isAnalyzed) {
+          newAnalyzedPRIds[pr.id] = true;
+        }
+      }
+
+      setAnalyzedPRIds(newAnalyzedPRIds);
+    };
+
+    checkCachedPRs();
+  }, [pullRequests, getAnalysisForPR]);
 
   // Calculate max items based on timeframe (matching the values in useGitHubService.ts)
   const maxItems = useMemo(() => {
@@ -146,6 +191,84 @@ export function Timeline({
     }
   }, [pullRequests, metricsCache, loadPRMetrics]);
 
+  // Function to handle analyzing a single PR
+  const handleAnalyzePR = async (pr: PullRequestItem) => {
+    if (analyzingPrId) return; // Don't allow multiple PR analysis at once
+
+    // Check for API keys
+    const openaiKey = localStorage.getItem("github-review-openai-key");
+    const anthropicKey = localStorage.getItem("github-review-anthropic-key");
+
+    if (!openaiKey && !anthropicKey) {
+      alert(
+        "Please set up your API key in the AI Code Quality Insights section first"
+      );
+      return;
+    }
+
+    // Determine which provider to use based on available keys
+    const provider = openaiKey ? "openai" : "anthropic";
+    const apiKey = openaiKey || anthropicKey || "";
+
+    const config: AIAnalysisConfig = {
+      apiKey,
+      provider,
+    };
+
+    setAnalyzingPrId(pr.id);
+
+    try {
+      await analyzeAdditionalPR(pr, config);
+    } catch (error) {
+      console.error("Error analyzing PR:", error);
+    } finally {
+      setAnalyzingPrId(null);
+    }
+  };
+
+  // Function to handle re-analyzing a PR
+  const handleReanalyzePR = async (pr: PullRequestItem) => {
+    if (analyzingPrId) return; // Don't allow multiple PR analysis at once
+
+    // Check for API keys
+    const openaiKey = localStorage.getItem("github-review-openai-key");
+    const anthropicKey = localStorage.getItem("github-review-anthropic-key");
+
+    if (!openaiKey && !anthropicKey) {
+      alert(
+        "Please set up your API key in the AI Code Quality Insights section first"
+      );
+      return;
+    }
+
+    setAnalyzingPrId(pr.id);
+
+    try {
+      // Delete the cache for this PR
+      await cacheService.deletePRAnalysis(pr.id);
+
+      // Re-analyze the PR
+      const provider = openaiKey ? "openai" : "anthropic";
+      const apiKey = openaiKey || anthropicKey || "";
+
+      const config: AIAnalysisConfig = {
+        apiKey,
+        provider,
+      };
+
+      await analyzeAdditionalPR(pr, config);
+    } catch (error) {
+      console.error("Error re-analyzing PR:", error);
+    } finally {
+      setAnalyzingPrId(null);
+    }
+  };
+
+  // Check if a PR has been analyzed (use the state variable for immediate UI response)
+  const isPRAnalyzed = (prId: number): boolean => {
+    return !!analyzedPRIds[prId] || !!getAnalysisFromMemoryCache(prId);
+  };
+
   return (
     <div className="mt-8">
       <h3 className="text-xl font-semibold mb-4">{timeframeLabel} Timeline</h3>
@@ -202,6 +325,8 @@ export function Timeline({
                 const colorClass =
                   repoColors[repoName] || "bg-gray-100 text-gray-800";
                 const metrics = getPRMetrics(pr);
+                const isAnalyzed = isPRAnalyzed(pr.id);
+                const isCurrentlyAnalyzing = analyzingPrId === pr.id;
 
                 return (
                   <div
@@ -242,14 +367,95 @@ export function Timeline({
                             metrics={metrics}
                             onClick={() => loadPRMetrics(pr)}
                           />
+
+                          {/* AI Analysis badge */}
+                          {isAnalyzed && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              Analyzed
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(pr.created_at).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-sm text-gray-500">
+                          {new Date(pr.created_at).toLocaleDateString(
+                            undefined,
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </div>
+
+                        {/* PR Analysis Buttons */}
+                        {hasApiKeys &&
+                          !isCurrentlyAnalyzing &&
+                          !isAnalyzing && (
+                            <>
+                              {isAnalyzed ? (
+                                <div className="flex items-center">
+                                  <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded flex items-center">
+                                    Analysed
+                                  </span>
+                                  <button
+                                    onClick={() => handleReanalyzePR(pr)}
+                                    title="Re-analyze PR"
+                                    className="ml-1 text-purple-500 hover:text-purple-700"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-4 w-4"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleAnalyzePR(pr)}
+                                  className="text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                                >
+                                  Analyze PR
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                        {/* Loading indicator */}
+                        {isCurrentlyAnalyzing && (
+                          <div className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded flex items-center">
+                            <svg
+                              className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-purple-800"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            Analyzing...
+                          </div>
+                        )}
                       </div>
                     </div>
 

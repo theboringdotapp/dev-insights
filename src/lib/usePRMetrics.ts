@@ -8,6 +8,7 @@ import {
   aggregateFeedback,
   formatPRFilesForAnalysis,
 } from "./aiAnalysisService";
+import cacheService from "./cacheService";
 
 export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
 
@@ -178,6 +179,20 @@ export function usePRMetrics() {
       if (!isReady || !service || !pr.number) return null;
 
       try {
+        // First, check if we have cached results
+        const cachedResult = await cacheService.getPRAnalysis(pr.id);
+        if (cachedResult) {
+          console.log(`Using cached analysis for PR #${pr.number}`);
+
+          // Update the in-memory cache
+          setPRAnalysisCache((prev) => ({
+            ...prev,
+            [pr.id]: cachedResult,
+          }));
+
+          return cachedResult;
+        }
+
         // Extract repo owner and name
         const repoInfo = extractRepoInfo(pr);
         if (!repoInfo) {
@@ -197,7 +212,7 @@ export function usePRMetrics() {
         // Analyze with AI
         const feedback = await analyzePRWithAI(prContent, config);
 
-        // Cache and return result
+        // Create analysis result
         const result: PRAnalysisResult = {
           prId: pr.id,
           prNumber: pr.number,
@@ -206,75 +221,176 @@ export function usePRMetrics() {
           feedback,
         };
 
+        // Update in-memory cache
         setPRAnalysisCache((prev) => ({
           ...prev,
           [pr.id]: result,
         }));
 
+        // Store in persistent cache
+        await cacheService.cachePRAnalysis(result);
+
         return result;
       } catch (error) {
         console.error("Error analyzing PR code:", error);
-        const errorResult: PRAnalysisResult = {
-          prId: pr.id,
-          prNumber: pr.number || 0,
-          prTitle: pr.title,
-          prUrl: pr.html_url,
-          feedback: {
-            strengths: [],
-            areas_for_improvement: ["Analysis failed"],
-            growth_opportunities: [],
-            career_impact_summary: "Failed to analyze PR",
-          },
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-
-        setPRAnalysisCache((prev) => ({
-          ...prev,
-          [pr.id]: errorResult,
-        }));
-
-        return errorResult;
+        return null;
       }
     },
     [isReady, service]
   );
 
   /**
-   * Analyzes multiple PRs and aggregates the results
+   * Analyzes multiple PRs with AI
    */
   const analyzeMultiplePRs = useCallback(
     async (
       prs: PullRequestItem[],
       config: AIAnalysisConfig,
-      maxPRs = 10
-    ): Promise<void> => {
-      if (!prs.length || !isReady || !service) return;
+      maxPRs = 5
+    ): Promise<PRAnalysisResult[]> => {
+      if (!isReady || !service || prs.length === 0) return [];
+
+      setIsAnalyzing(true);
+      setAnalysisSummary(null);
 
       try {
-        setIsAnalyzing(true);
-        setAnalysisSummary(null);
+        // First, check cache for existing analysis
+        const cachedResults: PRAnalysisResult[] = [];
+        const prsToAnalyze: PullRequestItem[] = [];
 
-        // Select a subset of PRs if there are too many
-        const prsToAnalyze = prs.length > maxPRs ? prs.slice(0, maxPRs) : prs;
-
-        // Analyze PRs in sequence to avoid rate limits
-        const results: PRAnalysisResult[] = [];
-
-        for (const pr of prsToAnalyze) {
-          const result = await analyzePRCode(pr, config);
-          if (result) results.push(result);
+        // Check cache for each PR
+        for (const pr of prs.slice(0, maxPRs)) {
+          const cachedResult = await cacheService.getPRAnalysis(pr.id);
+          if (cachedResult) {
+            cachedResults.push(cachedResult);
+          } else {
+            prsToAnalyze.push(pr);
+          }
         }
 
-        // Aggregate results
-        const summary = aggregateFeedback(results);
-        setAnalysisSummary(summary);
+        console.log(
+          `Found ${cachedResults.length} cached analyses, need to analyze ${prsToAnalyze.length} PRs`
+        );
+
+        // Update the analysis cache with cached results
+        const newCache = { ...prAnalysisCache };
+        for (const result of cachedResults) {
+          newCache[result.prId] = result;
+        }
+        setPRAnalysisCache(newCache);
+
+        // If we have all results cached and there's nothing to analyze
+        if (prsToAnalyze.length === 0) {
+          const summary = aggregateFeedback(cachedResults);
+          setAnalysisSummary(summary);
+          setIsAnalyzing(false);
+          return cachedResults;
+        }
+
+        // Analyze remaining PRs sequentially
+        const newResults: PRAnalysisResult[] = [];
+        for (const pr of prsToAnalyze) {
+          const result = await analyzePRCode(pr, config);
+          if (result) {
+            newResults.push(result);
+          }
+        }
+
+        // Combine cached and new results
+        const allResults = [...cachedResults, ...newResults];
+
+        // Update summary
+        if (allResults.length > 0) {
+          const summary = aggregateFeedback(allResults);
+          setAnalysisSummary(summary);
+        }
+
+        return allResults;
       } catch (error) {
         console.error("Error analyzing multiple PRs:", error);
+        return [];
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [isReady, service, analyzePRCode]
+    [isReady, service, prAnalysisCache, analyzePRCode]
+  );
+
+  /**
+   * Analyze a single PR and update the aggregated analysis
+   */
+  const analyzeAdditionalPR = useCallback(
+    async (
+      pr: PullRequestItem,
+      config: AIAnalysisConfig
+    ): Promise<PRAnalysisResult | null> => {
+      setIsAnalyzing(true);
+
+      try {
+        // Analyze the PR
+        const result = await analyzePRCode(pr, config);
+
+        if (result) {
+          // Update the aggregated analysis by including this PR
+          const currentResults = Object.values(prAnalysisCache);
+          const updatedResults = [...currentResults, result];
+
+          if (updatedResults.length > 0) {
+            const summary = aggregateFeedback(updatedResults);
+            setAnalysisSummary(summary);
+          }
+
+          return result;
+        }
+
+        return null;
+      } catch (error) {
+        console.error("Error analyzing additional PR:", error);
+        return null;
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [analyzePRCode, prAnalysisCache]
+  );
+
+  // Create a function to get PR analysis that checks both memory and persistent cache
+  const getAnalysisForPR = useCallback(
+    async (prId: number): Promise<PRAnalysisResult | null> => {
+      // First check in-memory cache
+      if (prAnalysisCache[prId]) {
+        return prAnalysisCache[prId];
+      }
+
+      // If not in memory, check persistent cache
+      try {
+        const cachedResult = await cacheService.getPRAnalysis(prId);
+
+        // If found in persistent cache, update in-memory cache
+        if (cachedResult) {
+          console.log(`Found PR #${prId} in persistent cache`);
+          setPRAnalysisCache((prev) => ({
+            ...prev,
+            [prId]: cachedResult,
+          }));
+          return cachedResult;
+        }
+      } catch (error) {
+        console.error("Error checking cache for PR analysis:", error);
+      }
+
+      return null;
+    },
+    [prAnalysisCache]
+  );
+
+  // Create a synchronous version that only checks in-memory cache
+  // This is useful for UI components that need immediate results
+  const getAnalysisFromMemoryCache = useCallback(
+    (prId: number): PRAnalysisResult | null => {
+      return prAnalysisCache[prId] || null;
+    },
+    [prAnalysisCache]
   );
 
   // Return the extended hook functionality
@@ -284,12 +400,12 @@ export function usePRMetrics() {
     enhancePRsWithMetrics,
     metricsCache,
     calculateFilteredStats,
-    // AI analysis methods
-    analyzePRCode,
     analyzeMultiplePRs,
-    prAnalysisCache,
+    analyzeAdditionalPR,
     isAnalyzing,
     analysisSummary,
+    getAnalysisForPR,
+    getAnalysisFromMemoryCache,
   };
 }
 
@@ -359,14 +475,7 @@ function countReviewComments(
  * Calculate duration between PR creation and closure in days
  */
 function calculateDuration(createdAt: string, closedAt?: string): number {
-  if (!closedAt) {
-    // If PR is not closed, calculate duration until now
-    const created = new Date(createdAt).getTime();
-    const now = new Date().getTime();
-    return Math.round((now - created) / (1000 * 60 * 60 * 24));
-  }
-
   const created = new Date(createdAt).getTime();
-  const closed = new Date(closedAt).getTime();
+  const closed = closedAt ? new Date(closedAt).getTime() : Date.now();
   return Math.round((closed - created) / (1000 * 60 * 60 * 24));
 }

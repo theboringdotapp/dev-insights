@@ -69,8 +69,11 @@ export interface AICodeFeedback {
 
 export interface PRAnalysisResult {
   prId: number;
+  prNumber: number;
   prTitle: string;
+  prUrl: string;
   feedback: AICodeFeedback;
+  error?: string;
 }
 
 export interface FeedbackFrequency {
