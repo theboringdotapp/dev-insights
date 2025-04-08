@@ -20,17 +20,19 @@ export function TimeframeSelector({
   ];
 
   return (
-    <div className="flex items-center space-x-2">
-      <label className="text-sm font-medium text-gray-700">Timeframe:</label>
-      <div className="flex rounded-md overflow-hidden border border-gray-300">
+    <div className="flex flex-col space-y-1.5 md:w-2/3">
+      <label className="text-sm font-medium text-foreground text-left">
+        Timeframe
+      </label>
+      <div className="flex rounded-md overflow-hidden border border-input bg-background">
         {timeframes.map((timeframe) => (
           <button
             key={timeframe.value}
             type="button"
-            className={`px-3 py-1.5 text-sm ${
+            className={`px-3 py-1.5 text-sm flex-1 transition-colors cursor-pointer ${
               selectedTimeframe === timeframe.value
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
+                ? "bg-primary text-primary-foreground font-medium"
+                : "bg-background text-foreground hover:bg-muted"
             }`}
             onClick={() => onTimeframeChange(timeframe.value)}
           >

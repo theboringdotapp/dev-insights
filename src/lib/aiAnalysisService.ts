@@ -11,6 +11,7 @@ export interface PRAnalysisResult {
   prId: number;
   prNumber: number;
   prTitle: string;
+  prUrl: string;
   feedback: AICodeFeedback;
   error?: string;
 }
@@ -361,33 +362,104 @@ export function aggregateFeedback(
     };
   }
 
-  // Helper to count frequency of strings in an array
-  const countFrequency = (items: string[]): FeedbackFrequency[] => {
-    const count: Record<string, number> = {};
+  // Helper to count frequency of strings in an array, now tracking source PRs
+  const countFrequency = (
+    items: Array<{ text: string; prId: number; prUrl: string; prTitle: string }>
+  ): FeedbackFrequency[] => {
+    const groups: Record<
+      string,
+      {
+        count: number;
+        prIds: number[];
+        prUrls: string[];
+        prTitles: string[];
+      }
+    > = {};
 
     items.forEach((item) => {
-      // Normalize the item by lowercasing and trimming
-      const normalized = item.toLowerCase().trim();
-      count[normalized] = (count[normalized] || 0) + 1;
+      // Normalize the item text by lowercasing and trimming
+      const normalized = item.text.toLowerCase().trim();
+
+      if (!groups[normalized]) {
+        groups[normalized] = {
+          count: 0,
+          prIds: [],
+          prUrls: [],
+          prTitles: [],
+        };
+      }
+
+      groups[normalized].count++;
+
+      // Only add the PR if it's not already in the list
+      if (!groups[normalized].prIds.includes(item.prId)) {
+        groups[normalized].prIds.push(item.prId);
+        groups[normalized].prUrls.push(item.prUrl);
+        groups[normalized].prTitles.push(item.prTitle);
+      }
     });
 
     // Convert to array and sort by frequency
-    return Object.entries(count)
-      .map(([text, count]) => ({ text, count }))
+    return Object.entries(groups)
+      .map(([text, { count, prIds, prUrls, prTitles }]) => ({
+        text,
+        count,
+        prIds,
+        prUrls,
+        prTitles,
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8); // Limit to top 8 most common items
   };
 
-  // Collect all feedback items
-  const allStrengths: string[] = [];
-  const allAreasForImprovement: string[] = [];
-  const allGrowthOpportunities: string[] = [];
+  // Collect all feedback items with their PR sources
+  const allStrengths: Array<{
+    text: string;
+    prId: number;
+    prUrl: string;
+    prTitle: string;
+  }> = [];
+  const allAreasForImprovement: Array<{
+    text: string;
+    prId: number;
+    prUrl: string;
+    prTitle: string;
+  }> = [];
+  const allGrowthOpportunities: Array<{
+    text: string;
+    prId: number;
+    prUrl: string;
+    prTitle: string;
+  }> = [];
   let totalScore = 0;
 
   prAnalysisResults.forEach((result) => {
-    allStrengths.push(...result.feedback.strengths);
-    allAreasForImprovement.push(...result.feedback.areas_for_improvement);
-    allGrowthOpportunities.push(...result.feedback.growth_opportunities);
+    result.feedback.strengths.forEach((strength) => {
+      allStrengths.push({
+        text: strength,
+        prId: result.prId,
+        prUrl: result.prUrl,
+        prTitle: result.prTitle,
+      });
+    });
+
+    result.feedback.areas_for_improvement.forEach((area) => {
+      allAreasForImprovement.push({
+        text: area,
+        prId: result.prId,
+        prUrl: result.prUrl,
+        prTitle: result.prTitle,
+      });
+    });
+
+    result.feedback.growth_opportunities.forEach((opportunity) => {
+      allGrowthOpportunities.push({
+        text: opportunity,
+        prId: result.prId,
+        prUrl: result.prUrl,
+        prTitle: result.prTitle,
+      });
+    });
 
     if (typeof result.feedback.overall_quality === "number") {
       totalScore += result.feedback.overall_quality;

@@ -264,14 +264,16 @@ export function CodeQualityInsights({
       {!isAnalyzing && analysisSummary && (
         <div className="space-y-6">
           {/* Overall Summary */}
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <h4 className="font-medium text-blue-800 mb-2">
+          <div className="bg-blue-50 p-5 rounded-lg border border-blue-100">
+            <h4 className="font-medium text-blue-800 mb-3 text-lg">
               Career Development Assessment
             </h4>
             <p className="text-gray-800">{analysisSummary.overallSummary}</p>
-            <div className="mt-3 flex items-center">
-              <div className="text-sm text-gray-500 mr-2">Quality Score:</div>
-              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="mt-4 flex items-center">
+              <div className="text-sm text-gray-600 mr-2 font-medium">
+                Quality Score:
+              </div>
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full ${
                     analysisSummary.averageScore >= 8
@@ -293,122 +295,208 @@ export function CodeQualityInsights({
 
           {/* Common Strengths */}
           <div className="mb-6">
-            <h4 className="font-medium text-gray-800 mb-3">Code Strengths</h4>
-            <ul className="space-y-2">
+            <h4 className="font-medium text-gray-800 mb-3 text-lg">
+              Code Strengths
+            </h4>
+            <div className="space-y-3">
               {analysisSummary.commonStrengths.map((strength, i) => (
-                <li
+                <div
                   key={i}
-                  className="flex items-start p-2 bg-green-50 border border-green-100 rounded-md"
+                  className="p-4 bg-green-50 border border-green-100 rounded-lg"
                 >
-                  <div className="text-green-600 mr-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="flex items-start mb-2">
+                    <div className="text-green-600 mr-3 flex-shrink-0 mt-0.5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-800 text-base">
+                        {strength.text}
+                      </h5>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-gray-800">{strength.text}</p>
-                    <span className="text-xs text-gray-500">
+
+                  <div className="ml-8">
+                    <p className="text-sm text-gray-600 mb-3">
+                      This coding practice demonstrates good software
+                      engineering principles and contributes to maintainable,
+                      reliable code. Consistently applying this strength helps
+                      establish you as a more senior developer.
+                    </p>
+
+                    <div className="text-xs text-gray-500">
                       Found in {strength.count} PR
-                      {strength.count !== 1 ? "s" : ""}
-                    </span>
+                      {strength.count !== 1 ? "s" : ""}:
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {strength.prUrls.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-green-200 text-green-700 hover:bg-green-50"
+                            title={strength.prTitles[idx]}
+                          >
+                            #{url.split("/").pop()}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </li>
+                </div>
               ))}
               {analysisSummary.commonStrengths.length === 0 && (
-                <li className="text-gray-500 italic">
+                <div className="text-gray-500 italic bg-gray-50 p-4 rounded-lg">
                   No consistent strengths identified
-                </li>
+                </div>
               )}
-            </ul>
+            </div>
           </div>
 
           {/* Common Weaknesses */}
           <div className="mb-6">
-            <h4 className="font-medium text-gray-800 mb-3">
+            <h4 className="font-medium text-gray-800 mb-3 text-lg">
               Areas for Improvement
             </h4>
-            <ul className="space-y-2">
+            <div className="space-y-3">
               {analysisSummary.commonWeaknesses.map((weakness, i) => (
-                <li
+                <div
                   key={i}
-                  className="flex items-start p-2 bg-red-50 border border-red-100 rounded-md"
+                  className="p-4 bg-red-50 border border-red-100 rounded-lg"
                 >
-                  <div className="text-red-600 mr-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="flex items-start mb-2">
+                    <div className="text-red-600 mr-3 flex-shrink-0 mt-0.5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-800 text-base">
+                        {weakness.text}
+                      </h5>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-gray-800">{weakness.text}</p>
-                    <span className="text-xs text-gray-500">
+
+                  <div className="ml-8">
+                    <p className="text-sm text-gray-600 mb-3">
+                      Addressing this pattern will significantly improve your
+                      code quality and readability. This is an opportunity to
+                      level up your technical skills and produce more
+                      professional code that meets industry standards.
+                    </p>
+
+                    <div className="text-xs text-gray-500">
                       Found in {weakness.count} PR
-                      {weakness.count !== 1 ? "s" : ""}
-                    </span>
+                      {weakness.count !== 1 ? "s" : ""}:
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {weakness.prUrls.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-red-200 text-red-700 hover:bg-red-50"
+                            title={weakness.prTitles[idx]}
+                          >
+                            #{url.split("/").pop()}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </li>
+                </div>
               ))}
               {analysisSummary.commonWeaknesses.length === 0 && (
-                <li className="text-gray-500 italic">
+                <div className="text-gray-500 italic bg-gray-50 p-4 rounded-lg">
                   No consistent areas for improvement identified
-                </li>
+                </div>
               )}
-            </ul>
+            </div>
           </div>
 
           {/* Suggested Improvements */}
           <div>
-            <h4 className="font-medium text-gray-800 mb-3">
+            <h4 className="font-medium text-gray-800 mb-3 text-lg">
               Growth Opportunities
             </h4>
-            <ul className="space-y-2">
+            <div className="space-y-3">
               {analysisSummary.commonSuggestions.map((suggestion, i) => (
-                <li
+                <div
                   key={i}
-                  className="flex items-start p-2 bg-blue-50 border border-blue-100 rounded-md"
+                  className="p-4 bg-blue-50 border border-blue-100 rounded-lg"
                 >
-                  <div className="text-blue-600 mr-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                    </svg>
+                  <div className="flex items-start mb-2">
+                    <div className="text-blue-600 mr-3 flex-shrink-0 mt-0.5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-800 text-base">
+                        {suggestion.text}
+                      </h5>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-gray-800">{suggestion.text}</p>
-                    <span className="text-xs text-gray-500">
+
+                  <div className="ml-8">
+                    <p className="text-sm text-gray-600 mb-3">
+                      Implementing this suggestion will enhance your development
+                      skills and make your code more efficient and maintainable.
+                      This represents a specific growth opportunity that will
+                      help you advance in your career.
+                    </p>
+
+                    <div className="text-xs text-gray-500">
                       Suggested in {suggestion.count} PR
-                      {suggestion.count !== 1 ? "s" : ""}
-                    </span>
+                      {suggestion.count !== 1 ? "s" : ""}:
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {suggestion.prUrls.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 bg-white rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                            title={suggestion.prTitles[idx]}
+                          >
+                            #{url.split("/").pop()}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </li>
+                </div>
               ))}
               {analysisSummary.commonSuggestions.length === 0 && (
-                <li className="text-gray-500 italic">
+                <div className="text-gray-500 italic bg-gray-50 p-4 rounded-lg">
                   No consistent growth opportunities identified
-                </li>
+                </div>
               )}
-            </ul>
+            </div>
           </div>
         </div>
       )}

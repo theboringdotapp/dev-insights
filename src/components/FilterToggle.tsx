@@ -32,7 +32,7 @@ export function FilterToggle({
           : "Showing all PRs"}
 
         {showCounts && (
-          <span className="ml-2 bg-gray-100 text-gray-700 text-xs rounded-full px-2 py-0.5">
+          <span className="ml-2 bg-accent text-accent-foreground text-xs rounded-full px-2.5 py-0.5">
             {showOnlyImportantPRs
               ? `${importantCount}/${totalCount}`
               : `${totalCount} total`}

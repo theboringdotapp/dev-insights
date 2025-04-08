@@ -202,6 +202,7 @@ export function usePRMetrics() {
           prId: pr.id,
           prNumber: pr.number,
           prTitle: pr.title,
+          prUrl: pr.html_url,
           feedback,
         };
 
@@ -217,11 +218,12 @@ export function usePRMetrics() {
           prId: pr.id,
           prNumber: pr.number || 0,
           prTitle: pr.title,
+          prUrl: pr.html_url,
           feedback: {
             strengths: [],
-            weaknesses: ["Analysis failed"],
-            suggestions: [],
-            summary: "Failed to analyze PR",
+            areas_for_improvement: ["Analysis failed"],
+            growth_opportunities: [],
+            career_impact_summary: "Failed to analyze PR",
           },
           error: error instanceof Error ? error.message : "Unknown error",
         };

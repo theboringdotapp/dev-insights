@@ -76,6 +76,9 @@ export interface PRAnalysisResult {
 export interface FeedbackFrequency {
   text: string;
   count: number;
+  prIds: number[];
+  prUrls: string[];
+  prTitles: string[];
 }
 
 export interface AggregatedFeedback {

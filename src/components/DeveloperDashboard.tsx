@@ -90,8 +90,8 @@ export default function DeveloperDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 text-center">
-        <p className="text-gray-600 mb-4">
+      <div className="bg-card rounded-lg shadow p-6 text-center">
+        <p className="text-foreground mb-4">
           Please log in with your GitHub token to view developer performance
           metrics.
         </p>
@@ -102,11 +102,7 @@ export default function DeveloperDashboard() {
   const timeframeLabel = getTimeframeLabel(timeframe);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-2xl font-bold mb-6">
-        Developer Performance Dashboard
-      </h2>
-
+    <div className="bg-card rounded-lg shadow p-6">
       <SearchForm
         username={username}
         initialTimeframe={timeframe}
@@ -123,11 +119,13 @@ export default function DeveloperDashboard() {
       {showData && !developerData.isLoading && !developerData.error && (
         <div className="space-y-8">
           {/* Current timeframe indicator */}
-          <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
+          <div className="bg-muted p-3 rounded-md text-sm">
             <div className="flex justify-between items-center">
-              <span>
+              <span className="text-foreground">
                 Showing data for:{" "}
-                <span className="font-medium">{timeframeLabel}</span>
+                <span className="font-medium text-foreground">
+                  {timeframeLabel}
+                </span>
               </span>
 
               {/* PR Filter Toggle */}
