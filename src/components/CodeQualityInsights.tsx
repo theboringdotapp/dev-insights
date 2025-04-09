@@ -494,7 +494,7 @@ export function CodeQualityInsights({
                   </div>
 
                   <div className="ml-8">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 text-left">
                       Found in {strength.count} PR
                       {strength.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
@@ -595,7 +595,7 @@ export function CodeQualityInsights({
                   </div>
 
                   <div className="ml-8">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 text-left">
                       Found in {weakness.count} PR
                       {weakness.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
@@ -688,7 +688,7 @@ export function CodeQualityInsights({
                   </div>
 
                   <div className="ml-8">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 text-left">
                       Suggested in {suggestion.count} PR
                       {suggestion.count !== 1 ? "s" : ""}:
                       <div className="mt-1.5 flex flex-wrap gap-2">
