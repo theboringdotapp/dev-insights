@@ -18,6 +18,7 @@ interface ConfigurationPanelProps {
   handleAnalyze: () => Promise<void>;
   setApiKey: (key: string) => void;
   handleResetApiKey: () => void;
+  handleClearCache: () => Promise<void>;
 }
 
 export default function ConfigurationPanel({
@@ -37,6 +38,7 @@ export default function ConfigurationPanel({
   handleAnalyze,
   setApiKey,
   handleResetApiKey,
+  handleClearCache,
 }: ConfigurationPanelProps) {
   return (
     <div className="bg-gray-50 p-4 rounded-lg mb-6">
@@ -135,34 +137,74 @@ export default function ConfigurationPanel({
         </div>
       )}
 
-      {/* Caching information */}
-      {cachedCount > 0 && (
-        <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 mr-1.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+      {/* Caching information and controls */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Cache Management
+        </label>
+
+        {cachedCount > 0 && (
+          <div className="mb-3 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 mr-1.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {cachedCount === maxPRs ? (
+              <span>
+                All selected PRs ({cachedCount}) already analyzed and cached
+              </span>
+            ) : (
+              <span>
+                {cachedCount} of {maxPRs} PRs already analyzed and cached
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center">
+          <button
+            onClick={handleClearCache}
+            disabled={isAnalyzing || cachedCount === 0}
+            className={`px-3 py-1.5 text-xs rounded ${
+              isAnalyzing || cachedCount === 0
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-red-100 text-red-700 hover:bg-red-200"
+            }`}
+            title="Remove all cached PR analysis data"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          {cachedCount === maxPRs ? (
-            <span>
-              All selected PRs ({cachedCount}) already analyzed and cached
-            </span>
-          ) : (
-            <span>
-              {cachedCount} of {maxPRs} PRs already analyzed and cached
-            </span>
-          )}
+            <div className="flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3.5 w-3.5 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Clear All Cached Analysis
+            </div>
+          </button>
+          <p className="ml-3 text-xs text-gray-500">
+            Removes all cached analysis data to free up space and start fresh.
+          </p>
         </div>
-      )}
+      </div>
 
       <div className="flex justify-end">
         <button

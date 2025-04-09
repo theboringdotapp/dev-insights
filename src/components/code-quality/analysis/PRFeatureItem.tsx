@@ -68,8 +68,12 @@ export default function PRFeatureItem({
           <div className="mt-1.5 flex flex-wrap gap-2">
             {feature.prUrls.map((url, idx) => {
               const prId = feature.prIds[idx];
+              // A PR can only be either cached OR newly analyzed, not both
+              // Prioritize "cached" status over "newly analyzed" to prevent dual labeling
               const isCached = cachedPRIds.includes(prId);
-              const isNewlyAnalyzed = newlyAnalyzedPRIds.includes(prId);
+              // Only consider it newly analyzed if it's not already cached
+              const isNewlyAnalyzed =
+                !isCached && newlyAnalyzedPRIds.includes(prId);
 
               // Skip if not visible in current view mode
               if (viewAllAnalyzedPRs && !displayedPRIds.includes(prId)) {

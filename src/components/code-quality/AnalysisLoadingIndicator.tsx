@@ -34,11 +34,11 @@ export default function AnalysisLoadingIndicator({
       <p className="text-blue-700 font-medium">
         Analyzing your pull requests with AI...
       </p>
-      <p className="text-blue-600 text-sm mt-1">
-        {cachedCount > 0 && (
-          <span>Using {cachedCount} cached results to speed up analysis.</span>
-        )}
-      </p>
+      {cachedCount > 0 && (
+        <p className="text-blue-600 text-sm mt-1">
+          Using {cachedCount} cached results to speed up analysis.
+        </p>
+      )}
     </div>
   );
 }

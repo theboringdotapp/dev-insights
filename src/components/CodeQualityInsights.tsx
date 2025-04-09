@@ -8,6 +8,7 @@ import AnalysisResults from "./code-quality/AnalysisResults";
 import InitialState from "./code-quality/InitialState";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
+import cacheService from "../lib/cacheService";
 
 // Local storage keys
 const OPENAI_KEY_STORAGE = "github-review-openai-key";
@@ -241,6 +242,9 @@ export function CodeQualityInsights({
     // Reset state for newly analyzed PRs
     setNewlyAnalyzedPRIds([]);
 
+    // Store the current cached PRs before analysis
+    const previouslyCachedIds = [...cachedPRIds];
+
     // Call analyzeMultiplePRs - it will handle cache usage
     const results = await analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
 
@@ -251,10 +255,10 @@ export function CodeQualityInsights({
       return Array.from(uniqueIds);
     });
 
-    // Determine which PRs were newly analyzed - only if they weren't in the initial cached list
-    const newlyAnalyzed = results
-      .map((r) => r.prId)
-      .filter((id) => !cachedPRIds.includes(id));
+    // Determine which PRs were newly analyzed - only if they weren't in the initially cached list
+    const newlyAnalyzed = resultIds.filter(
+      (id) => !previouslyCachedIds.includes(id)
+    );
 
     setNewlyAnalyzedPRIds(newlyAnalyzed);
 
@@ -272,6 +276,47 @@ export function CodeQualityInsights({
   // Toggle between viewing only top N analyzed PRs and all analyzed PRs
   const handleToggleViewAllAnalyzed = () => {
     setViewAllAnalyzedPRs(!viewAllAnalyzedPRs);
+  };
+
+  // Handle clearing all cached PR analysis data
+  const handleClearCache = async () => {
+    if (isAnalyzing) return;
+
+    // Ask for confirmation
+    if (
+      !window.confirm(
+        "Are you sure you want to clear all cached PR analysis data? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Clear the cache
+      await cacheService.clearAllPRAnalysis();
+
+      // Reset states
+      setCachedCount(0);
+      setCachedPRIds([]);
+      setAllAnalyzedPRIds([]);
+      setNewlyAnalyzedPRIds([]);
+
+      // Force a component refresh to clear the analysis display
+      setRefreshTrigger((prev) => prev + 1);
+
+      // If we have an analysis summary showing, hide it
+      if (analysisSummary) {
+        // We can't directly modify analysisSummary,
+        // so we'll reload the page to reset the state
+        window.location.reload();
+      } else {
+        // Show confirmation
+        alert("All cached PR analysis data has been cleared.");
+      }
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+      alert("Failed to clear cache. Please try again.");
+    }
   };
 
   return (
@@ -362,6 +407,7 @@ export function CodeQualityInsights({
           handleAnalyze={handleAnalyze}
           setApiKey={setApiKey}
           handleResetApiKey={handleResetApiKey}
+          handleClearCache={handleClearCache}
         />
       )}
 
