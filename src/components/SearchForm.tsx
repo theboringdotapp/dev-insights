@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TimeframeSelector, Timeframe } from "./TimeframeSelector";
 
 interface SearchFormProps {
@@ -16,6 +16,10 @@ export function SearchForm({
 }: SearchFormProps) {
   const [username, setUsername] = useState(initialUsername);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
+
+  useEffect(() => {
+    setUsername(initialUsername);
+  }, [initialUsername]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

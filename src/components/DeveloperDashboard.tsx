@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "../lib/auth";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
 import { SearchForm } from "./SearchForm";
@@ -12,15 +12,22 @@ import { usePRMetrics } from "../lib/usePRMetrics";
 import { ActivityCharts } from "./ActivityCharts";
 import { PerformanceMetrics } from "./PerformanceMetrics";
 import { CodeQualityInsights } from "./CodeQualityInsights";
+import { useSearchParams } from "react-router-dom";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
-  const [username, setUsername] = useState(userProfile?.login || "");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get username from URL or default to user profile
+  const usernameFromUrl = searchParams.get("username");
+  const [username, setUsername] = useState(
+    usernameFromUrl || userProfile?.login || ""
+  );
   const [timeframe, setTimeframe] = useState<Timeframe>("1month");
-  const [showData, setShowData] = useState(false);
+  const [showData, setShowData] = useState(!!usernameFromUrl);
   const [showOnlyImportantPRs, setShowOnlyImportantPRs] = useState(true);
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
-    undefined
+    usernameFromUrl ? 1 : undefined
   );
 
   // State for real commit data from PR metrics
@@ -29,6 +36,22 @@ export default function DeveloperDashboard() {
 
   // For handling PR metrics
   const { enhancePRsWithMetrics, calculateFilteredStats } = usePRMetrics();
+
+  // Update document title when username changes
+  useEffect(() => {
+    if (username && showData) {
+      document.title = `DevInsight - ${username}`;
+    } else {
+      document.title = "DevInsight";
+    }
+  }, [username, showData]);
+
+  // Auto-trigger search if username is in URL
+  useEffect(() => {
+    if (usernameFromUrl && searchTrigger === 1) {
+      setShowData(true);
+    }
+  }, [usernameFromUrl, searchTrigger]);
 
   // Only fetch data when the search trigger changes
   const developerData = useDeveloperPerformance(
@@ -79,6 +102,8 @@ export default function DeveloperDashboard() {
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     setUsername(newUsername);
     setTimeframe(newTimeframe);
+    // Update URL with the username
+    setSearchParams({ username: newUsername });
     // Increment the search trigger to cause a re-fetch
     setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
     setShowData(true);
