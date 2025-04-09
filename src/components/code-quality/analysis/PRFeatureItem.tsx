@@ -20,6 +20,8 @@ interface PRFeatureItemProps {
   icon: React.ReactNode;
   cachedPRIds: number[];
   newlyAnalyzedPRIds: number[];
+  displayedPRIds?: number[];
+  viewAllAnalyzedPRs?: boolean;
 }
 
 export default function PRFeatureItem({
@@ -28,7 +30,17 @@ export default function PRFeatureItem({
   icon,
   cachedPRIds,
   newlyAnalyzedPRIds,
+  displayedPRIds = [],
+  viewAllAnalyzedPRs = false,
 }: PRFeatureItemProps) {
+  // Filter displayed PRs based on view mode
+  const visiblePRs = viewAllAnalyzedPRs
+    ? feature.prIds.filter((id) => displayedPRIds.includes(id))
+    : feature.prIds;
+
+  // Count of displayed PRs
+  const visibleCount = visiblePRs.length;
+
   return (
     <div className={`p-4 ${typeStyles.container} rounded-lg border`}>
       <div className="flex items-start mb-2">
@@ -44,13 +56,25 @@ export default function PRFeatureItem({
 
       <div className="ml-8">
         <div className="text-xs text-gray-500 text-left">
-          Found in {feature.count} PR
-          {feature.count !== 1 ? "s" : ""}:
+          {viewAllAnalyzedPRs && visibleCount !== feature.count ? (
+            <span>
+              Found in {feature.count} PRs (showing {visibleCount}):
+            </span>
+          ) : (
+            <span>
+              Found in {feature.count} PR{feature.count !== 1 ? "s" : ""}:
+            </span>
+          )}
           <div className="mt-1.5 flex flex-wrap gap-2">
             {feature.prUrls.map((url, idx) => {
               const prId = feature.prIds[idx];
               const isCached = cachedPRIds.includes(prId);
               const isNewlyAnalyzed = newlyAnalyzedPRIds.includes(prId);
+
+              // Skip if not visible in current view mode
+              if (viewAllAnalyzedPRs && !displayedPRIds.includes(prId)) {
+                return null;
+              }
 
               return (
                 <a
@@ -74,7 +98,7 @@ export default function PRFeatureItem({
                       <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
                     </svg>
                   )}
-                  {isNewlyAnalyzed && (
+                  {isNewlyAnalyzed && !viewAllAnalyzedPRs && (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-3 w-3 ml-1 text-blue-500"

@@ -14,6 +14,8 @@ interface PRFeatureListProps {
   type: "strength" | "weakness" | "suggestion";
   cachedPRIds: number[];
   newlyAnalyzedPRIds: number[];
+  displayedPRIds?: number[];
+  viewAllAnalyzedPRs?: boolean;
 }
 
 export default function PRFeatureList({
@@ -21,6 +23,8 @@ export default function PRFeatureList({
   type,
   cachedPRIds,
   newlyAnalyzedPRIds,
+  displayedPRIds = [],
+  viewAllAnalyzedPRs = false,
 }: PRFeatureListProps) {
   // Define styling based on type
   const getTypeStyles = () => {
@@ -113,6 +117,8 @@ export default function PRFeatureList({
           icon={getIcon()}
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+          displayedPRIds={displayedPRIds}
+          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       ))}
       {features.length === 0 && (

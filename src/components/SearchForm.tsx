@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TimeframeSelector, Timeframe } from "./TimeframeSelector";
+import { useSearchParams } from "react-router-dom";
 
 interface SearchFormProps {
   username: string;
@@ -16,15 +17,49 @@ export function SearchForm({
 }: SearchFormProps) {
   const [username, setUsername] = useState(initialUsername);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
+  const [, setSearchParams] = useSearchParams();
+  const [debouncedUsername, setDebouncedUsername] = useState(initialUsername);
 
+  // Update form when initialUsername changes (from URL)
   useEffect(() => {
     setUsername(initialUsername);
+    setDebouncedUsername(initialUsername);
   }, [initialUsername]);
 
+  // Debounce the username input to avoid excessive URL updates and API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (username !== debouncedUsername) {
+        setDebouncedUsername(username);
+
+        if (username.trim().length > 2) {
+          // Update URL but don't trigger full search yet
+          setSearchParams({ username: username });
+        }
+      }
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [username, debouncedUsername, setSearchParams]);
+
+  // Handle form submission (still needed for explicit search)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(username, timeframe);
   };
+
+  // Listen for timeframe changes to trigger search
+  const handleTimeframeChange = useCallback(
+    (newTimeframe: Timeframe) => {
+      setTimeframe(newTimeframe);
+
+      // Only trigger search if we have a valid username
+      if (username.trim().length > 2) {
+        onSearch(username, newTimeframe);
+      }
+    },
+    [username, onSearch]
+  );
 
   return (
     <form onSubmit={handleSubmit} className="mb-8 space-y-5">
@@ -49,7 +84,7 @@ export function SearchForm({
           <button
             type="submit"
             className="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors shadow-sm cursor-pointer disabled:cursor-not-allowed"
-            disabled={isLoading}
+            disabled={isLoading || username.trim().length < 3}
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -84,7 +119,7 @@ export function SearchForm({
 
       <TimeframeSelector
         selectedTimeframe={timeframe}
-        onTimeframeChange={setTimeframe}
+        onTimeframeChange={handleTimeframeChange}
       />
     </form>
   );

@@ -34,7 +34,6 @@ export function Timeline({
     isPRAnalyzed,
     handleAnalyzePR,
     handleReanalyzePR,
-    isAnalyzing,
   } = usePRAnalysis(pullRequests);
 
   // Use PR grouping hook
@@ -92,7 +91,6 @@ export function Timeline({
             isPRAnalyzed={isPRAnalyzed}
             analyzingPrId={analyzingPrId}
             hasApiKeys={hasApiKeys}
-            isAnalyzing={isAnalyzing}
             handleAnalyzePR={handleAnalyzePR}
             handleReanalyzePR={handleReanalyzePR}
           />

@@ -23,13 +23,22 @@ interface AnalysisResultsProps {
   analysisSummary: AnalysisSummary;
   cachedPRIds: number[];
   newlyAnalyzedPRIds: number[];
+  viewAllAnalyzedPRs?: boolean;
+  allAnalyzedPRIds?: number[];
 }
 
 export default function AnalysisResults({
   analysisSummary,
   cachedPRIds,
   newlyAnalyzedPRIds,
+  viewAllAnalyzedPRs = false,
+  allAnalyzedPRIds = [],
 }: AnalysisResultsProps) {
+  // Determine which PR IDs to highlight
+  const displayedPRIds = viewAllAnalyzedPRs
+    ? allAnalyzedPRIds
+    : [...cachedPRIds, ...newlyAnalyzedPRIds];
+
   return (
     <div className="space-y-6">
       {/* Overall Summary */}
@@ -42,6 +51,8 @@ export default function AnalysisResults({
       <CacheLegend
         cachedPRIds={cachedPRIds}
         newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+        viewAllAnalyzedPRs={viewAllAnalyzedPRs}
+        allAnalyzedPRIds={allAnalyzedPRIds}
       />
 
       {/* Common Strengths */}
@@ -54,6 +65,8 @@ export default function AnalysisResults({
           type="strength"
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+          displayedPRIds={displayedPRIds}
+          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
 
@@ -67,6 +80,8 @@ export default function AnalysisResults({
           type="weakness"
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+          displayedPRIds={displayedPRIds}
+          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
 
@@ -80,6 +95,8 @@ export default function AnalysisResults({
           type="suggestion"
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+          displayedPRIds={displayedPRIds}
+          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
     </div>

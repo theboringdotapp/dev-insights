@@ -13,7 +13,6 @@ interface PullRequestCardProps {
   isAnalyzed: boolean;
   isCurrentlyAnalyzing: boolean;
   hasApiKeys: boolean;
-  isAnalyzing: boolean;
   onLoadMetrics: (pr: PullRequestItem) => void;
   onAnalyzePR: (pr: PullRequestItem) => Promise<void>;
   onReanalyzePR: (pr: PullRequestItem) => Promise<void>;
@@ -27,7 +26,6 @@ export default function PullRequestCard({
   isAnalyzed,
   isCurrentlyAnalyzing,
   hasApiKeys,
-  isAnalyzing,
   onLoadMetrics,
   onAnalyzePR,
   onReanalyzePR,
@@ -89,8 +87,8 @@ export default function PullRequestCard({
             })}
           </div>
 
-          {/* PR Analysis Buttons */}
-          {hasApiKeys && !isAnalyzing && (
+          {/* PR Analysis Buttons - Always show if we have API keys */}
+          {hasApiKeys && (
             <AnalysisButton
               pr={pr}
               isAnalyzed={isAnalyzed}

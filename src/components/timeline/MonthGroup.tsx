@@ -14,7 +14,6 @@ interface MonthGroupProps {
   isPRAnalyzed: (prId: number) => boolean;
   analyzingPrId: number | null;
   hasApiKeys: boolean;
-  isAnalyzing: boolean;
   handleAnalyzePR: (pr: PullRequestItem) => Promise<void>;
   handleReanalyzePR: (pr: PullRequestItem) => Promise<void>;
 }
@@ -30,7 +29,6 @@ export default function MonthGroup({
   isPRAnalyzed,
   analyzingPrId,
   hasApiKeys,
-  isAnalyzing,
   handleAnalyzePR,
   handleReanalyzePR,
 }: MonthGroupProps) {
@@ -67,7 +65,6 @@ export default function MonthGroup({
               isAnalyzed={isAnalyzed}
               isCurrentlyAnalyzing={isCurrentlyAnalyzing}
               hasApiKeys={hasApiKeys}
-              isAnalyzing={isAnalyzing}
               onLoadMetrics={loadPRMetrics}
               onAnalyzePR={handleAnalyzePR}
               onReanalyzePR={handleReanalyzePR}

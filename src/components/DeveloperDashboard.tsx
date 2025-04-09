@@ -46,6 +46,15 @@ export default function DeveloperDashboard() {
     }
   }, [username, showData]);
 
+  // Listen for URL parameter changes and update search
+  useEffect(() => {
+    if (usernameFromUrl && usernameFromUrl !== username) {
+      setUsername(usernameFromUrl);
+      setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
+      setShowData(true);
+    }
+  }, [usernameFromUrl, username]);
+
   // Auto-trigger search if username is in URL
   useEffect(() => {
     if (usernameFromUrl && searchTrigger === 1) {
