@@ -74,8 +74,20 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       setAnalyzingPrId(pr.id);
 
       try {
+        // Trigger a custom event that CodeQualityInsights can listen for
+        const analyzeStartEvent = new CustomEvent("pr-analysis-started", {
+          detail: { prId: pr.id },
+        });
+        window.dispatchEvent(analyzeStartEvent);
+
         await analyzeAdditionalPR(pr, config);
         setAnalyzedPRIds((prev) => ({ ...prev, [pr.id]: true }));
+
+        // Notify that analysis completed
+        const analyzeCompleteEvent = new CustomEvent("pr-analysis-completed", {
+          detail: { prId: pr.id },
+        });
+        window.dispatchEvent(analyzeCompleteEvent);
       } catch (error) {
         console.error("Error analyzing PR:", error);
       } finally {

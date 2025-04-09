@@ -253,6 +253,12 @@ export function usePRMetrics() {
       setIsAnalyzing(true);
       setAnalysisSummary(null);
 
+      // Special case: When maxPRs is 0, we're just refreshing the UI with already analyzed PRs
+      const isRefreshOnly = maxPRs === 0;
+      if (isRefreshOnly) {
+        maxPRs = prs.length; // Look at all provided PRs for refresh
+      }
+
       try {
         // First, check cache for existing analysis
         const cachedResults: PRAnalysisResult[] = [];
@@ -263,7 +269,8 @@ export function usePRMetrics() {
           const cachedResult = await cacheService.getPRAnalysis(pr.id);
           if (cachedResult) {
             cachedResults.push(cachedResult);
-          } else {
+          } else if (!isRefreshOnly) {
+            // Only add PRs to analyze if this isn't a refresh-only call
             prsToAnalyze.push(pr);
           }
         }
@@ -279,8 +286,8 @@ export function usePRMetrics() {
         }
         setPRAnalysisCache(newCache);
 
-        // If we have all results cached and there's nothing to analyze
-        if (prsToAnalyze.length === 0) {
+        // If we have all results cached OR this is a refresh-only call
+        if (prsToAnalyze.length === 0 || isRefreshOnly) {
           const summary = aggregateFeedback(cachedResults);
           setAnalysisSummary(summary);
           setIsAnalyzing(false);

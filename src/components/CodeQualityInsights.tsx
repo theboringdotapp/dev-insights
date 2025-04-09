@@ -26,8 +26,13 @@ export function CodeQualityInsights({
   showOnlyImportantPRs = true,
   onToggleFilter,
 }: CodeQualityInsightsProps) {
-  const { analyzeMultiplePRs, isAnalyzing, analysisSummary, getAnalysisForPR } =
-    usePRMetrics();
+  const {
+    analyzeMultiplePRs,
+    isAnalyzing,
+    analysisSummary,
+    getAnalysisForPR,
+    getAnalysisFromMemoryCache,
+  } = usePRMetrics();
   const {
     apiKey,
     setApiKey,
@@ -48,6 +53,7 @@ export function CodeQualityInsights({
   const [cachedPRIds, setCachedPRIds] = useState<number[]>([]);
   const [allAnalyzedPRIds, setAllAnalyzedPRIds] = useState<number[]>([]);
   const [newlyAnalyzedPRIds, setNewlyAnalyzedPRIds] = useState<number[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Check if API key exists on mount
   useEffect(() => {
@@ -95,7 +101,126 @@ export function CodeQualityInsights({
     };
 
     checkCachedCount();
-  }, [prsToAnalyze, maxPRs, getAnalysisForPR]);
+  }, [prsToAnalyze, maxPRs, getAnalysisForPR, refreshTrigger]);
+
+  // Refresh analyses when view mode changes
+  useEffect(() => {
+    if (analysisSummary) {
+      // Force refresh analysis to update displayed PRs
+      handleRefreshAnalysis();
+    }
+  }, [viewAllAnalyzedPRs]);
+
+  // Function to refresh analysis based on current view mode
+  const handleRefreshAnalysis = async () => {
+    if (!hasApiKey && !apiKey) return;
+
+    const config: AIAnalysisConfig = {
+      apiKey:
+        apiKey ||
+        localStorage.getItem(OPENAI_KEY_STORAGE) ||
+        localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+        "",
+      provider: apiProvider,
+    };
+
+    // We don't need to re-analyze, just fetch all cached analyses
+    const targetPRIds = viewAllAnalyzedPRs
+      ? allAnalyzedPRIds
+      : cachedPRIds.concat(newlyAnalyzedPRIds);
+
+    // Filter to only get PRs that exist in our current list
+    const targetPRs = prsToAnalyze.filter((pr) => targetPRIds.includes(pr.id));
+
+    // Set a small timeout to allow state updates to propagate
+    setTimeout(() => {
+      // Trigger the analysis operation with 0 max PRs to just refresh the UI without new API calls
+      analyzeMultiplePRs(targetPRs, config, 0);
+    }, 100);
+
+    // Also trigger a refresh check for any new analyses
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // Subscribe to Timeline PR analysis changes
+  useEffect(() => {
+    // Set up an interval to check for newly analyzed PRs from Timeline
+    const intervalId = setInterval(async () => {
+      // Check if any PRs in our list have been newly analyzed
+      let hasNewAnalysis = false;
+
+      for (const pr of prsToAnalyze) {
+        // Skip if already known to be analyzed
+        if (allAnalyzedPRIds.includes(pr.id)) continue;
+
+        // Check memory cache first (faster)
+        let isAnalyzed = !!getAnalysisFromMemoryCache(pr.id);
+
+        // If not in memory, check persistent cache
+        if (!isAnalyzed) {
+          isAnalyzed = !!(await getAnalysisForPR(pr.id));
+        }
+
+        if (isAnalyzed) {
+          hasNewAnalysis = true;
+          break;
+        }
+      }
+
+      // If new analyses found, trigger a refresh
+      if (hasNewAnalysis) {
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(intervalId);
+  }, [
+    prsToAnalyze,
+    allAnalyzedPRIds,
+    getAnalysisFromMemoryCache,
+    getAnalysisForPR,
+  ]);
+
+  // Listen for PR analysis events from Timeline
+  useEffect(() => {
+    const handleAnalysisStarted = () => {
+      // Reset the refresh check timer
+      setRefreshTrigger((prev) => prev + 1);
+    };
+
+    const handleAnalysisCompleted = (e: Event) => {
+      const event = e as CustomEvent;
+      const prId = event.detail?.prId;
+
+      if (prId) {
+        // Update allAnalyzedPRIds to include this PR
+        setAllAnalyzedPRIds((prev) => {
+          if (prev.includes(prId)) return prev;
+          return [...prev, prId];
+        });
+
+        // Force refresh of analysis results if we have a summary
+        if (analysisSummary && viewAllAnalyzedPRs) {
+          setTimeout(() => {
+            handleRefreshAnalysis();
+          }, 500); // Small delay to ensure cache is updated
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener("pr-analysis-started", handleAnalysisStarted);
+    window.addEventListener("pr-analysis-completed", handleAnalysisCompleted);
+
+    return () => {
+      // Clean up event listeners
+      window.removeEventListener("pr-analysis-started", handleAnalysisStarted);
+      window.removeEventListener(
+        "pr-analysis-completed",
+        handleAnalysisCompleted
+      );
+    };
+  }, [analysisSummary, viewAllAnalyzedPRs]);
 
   // Handle analyze button click
   const handleAnalyze = async () => {
@@ -224,7 +349,6 @@ export function CodeQualityInsights({
           apiKey={apiKey}
           apiProvider={apiProvider}
           maxPRs={maxPRs}
-          setMaxPRs={setMaxPRs}
           saveToken={saveToken}
           setSaveToken={setSaveToken}
           handleProviderChange={handleProviderChange}
