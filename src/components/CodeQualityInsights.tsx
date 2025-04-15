@@ -214,10 +214,26 @@ export function CodeQualityInsights({
       // Set loading state for PRs being refreshed
       if (targetPRs.length > 0) {
         setLoadingPRIds(targetPRs.map((pr) => pr.id));
+
+        // Notify Timeline about each PR refresh starting
+        targetPRs.forEach((pr) => {
+          const analyzeStartEvent = new CustomEvent("pr-analysis-started", {
+            detail: { prId: pr.id },
+          });
+          window.dispatchEvent(analyzeStartEvent);
+        });
       }
 
       // Analyze without a timeout for more responsive UI
-      await analyzeMultiplePRs(targetPRs, config, 0);
+      const results = await analyzeMultiplePRs(targetPRs, config, 0);
+
+      // Notify Timeline about each PR refresh completing
+      results.forEach((result) => {
+        const analyzeCompleteEvent = new CustomEvent("pr-analysis-completed", {
+          detail: { prId: result.prId },
+        });
+        window.dispatchEvent(analyzeCompleteEvent);
+      });
 
       // Clear loading state
       setLoadingPRIds([]);
@@ -228,6 +244,19 @@ export function CodeQualityInsights({
       console.error("Error refreshing analysis:", error);
       // Clear loading state on error
       setLoadingPRIds([]);
+
+      // Notify about refresh failures
+      const targetPRs = prsToAnalyze.filter(
+        (pr) =>
+          selectedPRIds.includes(pr.id) && allAnalyzedPRIds.includes(pr.id)
+      );
+
+      targetPRs.forEach((pr) => {
+        const analyzeFailedEvent = new CustomEvent("pr-analysis-failed", {
+          detail: { prId: pr.id },
+        });
+        window.dispatchEvent(analyzeFailedEvent);
+      });
     } finally {
       // Reset loading state with a small delay to ensure render stability
       setTimeout(() => {
@@ -453,8 +482,24 @@ export function CodeQualityInsights({
       // Update loading PRs
       setLoadingPRIds(prsToLoad.map((pr) => pr.id));
 
+      // Notify Timeline component about each PR analysis starting
+      prsToLoad.forEach((pr) => {
+        const analyzeStartEvent = new CustomEvent("pr-analysis-started", {
+          detail: { prId: pr.id },
+        });
+        window.dispatchEvent(analyzeStartEvent);
+      });
+
       // Call analyzeMultiplePRs - it will handle cache usage
       const results = await analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
+
+      // Notify Timeline component about each PR analysis completing
+      results.forEach((result) => {
+        const analyzeCompleteEvent = new CustomEvent("pr-analysis-completed", {
+          detail: { prId: result.prId },
+        });
+        window.dispatchEvent(analyzeCompleteEvent);
+      });
 
       // Clear loading state
       setLoadingPRIds([]);
@@ -487,6 +532,18 @@ export function CodeQualityInsights({
       console.error("Error during analysis:", error);
       // Clear loading state on error too
       setLoadingPRIds([]);
+
+      // Notify about analysis failure for each PR
+      const prsToLoad = prsToAnalyze
+        .slice(0, maxPRs)
+        .filter((pr) => !allAnalyzedPRIds.includes(pr.id));
+
+      prsToLoad.forEach((pr) => {
+        const analyzeFailedEvent = new CustomEvent("pr-analysis-failed", {
+          detail: { prId: pr.id },
+        });
+        window.dispatchEvent(analyzeFailedEvent);
+      });
     } finally {
       // Reset loading state with delay to prevent flicker
       setTimeout(() => {

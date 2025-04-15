@@ -30,7 +30,7 @@ export function Timeline({
   // Use PR analysis hook
   const {
     hasApiKeys,
-    analyzingPrId,
+    isAnalyzingPR,
     isPRAnalyzed,
     handleAnalyzePR,
     handleReanalyzePR,
@@ -89,7 +89,7 @@ export function Timeline({
             getPRMetrics={getPRMetrics}
             loadPRMetrics={loadPRMetrics}
             isPRAnalyzed={isPRAnalyzed}
-            analyzingPrId={analyzingPrId}
+            isAnalyzingPR={isAnalyzingPR}
             hasApiKeys={hasApiKeys}
             handleAnalyzePR={handleAnalyzePR}
             handleReanalyzePR={handleReanalyzePR}

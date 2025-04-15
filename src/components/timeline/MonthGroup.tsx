@@ -12,7 +12,7 @@ interface MonthGroupProps {
   getPRMetrics: (pr: PullRequestItem) => PRMetrics | null | undefined;
   loadPRMetrics: (pr: PullRequestItem) => void;
   isPRAnalyzed: (prId: number) => boolean;
-  analyzingPrId: number | null;
+  isAnalyzingPR: (prId: number) => boolean;
   hasApiKeys: boolean;
   handleAnalyzePR: (pr: PullRequestItem) => Promise<void>;
   handleReanalyzePR: (pr: PullRequestItem) => Promise<void>;
@@ -27,7 +27,7 @@ export default function MonthGroup({
   getPRMetrics,
   loadPRMetrics,
   isPRAnalyzed,
-  analyzingPrId,
+  isAnalyzingPR,
   hasApiKeys,
   handleAnalyzePR,
   handleReanalyzePR,
@@ -53,7 +53,7 @@ export default function MonthGroup({
             repoColors[repoName] || "bg-gray-100 text-gray-800";
           const metrics = getPRMetrics(pr);
           const isAnalyzed = isPRAnalyzed(pr.id);
-          const isCurrentlyAnalyzing = analyzingPrId === pr.id;
+          const isCurrentlyAnalyzing = isAnalyzingPR(pr.id);
 
           return (
             <PullRequestCard
