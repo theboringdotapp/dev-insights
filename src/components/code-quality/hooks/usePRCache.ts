@@ -37,9 +37,11 @@ export function usePRCache(
 
   /**
    * Checks for cached PR analyses and updates state
+   *
+   * If checkOnly is true, it will only check for cached analyses without updating component state
    */
   const checkCachedAnalyses = useCallback(
-    async (maxPRs: number, hasApiKey: boolean) => {
+    async (maxPRs: number, hasApiKey: boolean, checkOnly = false) => {
       if (prsToAnalyze.length === 0 || cacheCheckInProgressRef.current) return;
 
       cacheCheckInProgressRef.current = true;
@@ -67,9 +69,12 @@ export function usePRCache(
           }
         }
 
-        setCachedCount(count);
-        setCachedPRIds(cachedIds);
-        setAllAnalyzedPRIds(allIds);
+        // Only update state if not in check-only mode
+        if (!checkOnly) {
+          setCachedCount(count);
+          setCachedPRIds(cachedIds);
+          setAllAnalyzedPRIds(allIds);
+        }
 
         if (hasApiKey) {
           return { count, cachedIds, allIds };
@@ -79,7 +84,7 @@ export function usePRCache(
         cacheCheckInProgressRef.current = false;
       }
     },
-    [prsToAnalyze, getAnalysisForPR]
+    [prsToAnalyze, getAnalysisForPR, setAllAnalyzedPRIds]
   );
 
   /**

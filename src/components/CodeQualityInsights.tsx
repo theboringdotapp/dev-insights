@@ -12,6 +12,7 @@ import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import AnalysisControls from "./code-quality/components/AnalysisControls";
 import EmptySelectionState from "./code-quality/components/EmptySelectionState";
+import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
 
 // Local storage keys
 const OPENAI_KEY_STORAGE = "github-review-openai-key";
@@ -138,20 +139,24 @@ export function CodeQualityInsights({
       if (loadingStateRef.current) return;
 
       try {
-        // Set loading state once
-        loadingStateRef.current = true;
-        setIsLocalLoading(true);
+        // First check if there are cached PRs without updating component state or showing loading
+        const initialCheck = await checkCachedAnalyses(maxPRs, hasApiKey, true);
 
-        // Check for cached analyses
-        const result = await checkCachedAnalyses(maxPRs, hasApiKey);
+        // Only proceed with loading and showing analysis if we actually have cached PRs
+        if (initialCheck && initialCheck.allIds.length > 0 && hasApiKey) {
+          // Now set loading state since we know we have PRs to show
+          loadingStateRef.current = true;
+          setIsLocalLoading(true);
 
-        if (result && result.allIds.length > 0 && hasApiKey) {
           // Get the PR objects for all cached PRs
           const analyzedPRs = prsToAnalyze.filter((pr) =>
-            result.allIds.includes(pr.id)
+            initialCheck.allIds.includes(pr.id)
           );
 
           if (analyzedPRs.length > 0) {
+            // Now update component state with the cached PRs we found
+            await checkCachedAnalyses(maxPRs, hasApiKey, false);
+
             // Auto-show analysis for cached PRs
             await autoShowAnalysis(analyzedPRs, createConfig());
           }
@@ -554,7 +559,6 @@ export function CodeQualityInsights({
         viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         allAnalyzedPRIds={allAnalyzedPRIds}
         handleToggleViewAllAnalyzed={handleToggleViewAllAnalyzed}
-        handleAnalyze={handleAnalyze}
         isAnalyzing={isLoading}
         hasApiKey={hasApiKey}
         apiKey={apiKey}
@@ -602,6 +606,7 @@ export function CodeQualityInsights({
         <AnalysisStatus cachedCount={cachedCount} />
       )}
 
+      {/* Only show loading indicator when explicitly analyzing or loading cached PRs */}
       {isLoading && <AnalysisLoadingIndicator />}
 
       {/* Analysis Results */}
@@ -614,12 +619,26 @@ export function CodeQualityInsights({
         />
       )}
 
-      {/* Empty state when no PRs are selected */}
+      {/* Empty state when no PRs are selected but analysis exists */}
       {!isLoading && analysisSummary && selectedPRIds.length === 0 && (
         <EmptySelectionState onSelectAllPRs={selectAllPRs} />
       )}
 
-      {/* Get started state */}
+      {/* Empty state when user has API key but no PRs analyzed yet */}
+      {!isLoading &&
+        !analysisSummary &&
+        !isConfigVisible &&
+        (hasApiKey || apiKey) && (
+          <NoAnalyzedPRsState
+            handleAnalyze={handleAnalyze}
+            hasApiKey={!!apiKey || hasApiKey}
+            maxPRs={maxPRs}
+            setMaxPRs={setMaxPRs}
+            cachedCount={cachedCount}
+          />
+        )}
+
+      {/* Get started state - show when no analysis is happening, no API key, and config not shown */}
       {!hasApiKey &&
         !apiKey &&
         !isLoading &&
