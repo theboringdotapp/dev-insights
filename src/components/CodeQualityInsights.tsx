@@ -69,6 +69,9 @@ export function CodeQualityInsights({
   // Single source of truth for loading state
   const isLoading = isAnalyzing || isLocalLoading;
 
+  // Add state to track which PRs are currently loading
+  const [loadingPRIds, setLoadingPRIds] = useState<number[]>([]);
+
   // Determine which PRs to analyze based on filters
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
 
@@ -203,13 +206,23 @@ export function CodeQualityInsights({
           selectedPRIds.includes(pr.id) && allAnalyzedPRIds.includes(pr.id)
       );
 
+      // Set loading state for PRs being refreshed
+      if (targetPRs.length > 0) {
+        setLoadingPRIds(targetPRs.map((pr) => pr.id));
+      }
+
       // Analyze without a timeout for more responsive UI
       await analyzeMultiplePRs(targetPRs, config, 0);
+
+      // Clear loading state
+      setLoadingPRIds([]);
 
       // Also trigger a refresh check for any new analyses
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Error refreshing analysis:", error);
+      // Clear loading state on error
+      setLoadingPRIds([]);
     } finally {
       // Reset loading state with a small delay to ensure render stability
       setTimeout(() => {
@@ -280,9 +293,18 @@ export function CodeQualityInsights({
 
   // Listen for PR analysis events from Timeline
   useEffect(() => {
-    const handleAnalysisStarted = () => {
+    const handleAnalysisStarted = (e: Event) => {
       // Reset the refresh check timer
       setRefreshTrigger((prev) => prev + 1);
+
+      // Try to get PR ID from the event if available
+      const event = e as CustomEvent;
+      const prId = event.detail?.prId;
+
+      // Add the PR to the loading list if we have its ID
+      if (prId) {
+        setLoadingPRIds((prev) => [...prev, prId]);
+      }
     };
 
     const handleAnalysisCompleted = (e: Event) => {
@@ -290,6 +312,9 @@ export function CodeQualityInsights({
       const prId = event.detail?.prId;
 
       if (prId) {
+        // Remove the PR from loading state
+        setLoadingPRIds((prev) => prev.filter((id) => id !== prId));
+
         // Update allAnalyzedPRIds to include this PR
         setAllAnalyzedPRIds((prev) => {
           if (prev.includes(prId)) return prev;
@@ -349,9 +374,21 @@ export function CodeQualityInsights({
       }
     };
 
+    // Handle analysis failed event
+    const handleAnalysisFailed = (e: Event) => {
+      const event = e as CustomEvent;
+      const prId = event.detail?.prId;
+
+      // Remove the PR from loading state if we have its ID
+      if (prId) {
+        setLoadingPRIds((prev) => prev.filter((id) => id !== prId));
+      }
+    };
+
     // Add event listeners
     window.addEventListener("pr-analysis-started", handleAnalysisStarted);
     window.addEventListener("pr-analysis-completed", handleAnalysisCompleted);
+    window.addEventListener("pr-analysis-failed", handleAnalysisFailed);
 
     return () => {
       // Clean up event listeners
@@ -360,6 +397,7 @@ export function CodeQualityInsights({
         "pr-analysis-completed",
         handleAnalysisCompleted
       );
+      window.removeEventListener("pr-analysis-failed", handleAnalysisFailed);
     };
   }, [
     analysisSummary,
@@ -386,7 +424,7 @@ export function CodeQualityInsights({
     if (isLoading) return;
 
     try {
-      // Set loading state through ref to prevent flicker
+      // Set loading through ref to prevent flicker
       loadingStateRef.current = true;
       setIsLocalLoading(true);
 
@@ -402,8 +440,19 @@ export function CodeQualityInsights({
       // Store the current cached PRs before analysis
       const previouslyCachedIds = [...cachedPRIds];
 
+      // Set the PRs that will be analyzed as loading
+      const prsToLoad = prsToAnalyze
+        .slice(0, maxPRs)
+        .filter((pr) => !allAnalyzedPRIds.includes(pr.id));
+
+      // Update loading PRs
+      setLoadingPRIds(prsToLoad.map((pr) => pr.id));
+
       // Call analyzeMultiplePRs - it will handle cache usage
       const results = await analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
+
+      // Clear loading state
+      setLoadingPRIds([]);
 
       // Update all analyzed PRs
       const resultIds = results.map((r) => r.prId);
@@ -431,6 +480,8 @@ export function CodeQualityInsights({
       }
     } catch (error) {
       console.error("Error during analysis:", error);
+      // Clear loading state on error too
+      setLoadingPRIds([]);
     } finally {
       // Reset loading state with delay to prevent flicker
       setTimeout(() => {
@@ -511,14 +562,17 @@ export function CodeQualityInsights({
       />
 
       {/* PR Selection Panel */}
-      {!isLoading && analysisSummary && allAnalyzedPRIds.length > 0 && (
-        <PRSelectionPanel
-          prsToAnalyze={prsToAnalyze}
-          allAnalyzedPRIds={allAnalyzedPRIds}
-          selectedPRIds={selectedPRIds}
-          onTogglePR={togglePR}
-        />
-      )}
+      {!isLoading &&
+        analysisSummary &&
+        (allAnalyzedPRIds.length > 0 || loadingPRIds.length > 0) && (
+          <PRSelectionPanel
+            prsToAnalyze={prsToAnalyze}
+            allAnalyzedPRIds={allAnalyzedPRIds}
+            selectedPRIds={selectedPRIds}
+            loadingPRIds={loadingPRIds}
+            onTogglePR={togglePR}
+          />
+        )}
 
       {/* Configuration Panel */}
       {isConfigVisible && (

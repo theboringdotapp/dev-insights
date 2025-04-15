@@ -5,6 +5,7 @@ interface PRSelectionPanelProps {
   prsToAnalyze: PullRequestItem[];
   allAnalyzedPRIds: number[];
   selectedPRIds: number[];
+  loadingPRIds?: number[];
   onTogglePR: (prId: number) => void;
 }
 
@@ -15,6 +16,7 @@ export default function PRSelectionPanel({
   prsToAnalyze,
   allAnalyzedPRIds,
   selectedPRIds,
+  loadingPRIds = [],
   onTogglePR,
 }: PRSelectionPanelProps) {
   return (
@@ -44,10 +46,31 @@ export default function PRSelectionPanel({
               ></span>
             </div>
           ))}
+        {prsToAnalyze
+          .filter(
+            (pr) =>
+              loadingPRIds.includes(pr.id) && !allAnalyzedPRIds.includes(pr.id)
+          )
+          .map((pr) => (
+            <div
+              key={`loading-${pr.id}`}
+              className="px-3 py-1 text-xs rounded-full flex items-center bg-yellow-50 text-yellow-800 border border-yellow-200"
+            >
+              #{pr.number} {pr.title.substring(0, 20)}
+              {pr.title.length > 20 ? "..." : ""}
+              <div className="ml-2 w-3 h-3 border-t-2 border-blue-500 rounded-full animate-spin"></div>
+            </div>
+          ))}
       </div>
       <p className="text-xs text-gray-500 mt-2">
         Click on a PR to toggle its inclusion in the analysis.{" "}
         {selectedPRIds.length} of {allAnalyzedPRIds.length} PRs selected.
+        {loadingPRIds.length > 0 && (
+          <span className="ml-1 text-yellow-600">
+            ({loadingPRIds.length} PR{loadingPRIds.length > 1 ? "s" : ""}{" "}
+            loading...)
+          </span>
+        )}
       </p>
     </div>
   );
