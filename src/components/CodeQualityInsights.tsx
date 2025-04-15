@@ -609,7 +609,7 @@ export function CodeQualityInsights({
       </div>
 
       {/* Analysis Controls */}
-      <AnalysisControls
+      {/*   <AnalysisControls
         maxPRs={maxPRs}
         setMaxPRs={setMaxPRs}
         cachedCount={cachedCount}
@@ -620,7 +620,7 @@ export function CodeQualityInsights({
         hasApiKey={hasApiKey}
         apiKey={apiKey}
         analysisSummary={analysisSummary}
-      />
+      /> */}
 
       {/* PR Selection Panel */}
       {!isLoading &&
