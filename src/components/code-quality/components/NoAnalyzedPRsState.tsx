@@ -28,32 +28,32 @@ export default function NoAnalyzedPRsState({
       : `Analyze last ${maxPRs} PRs`;
 
   return (
-    <div className="rounded-lg border border-gray-100 overflow-hidden bg-gradient-to-br from-white to-gray-50">
+    <div className="rounded-lg border border-border overflow-hidden bg-card">
       <div className="flex flex-col md:flex-row">
         {/* Left content area */}
         <div className="p-8 flex-1">
-          <h3 className="text-xl font-bold text-gray-800 mb-3">
+          <h3 className="text-xl font-bold text-foreground mb-3">
             Review PRs with AI-Powered Analysis
           </h3>
 
-          <p className="text-gray-600 mb-6 leading-relaxed">
+          <p className="text-muted-foreground mb-6 leading-relaxed">
             Gain valuable insights into code quality, identify patterns, and
             discover opportunities for improvement in your pull requests. Our AI
             agent analyzes code to help you make informed decisions.
           </p>
 
-          <p className="mb-6 text-sm text-gray-500 italic border-l-2 border-blue-400 pl-3">
+          <p className="mb-6 text-sm text-muted-foreground italic border-l-2 border-primary/50 pl-3">
             You can also select individual PRs for analysis from the Timeline
             below. Once analyzed, they'll appear in the PR selection panel.
           </p>
 
           {/* PR Count Selector with improved styling */}
           <div className="flex items-center mb-6">
-            <p className="mr-3 text-sm font-medium text-gray-700">
+            <p className="mr-3 text-sm font-medium text-foreground">
               How many PRs to analyze?
             </p>
             <select
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-2 border border-input rounded-md text-sm bg-card shadow-sm focus:ring-ring focus:border-primary"
               value={maxPRs}
               onChange={(e) => setMaxPRs(Number(e.target.value))}
             >
@@ -68,7 +68,7 @@ export default function NoAnalyzedPRsState({
             <div>
               <button
                 onClick={handleAnalyze}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center"
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center"
               >
                 <svg
                   className="w-4 h-4 mr-2"
@@ -88,7 +88,7 @@ export default function NoAnalyzedPRsState({
               </button>
             </div>
           ) : (
-            <p className="text-amber-600 text-sm bg-amber-50 p-3 rounded-md border border-amber-200">
+            <p className="text-destructive text-sm bg-muted p-3 rounded-md border border-border">
               Please configure your API key in settings to analyze pull
               requests.
             </p>
@@ -96,7 +96,7 @@ export default function NoAnalyzedPRsState({
         </div>
 
         {/* Right decorative area */}
-        <div className="hidden md:block w-1/3 bg-gradient-to-br from-blue-500 to-indigo-600 p-6 relative">
+        <div className="hidden md:block w-1/3 bg-primary p-6 relative">
           <div className="absolute inset-0 opacity-20">
             <svg
               width="100%"
@@ -114,7 +114,7 @@ export default function NoAnalyzedPRsState({
                   <path
                     d="M 10 0 L 0 0 0 10"
                     fill="none"
-                    stroke="white"
+                    stroke="currentColor"
                     strokeWidth="0.5"
                   />
                 </pattern>
@@ -124,7 +124,7 @@ export default function NoAnalyzedPRsState({
           </div>
           <div className="relative z-10 h-full flex flex-col justify-center">
             <svg
-              className="w-16 h-16 text-white opacity-80 mb-4"
+              className="w-16 h-16 text-primary-foreground opacity-80 mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -137,10 +137,10 @@ export default function NoAnalyzedPRsState({
                 d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
               ></path>
             </svg>
-            <h4 className="text-white text-lg font-medium mb-2">
+            <h4 className="text-primary-foreground text-lg font-medium mb-2">
               AI-Powered Insights
             </h4>
-            <ul className="text-white opacity-80 text-sm space-y-2">
+            <ul className="text-primary-foreground opacity-80 text-sm space-y-2">
               <li className="flex items-center">
                 <svg
                   className="w-4 h-4 mr-2"
