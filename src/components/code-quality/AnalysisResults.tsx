@@ -1,7 +1,6 @@
 import React from "react";
 import OverallSummary from "./analysis/OverallSummary";
 import PRFeatureList from "./analysis/PRFeatureList";
-import CacheLegend from "./analysis/CacheLegend";
 
 interface Feature {
   text: string;
@@ -23,7 +22,6 @@ interface AnalysisResultsProps {
   analysisSummary: AnalysisSummary;
   cachedPRIds: number[];
   newlyAnalyzedPRIds: number[];
-  viewAllAnalyzedPRs?: boolean;
   allAnalyzedPRIds?: number[];
 }
 
@@ -31,13 +29,9 @@ export default function AnalysisResults({
   analysisSummary,
   cachedPRIds,
   newlyAnalyzedPRIds,
-  viewAllAnalyzedPRs = false,
-  allAnalyzedPRIds = [],
 }: AnalysisResultsProps) {
-  // Determine which PR IDs to highlight
-  const displayedPRIds = viewAllAnalyzedPRs
-    ? allAnalyzedPRIds
-    : [...cachedPRIds, ...newlyAnalyzedPRIds];
+  // Determine which PR IDs to highlight - now we'll use all PRs
+  const displayedPRIds = [...cachedPRIds, ...newlyAnalyzedPRIds];
 
   return (
     <div className="space-y-6">
@@ -45,14 +39,6 @@ export default function AnalysisResults({
       <OverallSummary
         overallSummary={analysisSummary.overallSummary}
         averageScore={analysisSummary.averageScore}
-      />
-
-      {/* Cache status legend */}
-      <CacheLegend
-        cachedPRIds={cachedPRIds}
-        newlyAnalyzedPRIds={newlyAnalyzedPRIds}
-        viewAllAnalyzedPRs={viewAllAnalyzedPRs}
-        allAnalyzedPRIds={allAnalyzedPRIds}
       />
 
       {/* Common Strengths */}
@@ -66,7 +52,6 @@ export default function AnalysisResults({
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
           displayedPRIds={displayedPRIds}
-          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
 
@@ -81,12 +66,11 @@ export default function AnalysisResults({
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
           displayedPRIds={displayedPRIds}
-          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
 
       {/* Suggested Improvements */}
-      <div>
+      <div className="mb-6">
         <h4 className="font-medium text-gray-800 mb-3 text-lg">
           Growth Opportunities
         </h4>
@@ -96,7 +80,6 @@ export default function AnalysisResults({
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
           displayedPRIds={displayedPRIds}
-          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       </div>
     </div>

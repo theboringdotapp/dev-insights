@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PullRequestItem } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { AIAnalysisConfig } from "../lib/aiAnalysisService";
@@ -55,6 +55,11 @@ export function CodeQualityInsights({
   const [allAnalyzedPRIds, setAllAnalyzedPRIds] = useState<number[]>([]);
   const [newlyAnalyzedPRIds, setNewlyAnalyzedPRIds] = useState<number[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // New state for selected PRs
+  const [selectedPRIds, setSelectedPRIds] = useState<number[]>([]);
+
+  // Add a ref to track if we've already auto-shown analysis
+  const autoShowCompletedRef = useRef(false);
 
   // Check if API key exists on mount
   useEffect(() => {
@@ -71,7 +76,13 @@ export function CodeQualityInsights({
 
   // Check how many PRs already have analysis (both top N and all PRs)
   useEffect(() => {
-    if (prsToAnalyze.length === 0) return;
+    // Skip if analysis is already being shown or if we've already auto-shown it
+    if (
+      prsToAnalyze.length === 0 ||
+      analysisSummary ||
+      autoShowCompletedRef.current
+    )
+      return;
 
     const checkCachedCount = async () => {
       let count = 0;
@@ -99,10 +110,54 @@ export function CodeQualityInsights({
       setCachedCount(count);
       setCachedPRIds(cachedIds);
       setAllAnalyzedPRIds(allIds);
+
+      // Only set selectedPRIds if it's empty (initial load)
+      if (selectedPRIds.length === 0) {
+        setSelectedPRIds(allIds);
+      }
+
+      // Auto-show analysis if we have cached PRs and haven't already shown it
+      if (allIds.length > 0 && hasApiKey && !autoShowCompletedRef.current) {
+        const config: AIAnalysisConfig = {
+          apiKey:
+            apiKey ||
+            localStorage.getItem(OPENAI_KEY_STORAGE) ||
+            localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+            "",
+          provider: apiProvider,
+        };
+
+        // Get the PR objects for all cached PRs
+        const analyzedPRs = prsToAnalyze.filter((pr) => allIds.includes(pr.id));
+
+        if (analyzedPRs.length > 0) {
+          // Mark that we've auto-shown the analysis to prevent recurring calls
+          autoShowCompletedRef.current = true;
+
+          // Show cached analyses without making new API calls
+          analyzeMultiplePRs(analyzedPRs, config, 0);
+        }
+      }
     };
 
     checkCachedCount();
-  }, [prsToAnalyze, maxPRs, getAnalysisForPR, refreshTrigger]);
+  }, [
+    prsToAnalyze,
+    maxPRs,
+    getAnalysisForPR,
+    refreshTrigger,
+    hasApiKey,
+    apiKey,
+    apiProvider,
+    analysisSummary,
+  ]);
+
+  // Reset auto-show flag when the component unmounts
+  useEffect(() => {
+    return () => {
+      autoShowCompletedRef.current = false;
+    };
+  }, []);
 
   // Refresh analyses when view mode changes
   useEffect(() => {
@@ -147,8 +202,12 @@ export function CodeQualityInsights({
   useEffect(() => {
     // Set up an interval to check for newly analyzed PRs from Timeline
     const intervalId = setInterval(async () => {
+      // Only check for updates if we're not currently analyzing
+      if (isAnalyzing) return;
+
       // Check if any PRs in our list have been newly analyzed
       let hasNewAnalysis = false;
+      const newIds: number[] = [];
 
       for (const pr of prsToAnalyze) {
         // Skip if already known to be analyzed
@@ -164,15 +223,24 @@ export function CodeQualityInsights({
 
         if (isAnalyzed) {
           hasNewAnalysis = true;
-          break;
+          newIds.push(pr.id);
         }
       }
 
-      // If new analyses found, trigger a refresh
-      if (hasNewAnalysis) {
-        setRefreshTrigger((prev) => prev + 1);
+      // If new analyses found, update allAnalyzedPRIds directly instead of
+      // triggering a full refresh which causes flickering
+      if (hasNewAnalysis && newIds.length > 0) {
+        setAllAnalyzedPRIds((prev) => {
+          const uniqueIds = new Set([...prev, ...newIds]);
+          return Array.from(uniqueIds);
+        });
+
+        // Only trigger refresh if we're already displaying results
+        if (analysisSummary) {
+          setRefreshTrigger((prev) => prev + 1);
+        }
       }
-    }, 2000); // Check every 2 seconds
+    }, 5000); // Increase check interval from 2s to 5s to reduce frequency
 
     return () => clearInterval(intervalId);
   }, [
@@ -180,6 +248,8 @@ export function CodeQualityInsights({
     allAnalyzedPRIds,
     getAnalysisFromMemoryCache,
     getAnalysisForPR,
+    isAnalyzing,
+    analysisSummary,
   ]);
 
   // Listen for PR analysis events from Timeline
@@ -200,11 +270,36 @@ export function CodeQualityInsights({
           return [...prev, prId];
         });
 
-        // Force refresh of analysis results if we have a summary
-        if (analysisSummary && viewAllAnalyzedPRs) {
+        // Update selected PRs to include this PR
+        setSelectedPRIds((prev) => {
+          if (prev.includes(prId)) return prev;
+          return [...prev, prId];
+        });
+
+        // Always immediately show the analysis when a PR is analyzed from Timeline
+        const config: AIAnalysisConfig = {
+          apiKey:
+            apiKey ||
+            localStorage.getItem(OPENAI_KEY_STORAGE) ||
+            localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+            "",
+          provider: apiProvider,
+        };
+
+        // Get the PR object
+        const analyzedPR = prsToAnalyze.find((pr) => pr.id === prId);
+
+        if (analyzedPR) {
+          // Immediately show the analysis for this PR
           setTimeout(() => {
-            handleRefreshAnalysis();
-          }, 500); // Small delay to ensure cache is updated
+            // If we already have an analysis showing, just refresh it to include this PR
+            if (analysisSummary) {
+              handleRefreshAnalysis();
+            } else {
+              // Otherwise show a new analysis for just this PR
+              analyzeMultiplePRs([analyzedPR], config, 0);
+            }
+          }, 100);
         }
       }
     };
@@ -221,7 +316,40 @@ export function CodeQualityInsights({
         handleAnalysisCompleted
       );
     };
-  }, [analysisSummary, viewAllAnalyzedPRs]);
+  }, [analysisSummary, viewAllAnalyzedPRs, prsToAnalyze, apiKey, apiProvider]);
+
+  // Handle toggling a PR selection
+  const handleTogglePR = (prId: number) => {
+    setSelectedPRIds((prev) => {
+      if (prev.includes(prId)) {
+        return prev.filter((id) => id !== prId);
+      } else {
+        return [...prev, prId];
+      }
+    });
+
+    // If we have an analysis already, refresh it
+    if (analysisSummary) {
+      setTimeout(() => {
+        const config: AIAnalysisConfig = {
+          apiKey:
+            apiKey ||
+            localStorage.getItem(OPENAI_KEY_STORAGE) ||
+            localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+            "",
+          provider: apiProvider,
+        };
+
+        // Filter to only get selected PRs
+        const targetPRs = prsToAnalyze.filter(
+          (pr) => selectedPRIds.includes(pr.id) || pr.id === prId // Include the one we just toggled
+        );
+
+        // Refresh analysis
+        analyzeMultiplePRs(targetPRs, config, 0);
+      }, 100);
+    }
+  };
 
   // Handle analyze button click
   const handleAnalyze = async () => {
@@ -251,6 +379,12 @@ export function CodeQualityInsights({
     // Update all analyzed PRs
     const resultIds = results.map((r) => r.prId);
     setAllAnalyzedPRIds((prev) => {
+      const uniqueIds = new Set([...prev, ...resultIds]);
+      return Array.from(uniqueIds);
+    });
+
+    // Update selected PRs to include newly analyzed ones
+    setSelectedPRIds((prev) => {
       const uniqueIds = new Set([...prev, ...resultIds]);
       return Array.from(uniqueIds);
     });
@@ -389,6 +523,44 @@ export function CodeQualityInsights({
         </div>
       )}
 
+      {/* PR Selection Component - show when we have analysis results */}
+      {!isAnalyzing && analysisSummary && allAnalyzedPRIds.length > 0 && (
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Pull Requests in Analysis
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {prsToAnalyze
+              .filter((pr) => allAnalyzedPRIds.includes(pr.id))
+              .map((pr) => (
+                <div
+                  key={pr.id}
+                  onClick={() => handleTogglePR(pr.id)}
+                  className={`px-3 py-1 text-xs rounded-full cursor-pointer flex items-center ${
+                    selectedPRIds.includes(pr.id)
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  #{pr.number} {pr.title.substring(0, 20)}
+                  {pr.title.length > 20 ? "..." : ""}
+                  <span
+                    className={`ml-1 w-2 h-2 rounded-full ${
+                      selectedPRIds.includes(pr.id)
+                        ? "bg-blue-500"
+                        : "bg-gray-400"
+                    }`}
+                  ></span>
+                </div>
+              ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Click on a PR to toggle its inclusion in the analysis.{" "}
+            {selectedPRIds.length} of {allAnalyzedPRIds.length} PRs selected.
+          </p>
+        </div>
+      )}
+
       {isConfigVisible && (
         <ConfigurationPanel
           apiKey={apiKey}
@@ -415,14 +587,13 @@ export function CodeQualityInsights({
         <AnalysisStatus cachedCount={cachedCount} />
       )}
 
-      {isAnalyzing && <AnalysisLoadingIndicator cachedCount={cachedCount} />}
+      {isAnalyzing && <AnalysisLoadingIndicator />}
 
       {!isAnalyzing && analysisSummary && (
         <AnalysisResults
           analysisSummary={analysisSummary}
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
-          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
           allAnalyzedPRIds={allAnalyzedPRIds}
         />
       )}

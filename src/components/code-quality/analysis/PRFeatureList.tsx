@@ -12,19 +12,16 @@ interface Feature {
 interface PRFeatureListProps {
   features: Feature[];
   type: "strength" | "weakness" | "suggestion";
+  // Keep these props for backward compatibility but don't use them
   cachedPRIds: number[];
   newlyAnalyzedPRIds: number[];
   displayedPRIds?: number[];
-  viewAllAnalyzedPRs?: boolean;
 }
 
 export default function PRFeatureList({
   features,
   type,
-  cachedPRIds,
-  newlyAnalyzedPRIds,
   displayedPRIds = [],
-  viewAllAnalyzedPRs = false,
 }: PRFeatureListProps) {
   // Define styling based on type
   const getTypeStyles = () => {
@@ -115,10 +112,7 @@ export default function PRFeatureList({
           feature={feature}
           typeStyles={typeStyles}
           icon={getIcon()}
-          cachedPRIds={cachedPRIds}
-          newlyAnalyzedPRIds={newlyAnalyzedPRIds}
           displayedPRIds={displayedPRIds}
-          viewAllAnalyzedPRs={viewAllAnalyzedPRs}
         />
       ))}
       {features.length === 0 && (

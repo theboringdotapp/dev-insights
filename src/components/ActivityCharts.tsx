@@ -215,9 +215,6 @@ export function ActivityCharts({
     );
   }
 
-  // Debug
-  console.log("Activity data:", activityData);
-
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">

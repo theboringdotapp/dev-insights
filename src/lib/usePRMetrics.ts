@@ -275,9 +275,12 @@ export function usePRMetrics() {
           }
         }
 
-        console.log(
-          `Found ${cachedResults.length} cached analyses, need to analyze ${prsToAnalyze.length} PRs`
-        );
+        // Only log this when there are new PRs to analyze
+        if (prsToAnalyze.length > 0) {
+          console.log(
+            `Found ${cachedResults.length} cached analyses, need to analyze ${prsToAnalyze.length} PRs`
+          );
+        }
 
         // Update the analysis cache with cached results
         const newCache = { ...prAnalysisCache };

@@ -1,12 +1,7 @@
 import React from "react";
 
-interface AnalysisLoadingIndicatorProps {
-  cachedCount: number;
-}
-
-export default function AnalysisLoadingIndicator({
-  cachedCount,
-}: AnalysisLoadingIndicatorProps) {
+// No props needed
+export default function AnalysisLoadingIndicator() {
   return (
     <div className="my-6 p-4 bg-blue-50 rounded-lg text-center">
       <div className="flex justify-center mb-4">
@@ -34,11 +29,6 @@ export default function AnalysisLoadingIndicator({
       <p className="text-blue-700 font-medium">
         Analyzing your pull requests with AI...
       </p>
-      {cachedCount > 0 && (
-        <p className="text-blue-600 text-sm mt-1">
-          Using {cachedCount} cached results to speed up analysis.
-        </p>
-      )}
     </div>
   );
 }
