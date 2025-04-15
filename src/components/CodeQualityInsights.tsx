@@ -320,35 +320,42 @@ export function CodeQualityInsights({
 
   // Handle toggling a PR selection
   const handleTogglePR = (prId: number) => {
+    // Update selectedPRIds
     setSelectedPRIds((prev) => {
-      if (prev.includes(prId)) {
-        return prev.filter((id) => id !== prId);
-      } else {
-        return [...prev, prId];
+      // Create the new selection state
+      const newSelection = prev.includes(prId)
+        ? prev.filter((id) => id !== prId)
+        : [...prev, prId];
+
+      // If we have an analysis already, refresh it using the new selection
+      if (analysisSummary) {
+        // Small delay to ensure state update happens first
+        setTimeout(() => {
+          const config: AIAnalysisConfig = {
+            apiKey:
+              apiKey ||
+              localStorage.getItem(OPENAI_KEY_STORAGE) ||
+              localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+              "",
+            provider: apiProvider,
+          };
+
+          // Only get PRs that are now selected (based on new selection, not old selectedPRIds)
+          const targetPRs = prsToAnalyze.filter((pr) =>
+            newSelection.includes(pr.id)
+          );
+
+          if (targetPRs.length > 0) {
+            // Refresh analysis with selected PRs
+            analyzeMultiplePRs(targetPRs, config, 0);
+          }
+          // We no longer reload the page when no PRs are selected
+          // The empty state will be shown based on selectedPRIds.length === 0
+        }, 100);
       }
+
+      return newSelection;
     });
-
-    // If we have an analysis already, refresh it
-    if (analysisSummary) {
-      setTimeout(() => {
-        const config: AIAnalysisConfig = {
-          apiKey:
-            apiKey ||
-            localStorage.getItem(OPENAI_KEY_STORAGE) ||
-            localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
-            "",
-          provider: apiProvider,
-        };
-
-        // Filter to only get selected PRs
-        const targetPRs = prsToAnalyze.filter(
-          (pr) => selectedPRIds.includes(pr.id) || pr.id === prId // Include the one we just toggled
-        );
-
-        // Refresh analysis
-        analyzeMultiplePRs(targetPRs, config, 0);
-      }, 100);
-    }
   };
 
   // Handle analyze button click
@@ -589,13 +596,48 @@ export function CodeQualityInsights({
 
       {isAnalyzing && <AnalysisLoadingIndicator />}
 
-      {!isAnalyzing && analysisSummary && (
+      {/* Show analysis results only when there are PRs selected */}
+      {!isAnalyzing && analysisSummary && selectedPRIds.length > 0 && (
         <AnalysisResults
           analysisSummary={analysisSummary}
           cachedPRIds={cachedPRIds}
           newlyAnalyzedPRIds={newlyAnalyzedPRIds}
           allAnalyzedPRIds={allAnalyzedPRIds}
         />
+      )}
+
+      {/* Empty state when analysis is available but no PRs are selected */}
+      {!isAnalyzing && analysisSummary && selectedPRIds.length === 0 && (
+        <div className="py-8 px-4 text-center bg-gray-50 rounded-lg border border-gray-100">
+          <div className="text-gray-400 mb-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12 mx-auto mb-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-700 mb-1">
+            No PRs Selected
+          </h3>
+          <p className="text-gray-500 mb-4">
+            Select at least one PR above to view its analysis.
+          </p>
+          <button
+            onClick={() => setSelectedPRIds(allAnalyzedPRIds)}
+            className="px-4 py-2 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors text-sm"
+          >
+            Select All PRs
+          </button>
+        </div>
       )}
 
       {!hasApiKey &&
