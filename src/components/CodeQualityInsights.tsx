@@ -196,14 +196,11 @@ export function CodeQualityInsights({
 
       const config = createConfig();
 
-      // We don't need to re-analyze, just fetch all cached analyses
-      const targetPRIds = viewAllAnalyzedPRs
-        ? allAnalyzedPRIds
-        : cachedPRIds.concat(newlyAnalyzedPRIds);
-
-      // Filter to only get PRs that exist in our current list
-      const targetPRs = prsToAnalyze.filter((pr) =>
-        targetPRIds.includes(pr.id)
+      // Respect the user's current PR selection
+      // Only show PRs that are selected by the user AND have been analyzed
+      const targetPRs = prsToAnalyze.filter(
+        (pr) =>
+          selectedPRIds.includes(pr.id) && allAnalyzedPRIds.includes(pr.id)
       );
 
       // Analyze without a timeout for more responsive UI
@@ -299,8 +296,15 @@ export function CodeQualityInsights({
           return [...prev, prId];
         });
 
-        // Update selected PRs to include this PR
+        // Only update selectedPRIds to include this newly analyzed PR
+        // Don't modify other selections
         setSelectedPRIds((prev) => {
+          if (prev.includes(prId)) return prev;
+          return [...prev, prId];
+        });
+
+        // Add to newlyAnalyzedPRIds to ensure it shows up in the analysis
+        setNewlyAnalyzedPRIds((prev) => {
           if (prev.includes(prId)) return prev;
           return [...prev, prId];
         });
@@ -319,19 +323,26 @@ export function CodeQualityInsights({
           // Immediately show the analysis for this PR
           setTimeout(async () => {
             try {
-              // If we already have an analysis showing, just refresh it to include this PR
-              if (analysisSummary) {
-                await handleRefreshAnalysis();
-              } else {
-                // Otherwise show a new analysis for just this PR
-                await analyzeMultiplePRs([analyzedPR], config, 0);
-              }
+              // First analyze just the new PR to ensure it's in the cache
+              await analyzeMultiplePRs([analyzedPR], config, 0);
+
+              // Get the current selection state - only show PRs that are both
+              // analyzed AND selected (plus the new one)
+              const selectedAnalyzedPRs = prsToAnalyze.filter(
+                (pr) =>
+                  (selectedPRIds.includes(pr.id) &&
+                    allAnalyzedPRIds.includes(pr.id)) ||
+                  pr.id === prId
+              );
+
+              // Show the analysis with the current selection state
+              await analyzeMultiplePRs(selectedAnalyzedPRs, config, 0);
             } finally {
               // Reset loading state with delay
               setTimeout(() => {
                 loadingStateRef.current = false;
                 setIsLocalLoading(false);
-              }, 150);
+              }, 250);
             }
           }, 100);
         }
@@ -352,16 +363,17 @@ export function CodeQualityInsights({
     };
   }, [
     analysisSummary,
-    viewAllAnalyzedPRs,
     prsToAnalyze,
     apiKey,
     apiProvider,
-    handleRefreshAnalysis,
     createConfig,
     analyzeMultiplePRs,
     setAllAnalyzedPRIds,
     setSelectedPRIds,
     isLoading,
+    allAnalyzedPRIds,
+    selectedPRIds,
+    setNewlyAnalyzedPRIds,
   ]);
 
   // Handle analyze button click
