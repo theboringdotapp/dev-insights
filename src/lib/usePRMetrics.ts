@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { PullRequestItem, PullRequestMetrics, DeveloperStats } from "./types";
 import { useGitHubService } from "./useGitHubService";
+import { useAnalysisStore } from "../stores/analysisStore";
 import {
   AIAnalysisConfig,
   PRAnalysisResult,
   analyzePRWithAI,
-  aggregateFeedback,
   formatPRFilesForAnalysis,
+  aggregateFeedback,
 } from "./aiAnalysisService";
 import cacheService from "./cacheService";
 
@@ -23,10 +24,6 @@ export function usePRMetrics() {
   const [prAnalysisCache, setPRAnalysisCache] = useState<
     Record<number, PRAnalysisResult>
   >({});
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisSummary, setAnalysisSummary] = useState<ReturnType<
-    typeof aggregateFeedback
-  > | null>(null);
 
   /**
    * Load metrics for a specific PR
@@ -239,6 +236,10 @@ export function usePRMetrics() {
     [isReady, service]
   );
 
+  // Get Zustand actions
+  const { startAnalysis, completeAnalysis, failAnalysis } =
+    useAnalysisStore.getState();
+
   /**
    * Analyzes multiple PRs with AI
    */
@@ -248,82 +249,54 @@ export function usePRMetrics() {
       config: AIAnalysisConfig,
       maxPRs = 5
     ): Promise<PRAnalysisResult[]> => {
-      if (!isReady || !service || prs.length === 0) return [];
+      // This function now focuses on orchestration and updating store state
+      // The actual aggregation happens in the calling component
 
-      setIsAnalyzing(true);
-      setAnalysisSummary(null);
+      const allResults: PRAnalysisResult[] = [];
+      const previouslyAnalyzedIds = new Set(
+        useAnalysisStore.getState().allAnalyzedPRIds
+      );
 
-      // Special case: When maxPRs is 0, we're just refreshing the UI with already analyzed PRs
-      const isRefreshOnly = maxPRs === 0;
-      if (isRefreshOnly) {
-        maxPRs = prs.length; // Look at all provided PRs for refresh
-      }
+      // Determine which PRs to analyze based on maxPRs limit
+      const prsToProcess = prs.slice(0, maxPRs);
 
-      try {
-        // First, check cache for existing analysis
-        const cachedResults: PRAnalysisResult[] = [];
-        const prsToAnalyze: PullRequestItem[] = [];
-
-        // Check cache for each PR
-        for (const pr of prs.slice(0, maxPRs)) {
-          const cachedResult = await cacheService.getPRAnalysis(pr.id);
-          if (cachedResult) {
-            cachedResults.push(cachedResult);
-          } else if (!isRefreshOnly) {
-            // Only add PRs to analyze if this isn't a refresh-only call
-            prsToAnalyze.push(pr);
-          }
-        }
-
-        // Only log this when there are new PRs to analyze
-        if (prsToAnalyze.length > 0) {
-          console.log(
-            `Found ${cachedResults.length} cached analyses, need to analyze ${prsToAnalyze.length} PRs`
-          );
-        }
-
-        // Update the analysis cache with cached results
-        const newCache = { ...prAnalysisCache };
-        for (const result of cachedResults) {
-          newCache[result.prId] = result;
-        }
-        setPRAnalysisCache(newCache);
-
-        // If we have all results cached OR this is a refresh-only call
-        if (prsToAnalyze.length === 0 || isRefreshOnly) {
-          const summary = aggregateFeedback(cachedResults);
-          setAnalysisSummary(summary);
-          setIsAnalyzing(false);
-          return cachedResults;
-        }
-
-        // Analyze remaining PRs sequentially
-        const newResults: PRAnalysisResult[] = [];
-        for (const pr of prsToAnalyze) {
+      // Use Promise.allSettled to run analyses concurrently and handle individual errors
+      const analysisPromises = prsToProcess.map(async (pr) => {
+        const wasNewlyAnalyzed = !previouslyAnalyzedIds.has(pr.id);
+        startAnalysis(pr.id); // Update store: PR analysis started
+        try {
           const result = await analyzePRCode(pr, config);
           if (result) {
-            newResults.push(result);
+            completeAnalysis(pr.id, wasNewlyAnalyzed); // Update store: success
+            return result;
+          } else {
+            // Assume analyzePRCode returning null means failure/skip
+            failAnalysis(pr.id); // Update store: failure
+            return null;
           }
+        } catch (error) {
+          console.error(`Error analyzing PR ${pr.id}:`, error);
+          failAnalysis(pr.id); // Update store: failure
+          return null; // Return null or a specific error object if needed
         }
+      });
 
-        // Combine cached and new results
-        const allResults = [...cachedResults, ...newResults];
+      const settledResults = await Promise.allSettled(analysisPromises);
 
-        // Update summary
-        if (allResults.length > 0) {
-          const summary = aggregateFeedback(allResults);
-          setAnalysisSummary(summary);
+      // Collect successful results
+      settledResults.forEach((result) => {
+        if (result.status === "fulfilled" && result.value) {
+          allResults.push(result.value);
         }
+        // Failures are already handled in the catch block above by calling failAnalysis
+      });
 
-        return allResults;
-      } catch (error) {
-        console.error("Error analyzing multiple PRs:", error);
-        return [];
-      } finally {
-        setIsAnalyzing(false);
-      }
+      // Return only the successfully obtained analysis results
+      // The calling component will handle aggregation and updating the summary state
+      return allResults;
     },
-    [isReady, service, prAnalysisCache, analyzePRCode]
+    // Dependencies: include store actions
+    [analyzePRCode, startAnalysis, completeAnalysis, failAnalysis]
   );
 
   /**
@@ -334,8 +307,6 @@ export function usePRMetrics() {
       pr: PullRequestItem,
       config: AIAnalysisConfig
     ): Promise<PRAnalysisResult | null> => {
-      setIsAnalyzing(true);
-
       try {
         // Analyze the PR
         const result = await analyzePRCode(pr, config);
@@ -346,10 +317,11 @@ export function usePRMetrics() {
           const updatedResults = [...currentResults, result];
 
           if (updatedResults.length > 0) {
-            const summary = aggregateFeedback(updatedResults);
-            setAnalysisSummary(summary);
+            // NOTE: Aggregation and setting summary should now happen in the component
+            // that calls this function, using the returned result.
           }
 
+          completeAnalysis(pr.id, true);
           return result;
         }
 
@@ -357,11 +329,9 @@ export function usePRMetrics() {
       } catch (error) {
         console.error("Error analyzing additional PR:", error);
         return null;
-      } finally {
-        setIsAnalyzing(false);
       }
     },
-    [analyzePRCode, prAnalysisCache]
+    [analyzePRCode, prAnalysisCache, startAnalysis, completeAnalysis]
   );
 
   // Create a function to get PR analysis that checks both memory and persistent cache
@@ -412,10 +382,9 @@ export function usePRMetrics() {
     calculateFilteredStats,
     analyzeMultiplePRs,
     analyzeAdditionalPR,
-    isAnalyzing,
-    analysisSummary,
     getAnalysisForPR,
     getAnalysisFromMemoryCache,
+    aggregateFeedback,
   };
 }
 

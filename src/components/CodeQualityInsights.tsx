@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useRef } from "react";
-import { PullRequestItem } from "../lib/types";
+import React, { useState, useEffect } from "react";
+import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
+import { useAnalysisStore } from "../stores/analysisStore";
+import { aggregateFeedback } from "../lib/aiAnalysisService"; // Assuming path
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import { usePRCache } from "./code-quality/hooks/usePRCache";
-import { usePRSelection } from "./code-quality/hooks/usePRSelection";
+// Removed usePRSelection as its state is now in Zustand
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 import AnalysisStatus from "./code-quality/AnalysisStatus";
 import AnalysisResults from "./code-quality/AnalysisResults";
 import InitialState from "./code-quality/InitialState";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
-import AnalysisControls from "./code-quality/components/AnalysisControls";
 import EmptySelectionState from "./code-quality/components/EmptySelectionState";
 import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
 
@@ -38,11 +39,25 @@ export function CodeQualityInsights({
   // Core metrics and analysis hooks
   const {
     analyzeMultiplePRs,
-    isAnalyzing,
-    analysisSummary,
-    getAnalysisForPR,
-    getAnalysisFromMemoryCache,
+    getAnalysisForPR, // Needed for usePRCache
+    getAnalysisFromMemoryCache, // Needed for usePRCache
   } = usePRMetrics();
+
+  // Get state and actions from Zustand store
+  const {
+    analyzingPRIds,
+    analysisSummary,
+    allAnalyzedPRIds,
+    selectedPRIds,
+    startAnalysis,
+    completeAnalysis,
+    failAnalysis,
+    setAnalysisSummary,
+    addAnalyzedPRIds,
+    setSelectedPRIds,
+    toggleSelectedPR,
+    selectAllPRs,
+  } = useAnalysisStore();
 
   // API configuration hook
   const {
@@ -56,60 +71,45 @@ export function CodeQualityInsights({
     saveApiKey,
   } = useAPIConfiguration();
 
-  // Component state
+  // Component state (remains local)
   const [maxPRs, setMaxPRs] = useState(5);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
-  const [viewAllAnalyzedPRs, setViewAllAnalyzedPRs] = useState(false);
 
-  // Use a ref for loading state to prevent render flickers
-  const loadingStateRef = useRef(false);
-  const [isLocalLoading, setIsLocalLoading] = useState(false);
+  // Convert Sets to arrays for components that need arrays
+  const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
+  const selectedPRIdsArray = Array.from(selectedPRIds);
 
-  // Single source of truth for loading state
-  const isLoading = isAnalyzing || isLocalLoading;
+  // Overall loading state combines hook flag and store set size
+  const isLoading = analyzingPRIds.size > 0; // Use only store state
 
-  // Add state to track which PRs are currently loading
-  const [loadingPRIds, setLoadingPRIds] = useState<number[]>([]);
-
-  // Determine which PRs to analyze based on filters
+  // Determine which PRs to potentially analyze based on filters
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
 
-  // PR cache management
+  // --- PR Cache Hook ---
+  // This hook now likely needs modification to interact with the Zustand store
+  // instead of receiving/managing allAnalyzedPRIds, analysisSummary etc. via props/state.
+  // For now, pass necessary functions and potentially API config.
   const {
-    cachedCount,
-    cachedPRIds,
-    allAnalyzedPRIds,
-    setAllAnalyzedPRIds,
+    cachedCount, // Keep track of how many analyses are in the persistent cache
+    autoShowCompletedRef, // Keep if still needed internally by usePRCache
+    checkCachedAnalyses, // Keep for potential initial load logic
+    autoShowAnalysis, // Keep for potential initial load logic
+    clearAnalysisCache, // Keep cache clearing functionality
+    createConfig, // Keep config creation utility
+    cachedPRIds, // Restore for AnalysisResults
     newlyAnalyzedPRIds,
     setNewlyAnalyzedPRIds,
-    setRefreshTrigger,
-    autoShowCompletedRef,
-    checkCachedAnalyses,
-    autoShowAnalysis,
-    clearAnalysisCache,
-    createConfig,
   } = usePRCache(
     prsToAnalyze,
     getAnalysisForPR,
     getAnalysisFromMemoryCache,
-    analyzeMultiplePRs,
-    isLoading,
-    analysisSummary,
+    analyzeMultiplePRs, // Pass analyze function
+    isLoading, // Pass derived loading state
     apiProvider,
     apiKey
   );
-
-  // PR selection management
-  const { selectedPRIds, setSelectedPRIds, togglePR, selectAllPRs } =
-    usePRSelection(
-      prsToAnalyze,
-      allAnalyzedPRIds,
-      analyzeMultiplePRs,
-      analysisSummary,
-      createConfig
-    );
 
   // Check if API key exists on mount
   useEffect(() => {
@@ -117,442 +117,171 @@ export function CodeQualityInsights({
     const anthropicKey = localStorage.getItem(ANTHROPIC_KEY_STORAGE);
     const hasKey = !!(openaiKey || anthropicKey);
     setHasApiKey(hasKey);
-    // Only show config if no keys are found
-    setIsConfigVisible(!hasKey);
-  }, []);
+    // Only show config if no keys are found and no analysis yet
+    if (!hasKey && !analysisSummary && allAnalyzedPRIds.size === 0) {
+      setIsConfigVisible(true);
+    }
+  }, [analysisSummary, allAnalyzedPRIds]); // Re-run if analysis appears
 
-  // Improved cache check and auto-show logic - combined into one effect
-  // with better loading state management
+  // Effect for checking cache and auto-showing (Needs review/refactor with Zustand)
   useEffect(() => {
-    // Skip if we have no PRs, already showing analysis, already analyzing, or no API key
-    // Also skip if auto-show has already completed for this session
+    // Skip if we have no PRs, analysis already shown, already loading, no key, or already done
     if (
       prsToAnalyze.length === 0 ||
       analysisSummary ||
-      isAnalyzing || // Use isAnalyzing directly here, isLoading depends on isLocalLoading
-      !hasApiKey || // Don't check cache without a key
+      isLoading ||
+      !hasApiKey ||
       autoShowCompletedRef.current
     ) {
       return;
     }
 
-    const fetchCachedAnalyses = async () => {
-      // Avoid race conditions if already loading locally or globally
-      if (loadingStateRef.current || isAnalyzing) return;
-
-      let startedLoading = false;
+    const fetchAndShowCachedAnalyses = async () => {
+      // This logic needs careful review. Does checkCachedAnalyses update the store now?
+      // Or should we initialize the store from the cache here?
+      // For now, assuming checkCachedAnalyses might populate the store or return data.
+      console.log("Attempting to check/auto-show cached analysis...");
       try {
-        // Set loading state immediately before the async check if we have an API key
-        // This prevents the "No PRs Analyzed" state from flashing
-        loadingStateRef.current = true;
-        setIsLocalLoading(true);
-        startedLoading = true;
+        // Check cache (assuming this might update store or return IDs)
+        const initialCheckResult = await checkCachedAnalyses(
+          maxPRs,
+          true,
+          true
+        ); // hasApiKey=true
 
-        // Check if there are cached PRs without updating component state yet
-        const initialCheck = await checkCachedAnalyses(maxPRs, true, true); // Pass hasApiKey=true
-
-        // If no cached PRs found, reset loading state and exit
-        if (!initialCheck || initialCheck.allIds.length === 0) {
-          loadingStateRef.current = false;
-          setIsLocalLoading(false);
-          startedLoading = false; // Reset flag
-          return;
+        if (!initialCheckResult || initialCheckResult.allIds.length === 0) {
+          console.log("No cached analysis found to auto-show.");
+          return; // No cached analysis found
         }
 
-        // We have cached PRs, proceed to load and show them
+        // Add found IDs to the store if not already there (checkCachedAnalyses might do this already)
+        addAnalyzedPRIds(initialCheckResult.allIds);
 
-        // Get the PR objects for all cached PRs
-        const analyzedPRs = prsToAnalyze.filter((pr) =>
-          initialCheck.allIds.includes(pr.id)
+        // Get the actual PR objects for the cached IDs
+        const analyzedPRs = prsToAnalyze.filter(
+          (pr) => initialCheckResult.allIds.includes(pr.id) // Use includes here as it's an array from checkCachedAnalyses
         );
 
-        if (analyzedPRs.length > 0) {
-          // Update component state with the cached PRs we found
-          // This call might be redundant if initialCheck already did it, depends on usePRCache implementation
-          await checkCachedAnalyses(maxPRs, true, false); // Pass hasApiKey=true
-
-          // Auto-show analysis for cached PRs
-          await autoShowAnalysis(analyzedPRs, createConfig());
-          autoShowCompletedRef.current = true; // Mark auto-show as completed for this session
-        } else {
-          // No PR objects found matching the IDs? Reset loading.
-          loadingStateRef.current = false;
-          setIsLocalLoading(false);
-          startedLoading = false; // Reset flag
+        if (analyzedPRs.length > 0 && !analysisSummary) {
+          // Only auto-show if no summary exists yet
+          console.log(
+            `Auto-showing analysis for ${analyzedPRs.length} cached PRs.`
+          );
+          // Call autoShowAnalysis (assuming it now updates the store's analysisSummary)
+          const config = createConfig();
+          await autoShowAnalysis(analyzedPRs, config); // This should update the store
+          autoShowCompletedRef.current = true; // Mark as done for this session
         }
       } catch (error) {
-        console.error("Error auto-showing analysis:", error);
-        // Ensure loading state is reset on error only if we started it
-        if (startedLoading) {
-          loadingStateRef.current = false;
-          setIsLocalLoading(false);
-        }
-      } finally {
-        // Reset loading state after a delay, only if we started it and it's still active
-        if (startedLoading && loadingStateRef.current) {
-          setTimeout(() => {
-            // Check ref again in case another process started loading in the meantime
-            if (loadingStateRef.current && !isAnalyzing) {
-              loadingStateRef.current = false;
-              setIsLocalLoading(false);
-            }
-          }, 150);
-        }
+        console.error("Error during auto-show cached analysis:", error);
       }
     };
 
-    fetchCachedAnalyses();
+    fetchAndShowCachedAnalyses();
   }, [
     prsToAnalyze,
     maxPRs,
-    hasApiKey, // Detects when key becomes available
-    // apiKey, // Not needed directly, createConfig uses it
-    // apiProvider, // Not needed directly
-    analysisSummary, // Detects when analysis is shown/cleared
-    isAnalyzing, // Detects when global analysis starts/stops
+    hasApiKey,
+    analysisSummary, // React to store changes
+    isLoading, // React to derived loading state
     checkCachedAnalyses,
     autoShowAnalysis,
     createConfig,
-    autoShowCompletedRef, // Include ref state wrapper
-  ]);
-
-  // Update analysis display when view mode changes
-  useEffect(() => {
-    if (analysisSummary && !isLoading) {
-      handleRefreshAnalysis();
-    }
-  }, [viewAllAnalyzedPRs]);
-
-  // Function to refresh analysis based on current view mode
-  const handleRefreshAnalysis = async () => {
-    if ((!hasApiKey && !apiKey) || isLoading) return;
-
-    try {
-      // Set loading through ref to prevent flicker
-      loadingStateRef.current = true;
-      setIsLocalLoading(true);
-
-      const config = createConfig();
-
-      // Respect the user's current PR selection
-      // Only show PRs that are selected by the user AND have been analyzed
-      const targetPRs = prsToAnalyze.filter(
-        (pr) =>
-          selectedPRIds.includes(pr.id) && allAnalyzedPRIds.includes(pr.id)
-      );
-
-      // Set loading state for PRs being refreshed
-      if (targetPRs.length > 0) {
-        setLoadingPRIds(targetPRs.map((pr) => pr.id));
-
-        // Notify Timeline about each PR refresh starting
-        targetPRs.forEach((pr) => {
-          const analyzeStartEvent = new CustomEvent("pr-analysis-started", {
-            detail: { prId: pr.id },
-          });
-          window.dispatchEvent(analyzeStartEvent);
-        });
-      }
-
-      // Analyze without a timeout for more responsive UI
-      const results = await analyzeMultiplePRs(targetPRs, config, 0);
-
-      // Notify Timeline about each PR refresh completing
-      results.forEach((result) => {
-        const analyzeCompleteEvent = new CustomEvent("pr-analysis-completed", {
-          detail: { prId: result.prId },
-        });
-        window.dispatchEvent(analyzeCompleteEvent);
-      });
-
-      // Clear loading state
-      setLoadingPRIds([]);
-
-      // Also trigger a refresh check for any new analyses
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      console.error("Error refreshing analysis:", error);
-      // Clear loading state on error
-      setLoadingPRIds([]);
-
-      // Notify about refresh failures
-      const targetPRs = prsToAnalyze.filter(
-        (pr) =>
-          selectedPRIds.includes(pr.id) && allAnalyzedPRIds.includes(pr.id)
-      );
-
-      targetPRs.forEach((pr) => {
-        const analyzeFailedEvent = new CustomEvent("pr-analysis-failed", {
-          detail: { prId: pr.id },
-        });
-        window.dispatchEvent(analyzeFailedEvent);
-      });
-    } finally {
-      // Reset loading state with a small delay to ensure render stability
-      setTimeout(() => {
-        loadingStateRef.current = false;
-        setIsLocalLoading(false);
-      }, 150);
-    }
-  };
-
-  // Subscribe to Timeline PR analysis changes - simplified to reduce renders
-  useEffect(() => {
-    // Skip if already analyzing
-    if (isLoading) return () => {};
-
-    // Check for newly analyzed PRs less frequently (5 seconds)
-    const intervalId = setInterval(async () => {
-      if (isLoading) return;
-
-      // Only check PRs that aren't already known to be analyzed
-      const unannotatedPRs = prsToAnalyze.filter(
-        (pr) => !allAnalyzedPRIds.includes(pr.id)
-      );
-
-      if (unannotatedPRs.length === 0) return;
-
-      // Check if any PRs have been newly analyzed
-      const newIds = [];
-
-      for (const pr of unannotatedPRs) {
-        // Check memory cache first (faster)
-        let isAnalyzed = !!getAnalysisFromMemoryCache(pr.id);
-
-        // If not in memory, check persistent cache
-        if (!isAnalyzed) {
-          isAnalyzed = !!(await getAnalysisForPR(pr.id));
-        }
-
-        if (isAnalyzed) {
-          newIds.push(pr.id);
-        }
-      }
-
-      // Only update if we found new analyses
-      if (newIds.length > 0) {
-        setAllAnalyzedPRIds((prev) => {
-          const uniqueIds = new Set([...prev, ...newIds]);
-          return Array.from(uniqueIds);
-        });
-
-        // Only trigger refresh if we're already displaying results and aren't analyzing
-        if (analysisSummary && !isLoading) {
-          setRefreshTrigger((prev) => prev + 1);
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [
-    prsToAnalyze,
-    allAnalyzedPRIds,
-    getAnalysisFromMemoryCache,
-    getAnalysisForPR,
-    isLoading,
-    analysisSummary,
-    setAllAnalyzedPRIds,
-    setRefreshTrigger,
-  ]);
-
-  // Listen for PR analysis events from Timeline
-  useEffect(() => {
-    const handleAnalysisStarted = (e: Event) => {
-      // Reset the refresh check timer
-      setRefreshTrigger((prev) => prev + 1);
-
-      // Try to get PR ID from the event if available
-      const event = e as CustomEvent;
-      const prId = event.detail?.prId;
-
-      // Add the PR to the loading list if we have its ID
-      if (prId) {
-        setLoadingPRIds((prev) => [...prev, prId]);
-      }
-    };
-
-    const handleAnalysisCompleted = (e: Event) => {
-      const event = e as CustomEvent;
-      const prId = event.detail?.prId;
-
-      if (prId) {
-        // Remove the PR from loading state
-        setLoadingPRIds((prev) => prev.filter((id) => id !== prId));
-
-        // Update allAnalyzedPRIds to include this PR
-        setAllAnalyzedPRIds((prev) => {
-          if (prev.includes(prId)) return prev;
-          return [...prev, prId];
-        });
-
-        // Only update selectedPRIds to include this newly analyzed PR
-        // Don't modify other selections
-        setSelectedPRIds((prev) => {
-          if (prev.includes(prId)) return prev;
-          return [...prev, prId];
-        });
-
-        // Add to newlyAnalyzedPRIds to ensure it shows up in the analysis
-        setNewlyAnalyzedPRIds((prev) => {
-          if (prev.includes(prId)) return prev;
-          return [...prev, prId];
-        });
-
-        // Always immediately show the analysis when a PR is analyzed from Timeline
-        const config = createConfig();
-
-        // Get the PR object
-        const analyzedPR = prsToAnalyze.find((pr) => pr.id === prId);
-
-        if (analyzedPR && !isLoading) {
-          // Set loading state via ref to prevent flicker
-          loadingStateRef.current = true;
-          setIsLocalLoading(true);
-
-          // Immediately show the analysis for this PR
-          setTimeout(async () => {
-            try {
-              // First analyze just the new PR to ensure it's in the cache
-              await analyzeMultiplePRs([analyzedPR], config, 0);
-
-              // Get the current selection state - only show PRs that are both
-              // analyzed AND selected (plus the new one)
-              const selectedAnalyzedPRs = prsToAnalyze.filter(
-                (pr) =>
-                  (selectedPRIds.includes(pr.id) &&
-                    allAnalyzedPRIds.includes(pr.id)) ||
-                  pr.id === prId
-              );
-
-              // Show the analysis with the current selection state
-              await analyzeMultiplePRs(selectedAnalyzedPRs, config, 0);
-            } finally {
-              // Reset loading state with delay
-              setTimeout(() => {
-                loadingStateRef.current = false;
-                setIsLocalLoading(false);
-              }, 250);
-            }
-          }, 100);
-        }
-      }
-    };
-
-    // Handle analysis failed event
-    const handleAnalysisFailed = (e: Event) => {
-      const event = e as CustomEvent;
-      const prId = event.detail?.prId;
-
-      // Remove the PR from loading state if we have its ID
-      if (prId) {
-        setLoadingPRIds((prev) => prev.filter((id) => id !== prId));
-      }
-    };
-
-    // Add event listeners
-    window.addEventListener("pr-analysis-started", handleAnalysisStarted);
-    window.addEventListener("pr-analysis-completed", handleAnalysisCompleted);
-    window.addEventListener("pr-analysis-failed", handleAnalysisFailed);
-
-    return () => {
-      // Clean up event listeners
-      window.removeEventListener("pr-analysis-started", handleAnalysisStarted);
-      window.removeEventListener(
-        "pr-analysis-completed",
-        handleAnalysisCompleted
-      );
-      window.removeEventListener("pr-analysis-failed", handleAnalysisFailed);
-    };
-  }, [
-    analysisSummary,
-    prsToAnalyze,
-    apiKey,
-    apiProvider,
-    createConfig,
-    analyzeMultiplePRs,
-    setAllAnalyzedPRIds,
-    setSelectedPRIds,
-    isLoading,
-    allAnalyzedPRIds,
-    selectedPRIds,
-    setNewlyAnalyzedPRIds,
+    autoShowCompletedRef,
+    addAnalyzedPRIds, // Added store action dependency
   ]);
 
   // Handle analyze button click
   const handleAnalyze = async () => {
     if (!apiKey) {
       alert("Please enter an API key");
+      setIsConfigVisible(true);
       return;
     }
-
     if (isLoading) return;
 
     try {
-      // Set loading through ref to prevent flicker
-      loadingStateRef.current = true;
-      setIsLocalLoading(true);
-
-      // Save API key if opted in
       saveApiKey();
       setHasApiKey(true);
+      setIsConfigVisible(false); // Hide config on successful analysis start
 
       const config = createConfig(apiKey);
 
-      // Reset state for newly analyzed PRs
-      setNewlyAnalyzedPRIds([]);
+      // Get currently analyzed PRs from the store for comparison
+      const previouslyAnalyzedIds = new Set(allAnalyzedPRIds);
 
-      // Store the current cached PRs before analysis
-      const previouslyCachedIds = [...cachedPRIds];
+      // Determine which PRs to analyze now (up to maxPRs, excluding already analyzed)
+      const prsToAnalyzeNow = prsToAnalyze
+        .filter((pr) => !previouslyAnalyzedIds.has(pr.id))
+        .slice(0, maxPRs);
 
-      // Set the PRs that will be analyzed as loading
-      const prsToLoad = prsToAnalyze
-        .slice(0, maxPRs)
-        .filter((pr) => !allAnalyzedPRIds.includes(pr.id));
+      if (prsToAnalyzeNow.length === 0) {
+        alert("All visible PRs have already been analyzed.");
+        // Optionally, select all analyzed PRs if none are selected
+        if (selectedPRIds.size === 0 && allAnalyzedPRIds.size > 0) {
+          selectAllPRs(Array.from(allAnalyzedPRIds));
+        }
+        return;
+      }
 
-      // Update loading PRs
-      setLoadingPRIds(prsToLoad.map((pr) => pr.id));
-
-      // Notify Timeline component about each PR analysis starting
-      prsToLoad.forEach((pr) => {
-        const analyzeStartEvent = new CustomEvent("pr-analysis-started", {
-          detail: { prId: pr.id },
-        });
-        window.dispatchEvent(analyzeStartEvent);
+      // Mark PRs as analyzing in the store
+      prsToAnalyzeNow.forEach((pr) => {
+        startAnalysis(pr.id);
       });
 
-      // Call analyzeMultiplePRs - it will handle cache usage
-      const results = await analyzeMultiplePRs(prsToAnalyze, config, maxPRs);
-
-      // Notify Timeline component about each PR analysis completing
-      results.forEach((result) => {
-        const analyzeCompleteEvent = new CustomEvent("pr-analysis-completed", {
-          detail: { prId: result.prId },
-        });
-        window.dispatchEvent(analyzeCompleteEvent);
-      });
-
-      // Clear loading state
-      setLoadingPRIds([]);
-
-      // Update all analyzed PRs
-      const resultIds = results.map((r) => r.prId);
-      setAllAnalyzedPRIds((prev) => {
-        const uniqueIds = new Set([...prev, ...resultIds]);
-        return Array.from(uniqueIds);
-      });
-
-      // Update selected PRs to include newly analyzed ones
-      setSelectedPRIds((prev) => {
-        const uniqueIds = new Set([...prev, ...resultIds]);
-        return Array.from(uniqueIds);
-      });
-
-      // Determine which PRs were newly analyzed - only if they weren't in the initially cached list
-      const newlyAnalyzed = resultIds.filter(
-        (id) => !previouslyCachedIds.includes(id)
+      // Call analyzeMultiplePRs API
+      const results: PRAnalysisResult[] = await analyzeMultiplePRs(
+        prsToAnalyzeNow, // Only analyze the ones not previously analyzed
+        config
+        // maxPRs limit might be implicitly handled by slicing above, or pass it if API needs it: maxPRs
       );
 
-      setNewlyAnalyzedPRIds(newlyAnalyzed);
+      const analyzedIdsInResult = new Set(results.map((r) => r.prId));
+      const successfulResultIds: number[] = [];
+      const newlyAnalyzedIds: number[] = [];
+
+      // Update store for PRs that were attempted
+      prsToAnalyzeNow.forEach((pr) => {
+        if (analyzedIdsInResult.has(pr.id)) {
+          // Completed successfully
+          const wasNewlyAnalyzed = !previouslyAnalyzedIds.has(pr.id);
+          completeAnalysis(pr.id, wasNewlyAnalyzed);
+          successfulResultIds.push(pr.id);
+          if (wasNewlyAnalyzed) {
+            newlyAnalyzedIds.push(pr.id);
+          }
+        } else {
+          // Failed
+          failAnalysis(pr.id);
+          console.warn(`Analysis failed or missing result for PR ID: ${pr.id}`);
+        }
+      });
+
+      // Update analysis summary in the store (aggregate only successful results)
+      if (results.length > 0) {
+        const summary = await aggregateFeedback(results);
+        setAnalysisSummary(summary);
+      } else if (prsToAnalyzeNow.length > 0) {
+        // No results, but analysis was attempted, maybe clear summary?
+        // Or keep existing summary if desired? For now, clear if no results.
+        // setAnalysisSummary(null);
+        console.warn("Analysis ran but returned no results.");
+      }
+
+      // Add newly analyzed IDs to the global set in the store
+      if (newlyAnalyzedIds.length > 0) {
+        addAnalyzedPRIds(newlyAnalyzedIds);
+        // Update local state for highlighting in AnalysisResults
+        setNewlyAnalyzedPRIds(newlyAnalyzedIds);
+      }
+
+      // Automatically select the PRs that were just successfully analyzed
+      if (successfulResultIds.length > 0) {
+        // Add successfully analyzed PRs to the current selection
+        const currentSelection = new Set(selectedPRIds);
+        successfulResultIds.forEach((id) => currentSelection.add(id));
+        setSelectedPRIds(Array.from(currentSelection));
+      }
 
       // Update filter if analyzing all PRs and not already showing all
       if (useAllPRs && showOnlyImportantPRs && onToggleFilter) {
@@ -560,67 +289,24 @@ export function CodeQualityInsights({
       }
     } catch (error) {
       console.error("Error during analysis:", error);
-      // Clear loading state on error too
-      setLoadingPRIds([]);
-
-      // Notify about analysis failure for each PR
-      const prsToLoad = prsToAnalyze
+      // Mark all attempted PRs as failed in the store on general error
+      const attemptedPRIds = prsToAnalyze
+        .filter((pr) => !allAnalyzedPRIds.has(pr.id))
         .slice(0, maxPRs)
-        .filter((pr) => !allAnalyzedPRIds.includes(pr.id));
-
-      prsToLoad.forEach((pr) => {
-        const analyzeFailedEvent = new CustomEvent("pr-analysis-failed", {
-          detail: { prId: pr.id },
-        });
-        window.dispatchEvent(analyzeFailedEvent);
-      });
+        .map((pr) => pr.id);
+      attemptedPRIds.forEach((id) => failAnalysis(id));
+      // Optionally show user-facing error message
+      alert(`An error occurred during analysis: ${error.message || error}`);
     } finally {
-      // Reset loading state with delay to prevent flicker
-      setTimeout(() => {
-        loadingStateRef.current = false;
-        setIsLocalLoading(false);
-      }, 150);
+      // No explicit finally block needed for loading state reset
     }
   };
 
   // Toggle between filtered PRs and all PRs
   const handleToggleAllPRs = () => {
     setUseAllPRs(!useAllPRs);
-  };
-
-  // Toggle between viewing only top N analyzed PRs and all analyzed PRs
-  const handleToggleViewAllAnalyzed = () => {
-    setViewAllAnalyzedPRs(!viewAllAnalyzedPRs);
-  };
-
-  // Handle clearing all cached PR analysis data
-  const handleClearCache = async () => {
-    if (isLoading) return;
-
-    // Ask for confirmation
-    if (
-      !window.confirm(
-        "Are you sure you want to clear all cached PR analysis data? This cannot be undone."
-      )
-    ) {
-      return;
-    }
-
-    const success = await clearAnalysisCache();
-
-    if (success) {
-      // If we have an analysis summary showing, hide it
-      if (analysisSummary) {
-        // We can't directly modify analysisSummary,
-        // so we'll reload the page to reset the state
-        window.location.reload();
-      } else {
-        // Show confirmation
-        alert("All cached PR analysis data has been cleared.");
-      }
-    } else {
-      alert("Failed to clear cache. Please try again.");
-    }
+    // Reset selection when toggling? Optional.
+    // setSelectedPRIds([]);
   };
 
   return (
@@ -628,7 +314,8 @@ export function CodeQualityInsights({
       {/* Header with settings toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
-        {hasApiKey && (
+        {/* Show settings toggle if API key exists OR if analysis has been performed */}
+        {(hasApiKey || allAnalyzedPRIds.size > 0) && (
           <button
             onClick={() => setIsConfigVisible(!isConfigVisible)}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -638,18 +325,17 @@ export function CodeQualityInsights({
         )}
       </div>
 
-      {/* PR Selection Panel */}
-      {!isLoading &&
-        analysisSummary &&
-        (allAnalyzedPRIds.length > 0 || loadingPRIds.length > 0) && (
-          <PRSelectionPanel
-            prsToAnalyze={prsToAnalyze}
-            allAnalyzedPRIds={allAnalyzedPRIds}
-            selectedPRIds={selectedPRIds}
-            loadingPRIds={loadingPRIds}
-            onTogglePR={togglePR}
-          />
-        )}
+      {/* PR Selection Panel - Show if analysis exists and not loading */}
+      {!isLoading && analysisSummary && allAnalyzedPRIds.size > 0 && (
+        <PRSelectionPanel
+          // Pass only PRs that *have* been analyzed for selection
+          prsToAnalyze={prsToAnalyze}
+          allAnalyzedPRIds={allAnalyzedPRIdsArray}
+          selectedPRIds={selectedPRIdsArray}
+          loadingPRIds={Array.from(analyzingPRIds)}
+          onTogglePR={toggleSelectedPR}
+        />
+      )}
 
       {/* Configuration Panel */}
       {isConfigVisible && (
@@ -665,59 +351,94 @@ export function CodeQualityInsights({
           allPRs={allPRs}
           pullRequests={pullRequests}
           showOnlyImportantPRs={showOnlyImportantPRs}
-          cachedCount={allAnalyzedPRIds.length}
+          // Pass the count of analyzed PRs from the store
+          cachedCount={allAnalyzedPRIds.size}
           isAnalyzing={isLoading}
-          handleAnalyze={handleAnalyze}
+          handleAnalyze={handleAnalyze} // Keep analyze button here
           setApiKey={setApiKey}
           handleResetApiKey={handleResetApiKey}
-          handleClearCache={handleClearCache}
+          handleClearCache={async () => {
+            // Wrap the call to match expected void promise type
+            const success = await clearAnalysisCache();
+            if (success) {
+              alert(
+                "All cached PR analysis data and current results have been cleared."
+              );
+              // Show config if no API key after clearing
+              if (
+                !apiKey &&
+                !localStorage.getItem(OPENAI_KEY_STORAGE) &&
+                !localStorage.getItem(ANTHROPIC_KEY_STORAGE)
+              ) {
+                setIsConfigVisible(true);
+              }
+            } else {
+              alert("Failed to clear persistent cache. Please try again.");
+            }
+          }}
         />
       )}
 
-      {/* Initial states and loading */}
-      {!hasApiKey && !apiKey && !analysisSummary && !isLoading && (
-        <AnalysisStatus cachedCount={cachedCount} />
-      )}
+      {/* --- Conditional Content Rendering --- */}
 
-      {/* Only show loading indicator when explicitly analyzing or loading cached PRs */}
+      {/* Loading Indicator */}
       {isLoading && <AnalysisLoadingIndicator />}
 
-      {/* Analysis Results */}
-      {!isLoading && analysisSummary && selectedPRIds.length > 0 && (
-        <AnalysisResults
-          analysisSummary={analysisSummary}
-          cachedPRIds={cachedPRIds}
-          newlyAnalyzedPRIds={newlyAnalyzedPRIds}
-          allAnalyzedPRIds={allAnalyzedPRIds}
-        />
-      )}
-
-      {/* Empty state when no PRs are selected but analysis exists */}
-      {!isLoading && analysisSummary && selectedPRIds.length === 0 && (
-        <EmptySelectionState onSelectAllPRs={selectAllPRs} />
-      )}
-
-      {/* Empty state when user has API key but no PRs analyzed yet */}
+      {/* Initial State: No API Key, No Analysis, Config Hidden */}
       {!isLoading &&
-        !analysisSummary &&
-        !isConfigVisible &&
-        (hasApiKey || apiKey) && (
-          <NoAnalyzedPRsState
-            handleAnalyze={handleAnalyze}
-            hasApiKey={!!apiKey || hasApiKey}
-            maxPRs={maxPRs}
-            setMaxPRs={setMaxPRs}
-            cachedCount={cachedCount}
-          />
-        )}
-
-      {/* Get started state - show when no analysis is happening, no API key, and config not shown */}
-      {!hasApiKey &&
+        !hasApiKey &&
         !apiKey &&
-        !isLoading &&
         !analysisSummary &&
         !isConfigVisible && (
           <InitialState setIsConfigVisible={setIsConfigVisible} />
+        )}
+
+      {/* Status: API Key exists, No Analysis yet, Config Hidden */}
+      {!isLoading &&
+        (hasApiKey || apiKey) &&
+        !analysisSummary &&
+        allAnalyzedPRIds.size === 0 &&
+        !isConfigVisible && (
+          <NoAnalyzedPRsState
+            handleAnalyze={handleAnalyze}
+            hasApiKey={hasApiKey || !!apiKey}
+            maxPRs={maxPRs}
+            setMaxPRs={setMaxPRs}
+            cachedCount={cachedCount} // Show count from cache hook
+          />
+        )}
+
+      {/* Analysis Results: Analysis exists, PRs selected */}
+      {!isLoading && analysisSummary && selectedPRIds.size > 0 && (
+        <AnalysisResults
+          analysisSummary={analysisSummary}
+          // Pass relevant IDs as arrays if needed by the component
+          cachedPRIds={cachedPRIds}
+          newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+          allAnalyzedPRIds={allAnalyzedPRIdsArray}
+        />
+      )}
+
+      {/* Empty Selection State: Analysis exists, but NO PRs selected */}
+      {!isLoading &&
+        analysisSummary &&
+        selectedPRIds.size === 0 &&
+        allAnalyzedPRIds.size > 0 && (
+          <EmptySelectionState
+            // Pass only the IDs that *have* been analyzed
+            onSelectAllPRs={() => selectAllPRs(allAnalyzedPRIdsArray)}
+          />
+        )}
+
+      {/* Fallback/Analysis Status (Cached Count): Key exists, no summary, but cache might have items */}
+      {/* This might overlap with NoAnalyzedPRsState - review conditions */}
+      {!isLoading &&
+        (hasApiKey || apiKey) &&
+        !analysisSummary &&
+        !isConfigVisible &&
+        cachedCount > 0 &&
+        allAnalyzedPRIds.size === 0 && (
+          <AnalysisStatus cachedCount={cachedCount} />
         )}
     </div>
   );

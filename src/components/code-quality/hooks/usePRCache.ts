@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { PullRequestItem } from "../../../lib/types";
+import { useAnalysisStore } from "../../../stores/analysisStore";
 import {
   AIAnalysisConfig,
   PRAnalysisResult,
+  aggregateFeedback,
 } from "../../../lib/aiAnalysisService";
 import cacheService from "../../../lib/cacheService";
 
@@ -16,19 +18,25 @@ export function usePRCache(
   analyzeMultiplePRs: (
     prs: PullRequestItem[],
     config: AIAnalysisConfig,
-    maxPRs: number
+    maxPRs?: number
   ) => Promise<PRAnalysisResult[]>,
   isAnalyzing: boolean,
-  analysisSummary: unknown,
   apiProvider: string,
   apiKey?: string
 ) {
-  // State for cached PRs
-  const [cachedCount, setCachedCount] = useState(0);
-  const [cachedPRIds, setCachedPRIds] = useState<number[]>([]);
-  const [allAnalyzedPRIds, setAllAnalyzedPRIds] = useState<number[]>([]);
+  // Get state and actions from Zustand store
+  const {
+    allAnalyzedPRIds,
+    addAnalyzedPRIds,
+    setAnalysisSummary,
+    setSelectedPRIds,
+    clearAnalysisData,
+  } = useAnalysisStore();
+
+  // Local state specific to this hook
+  const [cachedCount, setCachedCount] = useState(0); // Count from persistent cache only
+  const [cachedPRIds, setCachedPRIds] = useState<number[]>([]); // IDs from persistent cache check
   const [newlyAnalyzedPRIds, setNewlyAnalyzedPRIds] = useState<number[]>([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Flag to track if we've auto-shown analysis
   const autoShowCompletedRef = useRef(false);
@@ -44,47 +52,58 @@ export function usePRCache(
     async (maxPRs: number, hasApiKey: boolean, checkOnly = false) => {
       if (prsToAnalyze.length === 0 || cacheCheckInProgressRef.current) return;
 
+      // Use store's allAnalyzedPRIds as the source of truth for already known IDs
+      const knownAnalyzedIds = new Set(allAnalyzedPRIds);
       cacheCheckInProgressRef.current = true;
 
       try {
-        let count = 0;
+        // Check persistent cache for all PRs not already known to be analyzed
         const cachedIds: number[] = [];
-        const allIds: number[] = [];
+        const allIds: number[] = []; // IDs found in this check
 
-        // First check top N PRs for cache status
-        for (const pr of prsToAnalyze.slice(0, maxPRs)) {
-          const isAnalyzed = await getAnalysisForPR(pr.id);
-          if (isAnalyzed) {
-            count++;
-            cachedIds.push(pr.id);
-            allIds.push(pr.id);
+        // Build list of PRs to check in cache
+        const prsToCheck = prsToAnalyze.filter(
+          (pr) => !knownAnalyzedIds.has(pr.id)
+        );
+
+        // Fetch all cached analyses concurrently
+        const cacheResults = await Promise.all(
+          prsToCheck.map((pr) => cacheService.getPRAnalysis(pr.id))
+        );
+
+        cacheResults.forEach((result, index) => {
+          if (result) {
+            const prId = prsToCheck[index].id;
+            cachedIds.push(prId);
+            allIds.push(prId);
           }
-        }
+        });
 
-        // Then check all PRs for any that are analyzed
-        for (const pr of prsToAnalyze.slice(maxPRs)) {
-          const isAnalyzed = await getAnalysisForPR(pr.id);
-          if (isAnalyzed) {
-            allIds.push(pr.id);
-          }
-        }
+        // Include already known analyzed IDs in the `allIds` for return consistency if needed
+        const finalAllIds = Array.from(
+          new Set([...knownAnalyzedIds, ...allIds])
+        );
+        const finalCachedCount = cachedIds.length; // Count *newly found* cached items
 
-        // Only update state if not in check-only mode
+        // Update store and local state only if not in check-only mode
         if (!checkOnly) {
-          setCachedCount(count);
+          if (allIds.length > 0) {
+            // Add the newly found cached IDs to the store
+            addAnalyzedPRIds(allIds);
+          }
+
+          // Update local state for cached count/ids from this specific check
+          setCachedCount(finalCachedCount);
           setCachedPRIds(cachedIds);
-          setAllAnalyzedPRIds(allIds);
         }
 
-        if (hasApiKey) {
-          return { count, cachedIds, allIds };
-        }
-        return undefined;
+        // Return the result of this specific check
+        return { count: finalCachedCount, cachedIds, allIds: finalAllIds };
       } finally {
         cacheCheckInProgressRef.current = false;
       }
     },
-    [prsToAnalyze, getAnalysisForPR, setAllAnalyzedPRIds]
+    [prsToAnalyze, getAnalysisForPR, addAnalyzedPRIds, allAnalyzedPRIds]
   );
 
   /**
@@ -92,15 +111,35 @@ export function usePRCache(
    */
   const autoShowAnalysis = useCallback(
     (prs: PullRequestItem[], config: AIAnalysisConfig) => {
-      if (prs.length === 0 || autoShowCompletedRef.current) return;
+      if (prs.length === 0 || autoShowCompletedRef.current)
+        return Promise.resolve(); // Return a resolved promise
 
       // Mark that we've auto-shown the analysis to prevent recurring calls
       autoShowCompletedRef.current = true;
 
-      // Show cached analyses without making new API calls
-      return analyzeMultiplePRs(prs, config, 0);
+      // Analyze these PRs (even if cached, to get fresh data/summary)
+      // Pass maxPRs = 0 or prs.length to analyze all provided PRs
+      return analyzeMultiplePRs(prs, config, prs.length) // Use passed analyzeMultiplePRs
+        .then(async (results) => {
+          if (results && results.length > 0) {
+            // Aggregate feedback
+            const summary = await aggregateFeedback(results);
+            // Update store summary
+            setAnalysisSummary(summary);
+            // Select these PRs in the store
+            setSelectedPRIds(results.map((r) => r.prId));
+          } else {
+            // Clear summary if analysis yielded no results?
+            // setAnalysisSummary(null);
+          }
+        })
+        .catch((error) => {
+          console.error("Error during autoShowAnalysis analysis call:", error);
+          // Optionally clear summary or handle error state in store
+          // setAnalysisSummary(null);
+        });
     },
-    [analyzeMultiplePRs]
+    [analyzeMultiplePRs, setAnalysisSummary, setSelectedPRIds]
   );
 
   /**
@@ -114,13 +153,10 @@ export function usePRCache(
       await cacheService.clearAllPRAnalysis();
 
       // Reset states
+      clearAnalysisData(); // Clear zustand store
       setCachedCount(0);
       setCachedPRIds([]);
-      setAllAnalyzedPRIds([]);
       setNewlyAnalyzedPRIds([]);
-
-      // Force a component refresh to clear the analysis display
-      setRefreshTrigger((prev) => prev + 1);
 
       // Reset refs
       autoShowCompletedRef.current = false;
@@ -130,7 +166,7 @@ export function usePRCache(
       console.error("Error clearing cache:", error);
       return false;
     }
-  }, [isAnalyzing]);
+  }, [isAnalyzing, clearAnalysisData]);
 
   /**
    * Creates a config object with API key
@@ -165,11 +201,12 @@ export function usePRCache(
     cachedCount,
     cachedPRIds,
     allAnalyzedPRIds,
-    setAllAnalyzedPRIds,
+    addAnalyzedPRIds,
+    setAnalysisSummary,
+    setSelectedPRIds,
+    clearAnalysisData,
     newlyAnalyzedPRIds,
     setNewlyAnalyzedPRIds,
-    refreshTrigger,
-    setRefreshTrigger,
     autoShowCompletedRef,
     checkCachedAnalyses,
     autoShowAnalysis,
