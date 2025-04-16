@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
@@ -49,8 +49,6 @@ export function CodeQualityInsights({
     analysisSummary,
     allAnalyzedPRIds,
     selectedPRIds,
-    startAnalysis,
-    completeAnalysis,
     failAnalysis,
     setAnalysisSummary,
     addAnalyzedPRIds,
@@ -99,8 +97,8 @@ export function CodeQualityInsights({
     clearAnalysisCache, // Keep cache clearing functionality
     createConfig, // Keep config creation utility
     cachedPRIds, // Restore for AnalysisResults
-    newlyAnalyzedPRIds,
-    setNewlyAnalyzedPRIds,
+    newlyAnalyzedPRIds, // Kept for AnalysisResults
+    setNewlyAnalyzedPRIds, // Kept for handleAnalyze
   } = usePRCache(
     prsToAnalyze,
     getAnalysisForPR,
@@ -110,6 +108,69 @@ export function CodeQualityInsights({
     apiProvider,
     apiKey
   );
+
+  // Ref to track mounted state and prevent initial effect run
+  const isMountedRef = useRef(false);
+
+  // Function to refresh the analysis summary based on selection
+  const refreshAnalysisSummary = useCallback(async () => {
+    if (selectedPRIds.size === 0 || !analysisSummary) {
+      // If nothing is selected, or no initial summary, clear the summary
+      // setAnalysisSummary(null); // Or keep the old one? Let's keep it for now.
+      return;
+    }
+
+    // Filter PRs that are both selected AND have been analyzed
+    const selectedAndAnalyzedPRs = prsToAnalyze.filter(
+      (pr) => selectedPRIds.has(pr.id) && allAnalyzedPRIds.has(pr.id)
+    );
+
+    if (selectedAndAnalyzedPRs.length === 0) {
+      // If selection results in no valid PRs, clear summary
+      setAnalysisSummary(null);
+      return;
+    }
+
+    try {
+      // Create config (needed for analyzeMultiplePRs)
+      const config = createConfig();
+      // Re-run analysis/fetch for selected PRs (analyzeMultiplePRs should use cache)
+      // Let analyzeMultiplePRs process all provided PRs (it handles cache internally)
+      const results = await analyzeMultiplePRs(selectedAndAnalyzedPRs, config);
+      // Aggregate and update summary in the store
+      const summary = await aggregateFeedback(results);
+      setAnalysisSummary(summary);
+    } catch (error) {
+      console.error("Error refreshing analysis summary:", error);
+      // Optionally handle error, maybe clear summary
+      // setAnalysisSummary(null);
+    }
+  }, [
+    selectedPRIds,
+    allAnalyzedPRIds,
+    prsToAnalyze,
+    analysisSummary, // Depend on summary existence
+    analyzeMultiplePRs,
+    createConfig,
+    setAnalysisSummary,
+    aggregateFeedback,
+  ]);
+
+  // Effect to refresh analysis summary when selection changes
+  useEffect(() => {
+    // Prevent running on initial mount
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+
+    // Only refresh if an analysis has already been run
+    // AND the selection is not empty (otherwise summary might be cleared unnecessarily)
+    if (analysisSummary && selectedPRIds.size > 0) {
+      console.log("Selection changed, refreshing analysis summary...");
+      refreshAnalysisSummary();
+    }
+  }, [selectedPRIds]); // Only run when selection changes
 
   // Check if API key exists on mount
   useEffect(() => {
@@ -224,36 +285,20 @@ export function CodeQualityInsights({
         return;
       }
 
-      // Mark PRs as analyzing in the store
-      prsToAnalyzeNow.forEach((pr) => {
-        startAnalysis(pr.id);
-      });
-
       // Call analyzeMultiplePRs API
       const results: PRAnalysisResult[] = await analyzeMultiplePRs(
         prsToAnalyzeNow, // Only analyze the ones not previously analyzed
         config
-        // maxPRs limit might be implicitly handled by slicing above, or pass it if API needs it: maxPRs
       );
 
-      const analyzedIdsInResult = new Set(results.map((r) => r.prId));
       const successfulResultIds: number[] = [];
       const newlyAnalyzedIds: number[] = [];
 
       // Update store for PRs that were attempted
-      prsToAnalyzeNow.forEach((pr) => {
-        if (analyzedIdsInResult.has(pr.id)) {
-          // Completed successfully
-          const wasNewlyAnalyzed = !previouslyAnalyzedIds.has(pr.id);
-          completeAnalysis(pr.id, wasNewlyAnalyzed);
-          successfulResultIds.push(pr.id);
-          if (wasNewlyAnalyzed) {
-            newlyAnalyzedIds.push(pr.id);
-          }
-        } else {
-          // Failed
-          failAnalysis(pr.id);
-          console.warn(`Analysis failed or missing result for PR ID: ${pr.id}`);
+      results.forEach((result) => {
+        successfulResultIds.push(result.prId);
+        if (!previouslyAnalyzedIds.has(result.prId)) {
+          newlyAnalyzedIds.push(result.prId);
         }
       });
 
@@ -295,6 +340,8 @@ export function CodeQualityInsights({
         .slice(0, maxPRs)
         .map((pr) => pr.id);
       attemptedPRIds.forEach((id) => failAnalysis(id));
+      // Note: failAnalysis might have already been called inside analyzeMultiplePRs for specific PRs,
+      // but this ensures any PRs attempted by handleAnalyze but missed in results are marked as failed.
       // Optionally show user-facing error message
       alert(`An error occurred during analysis: ${error.message || error}`);
     } finally {

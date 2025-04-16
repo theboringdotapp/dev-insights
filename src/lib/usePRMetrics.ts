@@ -175,6 +175,14 @@ export function usePRMetrics() {
     ): Promise<PRAnalysisResult | null> => {
       if (!isReady || !service || !pr.number) return null;
 
+      // Get Zustand actions inside the callback if not passed as args
+      const { startAnalysis, completeAnalysis, failAnalysis } =
+        useAnalysisStore.getState();
+      const previouslyAnalyzed = !!useAnalysisStore
+        .getState()
+        .allAnalyzedPRIds.has(pr.id);
+
+      startAnalysis(pr.id); // Mark as analyzing *before* doing work
       try {
         // First, check if we have cached results
         const cachedResult = await cacheService.getPRAnalysis(pr.id);
@@ -187,6 +195,11 @@ export function usePRMetrics() {
             [pr.id]: cachedResult,
           }));
 
+          // Update the hook's internal memory cache as well
+          setPRAnalysisCache((prev) => ({ ...prev, [pr.id]: cachedResult }));
+
+          // *** IMPORTANT FIX: Mark as complete even if from cache ***
+          completeAnalysis(pr.id, !previouslyAnalyzed);
           return cachedResult;
         }
 
@@ -227,9 +240,11 @@ export function usePRMetrics() {
         // Store in persistent cache
         await cacheService.cachePRAnalysis(result);
 
+        completeAnalysis(pr.id, !previouslyAnalyzed); // Mark as complete
         return result;
       } catch (error) {
         console.error("Error analyzing PR code:", error);
+        failAnalysis(pr.id); // Mark as failed
         return null;
       }
     },
@@ -307,31 +322,20 @@ export function usePRMetrics() {
       pr: PullRequestItem,
       config: AIAnalysisConfig
     ): Promise<PRAnalysisResult | null> => {
+      // This function now simply delegates to analyzePRCode,
+      // which handles store updates and caching.
       try {
         // Analyze the PR
         const result = await analyzePRCode(pr, config);
 
-        if (result) {
-          // Update the aggregated analysis by including this PR
-          const currentResults = Object.values(prAnalysisCache);
-          const updatedResults = [...currentResults, result];
-
-          if (updatedResults.length > 0) {
-            // NOTE: Aggregation and setting summary should now happen in the component
-            // that calls this function, using the returned result.
-          }
-
-          completeAnalysis(pr.id, true);
-          return result;
-        }
-
-        return null;
+        return result;
       } catch (error) {
+        // Error is logged within analyzePRCode, failAnalysis is called there too.
         console.error("Error analyzing additional PR:", error);
         return null;
       }
     },
-    [analyzePRCode, prAnalysisCache, startAnalysis, completeAnalysis]
+    [analyzePRCode] // Depends only on analyzePRCode now
   );
 
   // Create a function to get PR analysis that checks both memory and persistent cache

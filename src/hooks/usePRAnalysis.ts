@@ -12,11 +12,8 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
   const {
     analyzingPRIds,
     allAnalyzedPRIds,
-    startAnalysis,
-    completeAnalysis,
-    failAnalysis,
     addAnalyzedPRIds,
-    setSelectedPRIds,
+    toggleSelectedPR,
   } = useAnalysisStore();
 
   // Check for cached PR analyses when component mounts or PRs change
@@ -80,23 +77,25 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       const wasPreviouslyAnalyzed = allAnalyzedPRIds.has(pr.id);
 
       try {
-        startAnalysis(pr.id);
-
+        // Call the analysis function from usePRMetrics
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
-          completeAnalysis(pr.id, !wasPreviouslyAnalyzed);
           if (!wasPreviouslyAnalyzed) {
             addAnalyzedPRIds([pr.id]);
           }
-          setSelectedPRIds([pr.id]);
+          // Add to selection (toggle ensures it's added if not present)
+          toggleSelectedPR(pr.id);
         } else {
-          failAnalysis(pr.id);
-          alert(`Analysis failed for PR #${pr.number}.`);
+          // Only show alert if it wasn't a silent failure/skip
+          // analyzeAdditionalPR (and analyzePRCode) logs errors internally
+          if (!result) {
+            alert(`Analysis failed for PR #${pr.number}.`);
+          }
         }
       } catch (error) {
         console.error(`Error analyzing PR #${pr.number}:`, error);
-        failAnalysis(pr.id);
+        // failAnalysis should be called within analyzePRCode/analyzeAdditionalPR
         alert(`An error occurred while analyzing PR #${pr.number}.`);
       }
     },
@@ -104,12 +103,9 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       analyzingPRIds,
       hasApiKeys,
       allAnalyzedPRIds,
-      startAnalysis,
       analyzeAdditionalPR,
-      completeAnalysis,
       addAnalyzedPRIds,
-      failAnalysis,
-      setSelectedPRIds,
+      toggleSelectedPR,
     ]
   );
 
@@ -138,26 +134,28 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       try {
         await cacheService.deletePRAnalysis(pr.id);
 
-        startAnalysis(pr.id);
-
         const config: AIAnalysisConfig = {
           apiKey: currentApiKey,
           provider: currentApiProvider,
         };
 
+        // Call the analysis function from usePRMetrics
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
-          completeAnalysis(pr.id, false);
+          // Update store: Analysis completed (it was already analyzed, so newlyAnalyzed=false)
           addAnalyzedPRIds([pr.id]);
-          setSelectedPRIds([pr.id]);
+          // Add to selection (toggle ensures it's added if not present)
+          toggleSelectedPR(pr.id);
         } else {
-          failAnalysis(pr.id);
-          alert(`Re-analysis failed for PR #${pr.number}.`);
+          // Only show alert if it wasn't a silent failure/skip
+          if (!result) {
+            alert(`Re-analysis failed for PR #${pr.number}.`);
+          }
         }
       } catch (error) {
         console.error("Error re-analyzing PR:", error);
-        failAnalysis(pr.id);
+        // failAnalysis should be called within analyzePRCode/analyzeAdditionalPR
         alert(`An error occurred while re-analyzing PR #${pr.number}.`);
       }
     },
@@ -165,12 +163,9 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       analyzingPRIds,
       hasApiKeys,
       allAnalyzedPRIds,
-      startAnalysis,
       analyzeAdditionalPR,
-      completeAnalysis,
       addAnalyzedPRIds,
-      failAnalysis,
-      setSelectedPRIds,
+      toggleSelectedPR,
     ]
   );
 
