@@ -665,7 +665,7 @@ export function CodeQualityInsights({
           allPRs={allPRs}
           pullRequests={pullRequests}
           showOnlyImportantPRs={showOnlyImportantPRs}
-          cachedCount={cachedCount}
+          analyzedPRCount={allAnalyzedPRIds.length}
           isAnalyzing={isLoading}
           handleAnalyze={handleAnalyze}
           setApiKey={setApiKey}
