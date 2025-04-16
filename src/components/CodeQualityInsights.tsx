@@ -124,51 +124,80 @@ export function CodeQualityInsights({
   // Improved cache check and auto-show logic - combined into one effect
   // with better loading state management
   useEffect(() => {
-    // Skip if we have no PRs to analyze, already showing analysis, or if we're already analyzing
+    // Skip if we have no PRs, already showing analysis, already analyzing, or no API key
+    // Also skip if auto-show has already completed for this session
     if (
       prsToAnalyze.length === 0 ||
       analysisSummary ||
-      isLoading ||
+      isAnalyzing || // Use isAnalyzing directly here, isLoading depends on isLocalLoading
+      !hasApiKey || // Don't check cache without a key
       autoShowCompletedRef.current
     ) {
       return;
     }
 
     const fetchCachedAnalyses = async () => {
-      // Use ref to track loading state without triggering rerenders
-      if (loadingStateRef.current) return;
+      // Avoid race conditions if already loading locally or globally
+      if (loadingStateRef.current || isAnalyzing) return;
 
+      let startedLoading = false;
       try {
-        // First check if there are cached PRs without updating component state or showing loading
-        const initialCheck = await checkCachedAnalyses(maxPRs, hasApiKey, true);
+        // Set loading state immediately before the async check if we have an API key
+        // This prevents the "No PRs Analyzed" state from flashing
+        loadingStateRef.current = true;
+        setIsLocalLoading(true);
+        startedLoading = true;
 
-        // Only proceed with loading and showing analysis if we actually have cached PRs
-        if (initialCheck && initialCheck.allIds.length > 0 && hasApiKey) {
-          // Now set loading state since we know we have PRs to show
-          loadingStateRef.current = true;
-          setIsLocalLoading(true);
+        // Check if there are cached PRs without updating component state yet
+        const initialCheck = await checkCachedAnalyses(maxPRs, true, true); // Pass hasApiKey=true
 
-          // Get the PR objects for all cached PRs
-          const analyzedPRs = prsToAnalyze.filter((pr) =>
-            initialCheck.allIds.includes(pr.id)
-          );
+        // If no cached PRs found, reset loading state and exit
+        if (!initialCheck || initialCheck.allIds.length === 0) {
+          loadingStateRef.current = false;
+          setIsLocalLoading(false);
+          startedLoading = false; // Reset flag
+          return;
+        }
 
-          if (analyzedPRs.length > 0) {
-            // Now update component state with the cached PRs we found
-            await checkCachedAnalyses(maxPRs, hasApiKey, false);
+        // We have cached PRs, proceed to load and show them
 
-            // Auto-show analysis for cached PRs
-            await autoShowAnalysis(analyzedPRs, createConfig());
-          }
+        // Get the PR objects for all cached PRs
+        const analyzedPRs = prsToAnalyze.filter((pr) =>
+          initialCheck.allIds.includes(pr.id)
+        );
+
+        if (analyzedPRs.length > 0) {
+          // Update component state with the cached PRs we found
+          // This call might be redundant if initialCheck already did it, depends on usePRCache implementation
+          await checkCachedAnalyses(maxPRs, true, false); // Pass hasApiKey=true
+
+          // Auto-show analysis for cached PRs
+          await autoShowAnalysis(analyzedPRs, createConfig());
+          autoShowCompletedRef.current = true; // Mark auto-show as completed for this session
+        } else {
+          // No PR objects found matching the IDs? Reset loading.
+          loadingStateRef.current = false;
+          setIsLocalLoading(false);
+          startedLoading = false; // Reset flag
         }
       } catch (error) {
         console.error("Error auto-showing analysis:", error);
-      } finally {
-        // Delayed loading state reset to prevent flicker
-        setTimeout(() => {
+        // Ensure loading state is reset on error only if we started it
+        if (startedLoading) {
           loadingStateRef.current = false;
           setIsLocalLoading(false);
-        }, 100);
+        }
+      } finally {
+        // Reset loading state after a delay, only if we started it and it's still active
+        if (startedLoading && loadingStateRef.current) {
+          setTimeout(() => {
+            // Check ref again in case another process started loading in the meantime
+            if (loadingStateRef.current && !isAnalyzing) {
+              loadingStateRef.current = false;
+              setIsLocalLoading(false);
+            }
+          }, 150);
+        }
       }
     };
 
@@ -176,14 +205,15 @@ export function CodeQualityInsights({
   }, [
     prsToAnalyze,
     maxPRs,
-    hasApiKey,
-    apiKey,
-    apiProvider,
-    analysisSummary,
-    isLoading,
+    hasApiKey, // Detects when key becomes available
+    // apiKey, // Not needed directly, createConfig uses it
+    // apiProvider, // Not needed directly
+    analysisSummary, // Detects when analysis is shown/cleared
+    isAnalyzing, // Detects when global analysis starts/stops
     checkCachedAnalyses,
     autoShowAnalysis,
     createConfig,
+    autoShowCompletedRef, // Include ref state wrapper
   ]);
 
   // Update analysis display when view mode changes
@@ -609,7 +639,7 @@ export function CodeQualityInsights({
       </div>
 
       {/* Analysis Controls */}
-      {/*   <AnalysisControls
+      <AnalysisControls
         maxPRs={maxPRs}
         setMaxPRs={setMaxPRs}
         cachedCount={cachedCount}
@@ -620,7 +650,7 @@ export function CodeQualityInsights({
         hasApiKey={hasApiKey}
         apiKey={apiKey}
         analysisSummary={analysisSummary}
-      /> */}
+      />
 
       {/* PR Selection Panel */}
       {!isLoading &&
