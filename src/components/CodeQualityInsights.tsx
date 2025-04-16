@@ -638,20 +638,6 @@ export function CodeQualityInsights({
         )}
       </div>
 
-      {/* Analysis Controls */}
-      <AnalysisControls
-        maxPRs={maxPRs}
-        setMaxPRs={setMaxPRs}
-        cachedCount={cachedCount}
-        viewAllAnalyzedPRs={viewAllAnalyzedPRs}
-        allAnalyzedPRIds={allAnalyzedPRIds}
-        handleToggleViewAllAnalyzed={handleToggleViewAllAnalyzed}
-        isAnalyzing={isLoading}
-        hasApiKey={hasApiKey}
-        apiKey={apiKey}
-        analysisSummary={analysisSummary}
-      />
-
       {/* PR Selection Panel */}
       {!isLoading &&
         analysisSummary &&
