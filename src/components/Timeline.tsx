@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { PullRequestItem } from "../lib/types";
+import { PullRequestItem, PullRequestMetrics, CommitItem } from "../lib/types";
+import { PRMetrics, Commit } from "../lib/types/metrics";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { Timeframe } from "./TimeframeSelector";
 import { useRepositoryColors } from "../hooks/useRepositoryColors";
@@ -62,6 +63,39 @@ export function Timeline({
     }
   }, [pullRequests, metricsCache, loadPRMetrics]);
 
+  // Wrapper function to ensure getPRMetrics output matches MonthGroup prop type
+  const getMetricsForTimeline = (pr: PullRequestItem): PRMetrics => {
+    const metricsData: PullRequestMetrics | undefined = getPRMetrics(pr);
+
+    // Map CommitItem[] to Commit[] required by PRMetrics from metrics.ts
+    const mappedCommits: Commit[] | undefined = metricsData?.commits?.map(
+      (commitItem: CommitItem) => ({
+        sha: commitItem.sha,
+        message: commitItem.commit?.message ?? "(No commit message)",
+        author: "(Unknown author)", // Placeholder - CommitItem doesn't have author
+        date: "(Unknown date)", // Placeholder - CommitItem doesn't have date
+        url: commitItem.html_url ?? commitItem.url, // Prefer html_url if available
+      })
+    );
+
+    // Provide default values if metrics aren't loaded yet
+    return {
+      prId: pr.id,
+      isLoaded: metricsData?.isLoaded ?? false,
+      isLoading: metricsData?.isLoading ?? false,
+      changeRequestCount: metricsData?.changeRequestCount ?? 0,
+      durationInDays: metricsData?.durationInDays ?? 0,
+      commentCount: metricsData?.commentCount ?? 0,
+      commits: mappedCommits,
+      // Add other optional fields from PRMetrics if needed, setting defaults
+      additions: undefined, // Example: Set default if not present in PullRequestMetrics
+      deletions: undefined,
+      changedFiles: undefined,
+      commitCount: metricsData?.commits?.length, // Calculate from commits array
+      error: metricsData?.error,
+    };
+  };
+
   return (
     <div className="mt-8">
       {/* Header */}
@@ -86,7 +120,7 @@ export function Timeline({
             prCount={groupedPRs[month].length}
             getRepoName={getRepoName}
             repoColors={repoColors}
-            getPRMetrics={getPRMetrics}
+            getPRMetrics={getMetricsForTimeline}
             loadPRMetrics={loadPRMetrics}
             isPRAnalyzed={isPRAnalyzed}
             isAnalyzingPR={isAnalyzingPR}
