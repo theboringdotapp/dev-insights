@@ -58,11 +58,24 @@ export interface DeveloperPerformanceData {
   error: string | null;
 }
 
+// New interface for individual feedback items with code context
+export interface CodeContext {
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  codeSnippet: string;
+}
+
+export interface FeedbackItem {
+  text: string;
+  codeContext?: CodeContext;
+}
+
 // AI Code Analysis types
 export interface AICodeFeedback {
-  strengths: string[];
-  areas_for_improvement: string[];
-  growth_opportunities: string[];
+  strengths: FeedbackItem[];
+  areas_for_improvement: FeedbackItem[];
+  growth_opportunities: FeedbackItem[];
   career_impact_summary: string;
   overall_quality?: number;
 }
@@ -76,12 +89,18 @@ export interface PRAnalysisResult {
   error?: string;
 }
 
+// Detail for a specific instance of feedback within a PR
+export interface FeedbackInstance {
+  prId: number;
+  prUrl: string;
+  prTitle: string;
+  codeContext?: CodeContext; // Code context might not exist for general feedback
+}
+
 export interface FeedbackFrequency {
   text: string;
   count: number;
-  prIds: number[];
-  prUrls: string[];
-  prTitles: string[];
+  instances: FeedbackInstance[]; // Changed from prIds, prUrls, prTitles
 }
 
 export interface AggregatedFeedback {

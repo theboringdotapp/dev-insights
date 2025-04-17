@@ -1,19 +1,17 @@
-import { AICodeFeedback, FeedbackFrequency, AggregatedFeedback } from "./types";
+import {
+  AICodeFeedback,
+  FeedbackFrequency,
+  AggregatedFeedback,
+  FeedbackItem,
+  PRAnalysisResult,
+  FeedbackInstance,
+} from "./types";
 
 // Types for AI analysis
 export interface AIAnalysisConfig {
   apiKey: string;
   provider: "openai" | "anthropic";
   model?: string;
-}
-
-export interface PRAnalysisResult {
-  prId: number;
-  prNumber: number;
-  prTitle: string;
-  prUrl: string;
-  feedback: AICodeFeedback;
-  error?: string;
 }
 
 /**
@@ -110,19 +108,55 @@ ${prContent}
 
 IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
-  "strengths": ["Strength 1", "Strength 2", ...],
-  "areas_for_improvement": ["Area 1", "Area 2", ...],
-  "growth_opportunities": ["Opportunity 1", "Opportunity 2", ...],
+  "strengths": [
+    {
+      "text": "Clear variable naming in function X.",
+      "codeContext": {
+        "filePath": "src/utils/helpers.ts",
+        "startLine": 25,
+        "endLine": 28,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Good use of async/await." }
+  ],
+  "areas_for_improvement": [
+    {
+      "text": "Consider adding error handling for API call.",
+      "codeContext": {
+        "filePath": "src/services/api.ts",
+        "startLine": 102,
+        "endLine": 105,
+        "codeSnippet": "..."
+      }
+    }
+  ],
+  "growth_opportunities": [
+    {
+      "text": "Explore using dependency injection for better testability.",
+      "codeContext": {
+        "filePath": "src/controllers/mainController.ts",
+        "startLine": 15,
+        "endLine": 20,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Learn about SOLID principles." }
+  ],
   "career_impact_summary": "Summary of how addressing these points will help career progression",
   "overall_quality": 7
 }
 
 Follow these important guidelines:
-1. Each item should begin with a capital letter
-2. Focus on substantial issues that impact the developer's growth
-3. Be specific in your feedback - identify exactly what the developer is doing well or could improve
-4. Connect each point to career development and professional growth
-5. Provide actionable insights that will help the developer improve
+1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
+    *   Provide the feedback in the "text" field.
+    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
+    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
+    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
+2.  Focus on substantial issues/points that impact the developer's growth.
+3.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
+4.  Connect each point to career development and professional growth.
+5.  Provide actionable insights.
 
 Do not include any explanations or text outside of this JSON structure.
 `;
@@ -162,15 +196,14 @@ Do not include any explanations or text outside of this JSON structure.
       throw new Error("No content in OpenAI response");
     }
 
-    // Handle possible content issues with more robust parsing
+    // Adjust parsing logic to handle the new structure
+    // The structure itself is validated by the types, but ensure fallback handles it
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(content);
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", parseError);
-
-      // Try to extract JSON if it's embedded in other content
-      const jsonMatch = content.match(/({[\s\S]*})/);
+      const jsonMatch = content.match(/({[\\s\\S]*})/);
       if (jsonMatch) {
         try {
           parsedResponse = JSON.parse(jsonMatch[1]);
@@ -182,15 +215,11 @@ Do not include any explanations or text outside of this JSON structure.
           );
         }
       } else {
-        // Provide fallback values if we can't parse the response
+        // Fallback for parsing errors, providing empty arrays for the new structure
         return {
-          strengths: ["The code shows potential for improvement"],
-          areas_for_improvement: [
-            "Unable to analyze PR details (parsing error)",
-          ],
-          growth_opportunities: [
-            "Try another analysis or use a different model",
-          ],
+          strengths: [],
+          areas_for_improvement: [],
+          growth_opportunities: [],
           career_impact_summary:
             "The analysis couldn't be completed due to parsing issues with the AI response.",
           overall_quality: 5,
@@ -198,6 +227,7 @@ Do not include any explanations or text outside of this JSON structure.
       }
     }
 
+    // Validate and structure the final response, providing defaults for the new structure
     return {
       strengths: parsedResponse.strengths || [],
       areas_for_improvement: parsedResponse.areas_for_improvement || [],
@@ -209,13 +239,11 @@ Do not include any explanations or text outside of this JSON structure.
   } catch (error) {
     console.error("Error in OpenAI analysis:", error);
 
-    // Return a fallback response instead of throwing
+    // Fallback for API errors, providing empty arrays for the new structure
     return {
-      strengths: ["The code appears to have some structure"],
-      areas_for_improvement: ["Analysis failed due to an API error"],
-      growth_opportunities: [
-        "Try the analysis again with a different configuration",
-      ],
+      strengths: [],
+      areas_for_improvement: [],
+      growth_opportunities: [],
       career_impact_summary:
         "The code analysis could not be completed due to technical issues.",
       overall_quality: 5,
@@ -242,21 +270,57 @@ ${prContent}
 
 IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
 {
-  "strengths": ["Strength 1", "Strength 2", ...],
-  "areas_for_improvement": ["Area 1", "Area 2", ...],
-  "growth_opportunities": ["Opportunity 1", "Opportunity 2", ...],
+  "strengths": [
+    {
+      "text": "Clear variable naming in function X.",
+      "codeContext": {
+        "filePath": "src/utils/helpers.ts",
+        "startLine": 25,
+        "endLine": 28,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Good use of async/await." }
+  ],
+  "areas_for_improvement": [
+    {
+      "text": "Consider adding error handling for API call.",
+      "codeContext": {
+        "filePath": "src/services/api.ts",
+        "startLine": 102,
+        "endLine": 105,
+        "codeSnippet": "..."
+      }
+    }
+  ],
+  "growth_opportunities": [
+    {
+      "text": "Explore using dependency injection for better testability.",
+      "codeContext": {
+        "filePath": "src/controllers/mainController.ts",
+        "startLine": 15,
+        "endLine": 20,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Learn about SOLID principles." }
+  ],
   "career_impact_summary": "Summary of how addressing these points will help career progression",
   "overall_quality": 7
 }
 
 Follow these important guidelines:
-1. Each item should begin with a capital letter
-2. Focus on substantial issues that impact the developer's growth
-3. Be specific in your feedback - identify exactly what the developer is doing well or could improve
-4. Connect each point to career development and professional growth
-5. Provide actionable insights that will help the developer improve
+1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
+    *   Provide the feedback in the "text" field.
+    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
+    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
+    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
+2.  Focus on substantial issues/points that impact the developer's growth.
+3.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
+4.  Connect each point to career development and professional growth.
+5.  Provide actionable insights.
 
-Do not include any explanations or text outside of this JSON structure.
+Do not include any explanations or text outside of this JSON structure. Respond ONLY with the JSON object.
 `;
 
   try {
@@ -299,10 +363,11 @@ Do not include any explanations or text outside of this JSON structure.
         "No valid JSON found in Claude response, raw content:",
         content
       );
+      // Fallback for parsing errors, providing empty arrays for the new structure
       return {
-        strengths: ["The code shows potential for improvement"],
-        areas_for_improvement: ["Unable to analyze PR details (parsing error)"],
-        growth_opportunities: ["Try another analysis or use a different model"],
+        strengths: [],
+        areas_for_improvement: [],
+        growth_opportunities: [],
         career_impact_summary:
           "The analysis couldn't be completed due to issues with the AI response format.",
         overall_quality: 5,
@@ -313,15 +378,16 @@ Do not include any explanations or text outside of this JSON structure.
 
     try {
       const parsedResponse = JSON.parse(jsonString);
+      // Validate and structure the final response, providing defaults for the new structure
       return {
         strengths: parsedResponse.strengths || [],
         areas_for_improvement:
           parsedResponse.areas_for_improvement ||
-          parsedResponse.weaknesses ||
+          parsedResponse.weaknesses || // Keep fallback for older formats if needed
           [],
         growth_opportunities:
           parsedResponse.growth_opportunities ||
-          parsedResponse.suggestions ||
+          parsedResponse.suggestions || // Keep fallback for older formats if needed
           [],
         career_impact_summary:
           parsedResponse.career_impact_summary ||
@@ -332,14 +398,11 @@ Do not include any explanations or text outside of this JSON structure.
       };
     } catch (error) {
       console.error("Failed to parse Claude response:", error);
+      // Fallback for parsing errors, providing empty arrays for the new structure
       return {
-        strengths: ["The code appears to have some structure"],
-        areas_for_improvement: [
-          "Analysis failed due to a response parsing error",
-        ],
-        growth_opportunities: [
-          "Try the analysis again with a different configuration",
-        ],
+        strengths: [],
+        areas_for_improvement: [],
+        growth_opportunities: [],
         career_impact_summary:
           "The code analysis could not be completed due to technical issues with the AI response format.",
         overall_quality: 5,
@@ -347,12 +410,11 @@ Do not include any explanations or text outside of this JSON structure.
     }
   } catch (error) {
     console.error("Error in Claude analysis:", error);
+    // Fallback for API errors, providing empty arrays for the new structure
     return {
-      strengths: ["The code appears to have some structure"],
-      areas_for_improvement: ["Analysis failed due to an API error"],
-      growth_opportunities: [
-        "Try the analysis again with a different configuration",
-      ],
+      strengths: [],
+      areas_for_improvement: [],
+      growth_opportunities: [],
       career_impact_summary:
         "The code analysis could not be completed due to technical issues with the Claude API.",
       overall_quality: 5,
@@ -376,51 +438,50 @@ export function aggregateFeedback(
     };
   }
 
-  // Helper to count frequency of strings in an array, now tracking source PRs
+  // Helper to count frequency and collect instances with context
   const countFrequency = (
-    items: Array<{ text: string; prId: number; prUrl: string; prTitle: string }>
+    items: Array<{
+      item: FeedbackItem;
+      prId: number;
+      prUrl: string;
+      prTitle: string;
+    }>
   ): FeedbackFrequency[] => {
     const groups: Record<
       string,
       {
         count: number;
-        prIds: number[];
-        prUrls: string[];
-        prTitles: string[];
+        instances: FeedbackInstance[]; // Use the new structure
       }
     > = {};
 
-    items.forEach((item) => {
-      // Normalize the item text by lowercasing and trimming
+    items.forEach(({ item, prId, prUrl, prTitle }) => {
       const normalized = item.text.toLowerCase().trim();
 
       if (!groups[normalized]) {
         groups[normalized] = {
           count: 0,
-          prIds: [],
-          prUrls: [],
-          prTitles: [],
+          instances: [], // Initialize instances array
         };
       }
 
       groups[normalized].count++;
 
-      // Only add the PR if it's not already in the list
-      if (!groups[normalized].prIds.includes(item.prId)) {
-        groups[normalized].prIds.push(item.prId);
-        groups[normalized].prUrls.push(item.prUrl);
-        groups[normalized].prTitles.push(item.prTitle);
-      }
+      // Add a new instance for this specific occurrence
+      groups[normalized].instances.push({
+        prId,
+        prUrl,
+        prTitle,
+        codeContext: item.codeContext, // Include the code context
+      });
     });
 
     // Convert to array and sort by frequency
     return Object.entries(groups)
-      .map(([text, { count, prIds, prUrls, prTitles }]) => ({
-        text,
+      .map(([text, { count, instances }]) => ({
+        text, // This is the normalized text key
         count,
-        prIds,
-        prUrls,
-        prTitles,
+        instances, // Pass the collected instances
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 8); // Limit to top 8 most common items
@@ -428,19 +489,19 @@ export function aggregateFeedback(
 
   // Collect all feedback items with their PR sources
   const allStrengths: Array<{
-    text: string;
+    item: FeedbackItem;
     prId: number;
     prUrl: string;
     prTitle: string;
   }> = [];
   const allAreasForImprovement: Array<{
-    text: string;
+    item: FeedbackItem;
     prId: number;
     prUrl: string;
     prTitle: string;
   }> = [];
   const allGrowthOpportunities: Array<{
-    text: string;
+    item: FeedbackItem;
     prId: number;
     prUrl: string;
     prTitle: string;
@@ -448,27 +509,28 @@ export function aggregateFeedback(
   let totalScore = 0;
 
   prAnalysisResults.forEach((result) => {
-    result.feedback.strengths.forEach((strength) => {
+    // Iterate through FeedbackItem[] and push the whole item
+    result.feedback.strengths.forEach((strengthItem) => {
       allStrengths.push({
-        text: strength,
+        item: strengthItem,
         prId: result.prId,
         prUrl: result.prUrl,
         prTitle: result.prTitle,
       });
     });
 
-    result.feedback.areas_for_improvement.forEach((area) => {
+    result.feedback.areas_for_improvement.forEach((areaItem) => {
       allAreasForImprovement.push({
-        text: area,
+        item: areaItem,
         prId: result.prId,
         prUrl: result.prUrl,
         prTitle: result.prTitle,
       });
     });
 
-    result.feedback.growth_opportunities.forEach((opportunity) => {
+    result.feedback.growth_opportunities.forEach((opportunityItem) => {
       allGrowthOpportunities.push({
-        text: opportunity,
+        item: opportunityItem,
         prId: result.prId,
         prUrl: result.prUrl,
         prTitle: result.prTitle,

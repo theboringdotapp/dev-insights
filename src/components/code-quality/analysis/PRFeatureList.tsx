@@ -1,16 +1,9 @@
 import React from "react";
 import PRFeatureItem from "./PRFeatureItem";
-
-interface Feature {
-  text: string;
-  count: number;
-  prIds: number[];
-  prUrls: string[];
-  prTitles: string[];
-}
+import { FeedbackFrequency } from "../../../lib/types";
 
 interface PRFeatureListProps {
-  features: Feature[];
+  features: FeedbackFrequency[];
   type: "strength" | "weakness" | "suggestion";
   // Keep these props for backward compatibility but don't use them
   cachedPRIds: number[];
