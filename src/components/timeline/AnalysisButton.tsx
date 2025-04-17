@@ -1,6 +1,29 @@
 import React from "react";
 import { PullRequestItem } from "../../lib/types";
 
+// Updated AI Icon SVG
+const AIIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    fill="none"
+    viewBox="0 0 16 16"
+    className="inline-block"
+  >
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M2.5 6V1.5H11L13.5 4v10.5H10"
+    />
+    <path
+      stroke="currentColor"
+      strokeWidth={1.5}
+      d="M10.5 1.5v3h3M1.5 15v-4.5l2-2h2V15M7.5 8v7M1.5 12.5h4"
+    />
+  </svg>
+);
+
 interface AnalysisButtonProps {
   pr: PullRequestItem;
   isAnalyzed: boolean;
@@ -18,9 +41,9 @@ export default function AnalysisButton({
 }: AnalysisButtonProps) {
   if (isAnalyzing) {
     return (
-      <div className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded flex items-center">
+      <div className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 py-0.5 px-2.5 rounded-full inline-flex items-center">
         <svg
-          className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-purple-800"
+          className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-zinc-500 dark:text-zinc-400"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -47,13 +70,13 @@ export default function AnalysisButton({
   if (isAnalyzed) {
     return (
       <div className="flex items-center">
-        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded flex items-center">
-          Analysed
+        <span className="text-xs border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 py-0.5 px-2.5 rounded-full inline-flex items-center">
+          Analyzed
         </span>
         <button
           onClick={() => onReanalyze(pr)}
           title="Re-analyze PR"
-          className="ml-1 text-purple-500 hover:text-purple-700"
+          className="ml-1.5 p-0.5 rounded text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -77,8 +100,11 @@ export default function AnalysisButton({
   return (
     <button
       onClick={() => onAnalyze(pr)}
-      className="text-xs px-2 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+      className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 py-0.5 px-2.5 rounded-full inline-flex items-center transition-colors cursor-pointer"
     >
+      <span className="mr-1.5">
+        <AIIcon />
+      </span>
       Analyze PR
     </button>
   );

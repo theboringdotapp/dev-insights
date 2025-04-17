@@ -28,10 +28,10 @@ export function CommitsList({ commits, isLoaded }: CommitsListProps) {
   };
 
   return (
-    <div className="mt-2 text-sm">
+    <div className="mt-3 text-sm">
       <button
         onClick={toggleExpanded}
-        className="flex items-center text-gray-600 hover:text-gray-900"
+        className="flex items-center text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
       >
         <svg
           className={`h-4 w-4 mr-1 transition-transform ${
@@ -52,17 +52,20 @@ export function CommitsList({ commits, isLoaded }: CommitsListProps) {
       </button>
 
       {isExpanded && (
-        <ul className="mt-2 ml-6 space-y-1 border-l-2 border-gray-200 pl-3">
+        <ul className="mt-2 ml-6 space-y-1 border-l-2 border-zinc-200 dark:border-zinc-700 pl-3">
           {commits.map((commit) => (
-            <li key={commit.sha} className="hover:bg-gray-50 p-1 -ml-1 rounded">
+            <li
+              key={commit.sha}
+              className="hover:bg-zinc-100 dark:hover:bg-zinc-800 p-1 -ml-1 rounded"
+            >
               <a
                 href={commit.html_url || commit.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-start text-gray-700 hover:text-blue-600"
+                className="flex items-start text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-zinc-100 transition-colors"
               >
                 <svg
-                  className="h-4 w-4 mt-0.5 mr-2 text-gray-500 flex-shrink-0"
+                  className="h-4 w-4 mt-0.5 mr-2 text-zinc-400 dark:text-zinc-500 flex-shrink-0"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >

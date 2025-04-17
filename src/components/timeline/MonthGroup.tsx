@@ -1,15 +1,13 @@
 import React from "react";
-import { PullRequestItem } from "../../lib/types";
-import { PRMetrics } from "../../lib/types/metrics";
+import { PullRequestItem, PullRequestMetrics } from "../../lib/types";
 import PullRequestCard from "./PullRequestCard";
 
 interface MonthGroupProps {
   month: string;
   pullRequests: PullRequestItem[];
-  prCount: number;
   getRepoName: (url: string) => string;
   repoColors: Record<string, string>;
-  getPRMetrics: (pr: PullRequestItem) => PRMetrics | null | undefined;
+  getPRMetrics: (pr: PullRequestItem) => PullRequestMetrics | null | undefined;
   loadPRMetrics: (pr: PullRequestItem) => void;
   isPRAnalyzed: (prId: number) => boolean;
   isAnalyzingPR: (prId: number) => boolean;
@@ -21,7 +19,6 @@ interface MonthGroupProps {
 export default function MonthGroup({
   month,
   pullRequests,
-  prCount,
   getRepoName,
   repoColors,
   getPRMetrics,
@@ -33,25 +30,20 @@ export default function MonthGroup({
   handleReanalyzePR,
 }: MonthGroupProps) {
   return (
-    <div className="mb-6">
-      {/* Month header */}
-      <div className="flex items-center mb-2">
-        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center relative z-10">
-          <span className="text-white text-sm font-bold">
-            {month.substring(0, 3)}
-          </span>
-        </div>
-        <h4 className="text-lg font-medium ml-4">{month}</h4>
-        <span className="ml-2 text-sm text-gray-500">({prCount} PRs)</span>
-      </div>
+    <div className="mb-4 relative">
+      {/* Month header - Reduce horizontal padding on mobile */}
+      <h4 className="sticky top-0 z-10 font-semibold text-zinc-600 dark:text-zinc-400 text-base text-left border-b border-zinc-200 dark:border-zinc-700 pb-2 pt-4 px-2 sm:px-4 bg-white dark:bg-gray-900 bg-opacity-90 dark:bg-opacity-90 backdrop-blur supports-[backdrop-filter]:bg-opacity-60">
+        {month}
+      </h4>
 
-      {/* PR items for this month */}
-      <div className="ml-8 pl-8 border-l border-gray-200">
+      {/* PR items - Adjust margin/padding */}
+      <div className="pt-4 pl-2 sm:pl-4">
         {pullRequests.map((pr) => {
           const repoName = getRepoName(pr.html_url);
           const colorClass =
             repoColors[repoName] || "bg-gray-100 text-gray-800";
-          const metrics = getPRMetrics(pr);
+          const metrics: PullRequestMetrics | null | undefined =
+            getPRMetrics(pr);
           const isAnalyzed = isPRAnalyzed(pr.id);
           const isCurrentlyAnalyzing = isAnalyzingPR(pr.id);
 

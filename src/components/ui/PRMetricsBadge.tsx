@@ -12,7 +12,7 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
     return (
       <button
         onClick={onClick}
-        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-0.5 px-2 rounded inline-flex items-center"
+        className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 py-0.5 px-2.5 rounded-full inline-flex items-center transition-colors"
       >
         <span>Load metrics</span>
       </button>
@@ -22,7 +22,7 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
   // If metrics are loading, show spinner
   if (metrics.isLoading) {
     return (
-      <div className="text-xs bg-gray-100 text-gray-600 py-0.5 px-2 rounded inline-flex items-center">
+      <div className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 py-0.5 px-2.5 rounded-full inline-flex items-center">
         <svg
           className="animate-spin h-3 w-3 mr-1 text-blue-500"
           fill="none"
@@ -52,7 +52,7 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
     return (
       <button
         onClick={onClick}
-        className="text-xs bg-red-100 hover:bg-red-200 text-red-600 py-0.5 px-2 rounded inline-flex items-center"
+        className="text-xs border border-red-300 dark:border-red-600 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800/60 py-0.5 px-2.5 rounded-full inline-flex items-center transition-colors"
       >
         <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
           <path
@@ -68,9 +68,10 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
 
   // Display the metrics
   return (
-    <div className="flex space-x-2">
+    // Wrap badges on mobile, space out on larger screens
+    <div className="flex flex-wrap gap-2 sm:space-x-2">
       {/* Duration badge */}
-      <div className="text-xs bg-blue-100 text-blue-800 py-0.5 px-2 rounded inline-flex items-center">
+      <div className="text-xs border border-blue-300 dark:border-blue-700 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 py-0.5 px-2.5 rounded-full inline-flex items-center">
         <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
@@ -86,12 +87,12 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
 
       {/* Change requests badge */}
       <div
-        className={`text-xs py-0.5 px-2 rounded inline-flex items-center ${
+        className={`text-xs border py-0.5 px-2.5 rounded-full inline-flex items-center ${
           metrics.changeRequestCount === 0
-            ? "bg-green-100 text-green-800"
+            ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700"
             : metrics.changeRequestCount <= 2
-            ? "bg-amber-100 text-amber-800"
-            : "bg-red-100 text-red-800"
+            ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700"
+            : "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700"
         }`}
       >
         <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -108,7 +109,7 @@ export function PRMetricsBadge({ metrics, onClick }: PRMetricsBadgeProps) {
       </div>
 
       {/* Comment count badge */}
-      <div className="text-xs bg-purple-100 text-purple-800 py-0.5 px-2 rounded inline-flex items-center">
+      <div className="text-xs border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 py-0.5 px-2.5 rounded-full inline-flex items-center">
         <svg className="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"

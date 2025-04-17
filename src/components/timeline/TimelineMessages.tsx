@@ -7,8 +7,8 @@ interface LimitMessageProps {
 
 function LimitMessage({ maxItems, timeframeLabel }: LimitMessageProps) {
   return (
-    <div className="ml-12 mt-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-md text-sm">
-      <p className="font-semibold">Pagination Limit</p>
+    <div className="ml-4 mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700/60 text-blue-700 dark:text-blue-200 rounded-md text-sm shadow-sm">
+      <p className="font-semibold mb-1">Pagination Limit</p>
       <p>
         Showing up to {maxItems} PRs from the selected timeframe (
         {timeframeLabel}). There might be more PRs available that aren't
@@ -30,7 +30,7 @@ function EmptyState({ display }: EmptyStateProps) {
   if (!display) return null;
 
   return (
-    <div className="p-4 bg-gray-50 rounded-md text-center text-gray-500">
+    <div className="mt-4 p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-md text-center text-zinc-500 dark:text-zinc-400 text-sm">
       No pull requests found in the selected timeframe.
     </div>
   );
