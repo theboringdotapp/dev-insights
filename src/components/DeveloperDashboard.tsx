@@ -136,7 +136,7 @@ export default function DeveloperDashboard() {
   const timeframeLabel = getTimeframeLabel(timeframe);
 
   return (
-    <div className="bg-card rounded-lg shadow p-6">
+    <div className="bg-card rounded-lg shadow p-4 sm:p-6">
       <SearchForm
         username={username}
         initialTimeframe={timeframe}

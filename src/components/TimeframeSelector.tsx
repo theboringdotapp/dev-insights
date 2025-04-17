@@ -20,10 +20,7 @@ export function TimeframeSelector({
   ];
 
   return (
-    <div className="flex flex-col space-y-1.5 md:w-2/3">
-      <label className="text-sm font-medium text-foreground text-left">
-        Timeframe
-      </label>
+    <div>
       <div className="flex rounded-md overflow-hidden border border-input bg-background">
         {timeframes.map((timeframe) => (
           <button
