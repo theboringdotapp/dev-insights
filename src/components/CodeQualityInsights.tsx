@@ -3,22 +3,21 @@ import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
-  aggregateFeedback,
-  AIAnalysisConfig, // Import AIAnalysisConfig
+  calculateCommonThemes,
+  generateAICareerSummary,
+  AIAnalysisConfig,
 } from "../lib/aiAnalysisService";
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import { usePRCache } from "./code-quality/hooks/usePRCache";
-// Removed usePRSelection as its state is now in Zustand
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 import AnalysisStatus from "./code-quality/AnalysisStatus";
 import AnalysisResults from "./code-quality/AnalysisResults";
 import InitialState from "./code-quality/InitialState";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
-import EmptySelectionState from "./code-quality/components/EmptySelectionState";
 import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
-import { MODEL_OPTIONS } from "../lib/models"; // Import MODEL_OPTIONS
-import cacheService from "../lib/cacheService"; // Import cacheService
+import { MODEL_OPTIONS } from "../lib/models";
+import cacheService from "../lib/cacheService";
 
 // Local storage keys
 const OPENAI_KEY_STORAGE = "github-review-openai-key";
@@ -28,8 +27,7 @@ const GEMINI_KEY_STORAGE = "github-review-gemini-key";
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
   allPRs?: PullRequestItem[];
-  showOnlyImportantPRs?: boolean;
-  onToggleFilter?: (showOnlyImportant: boolean) => void;
+  // showOnlyImportantPRs?: boolean; // Removed prop
 }
 
 /**
@@ -39,8 +37,6 @@ interface CodeQualityInsightsProps {
 export function CodeQualityInsights({
   pullRequests,
   allPRs,
-  showOnlyImportantPRs = true,
-  onToggleFilter,
 }: CodeQualityInsightsProps) {
   // Core metrics hook (re-added destructuring)
   const { analyzeMultiplePRs, getAnalysisForPR, getAnalysisFromMemoryCache } =
@@ -49,36 +45,40 @@ export function CodeQualityInsights({
   // Get ALL relevant state and actions from Zustand store
   const {
     analyzingPRIds,
-    analysisSummary,
     allAnalyzedPRIds,
     selectedPRIds,
     apiProvider, // Get provider from store
     selectedModel, // Get model from store
-    failAnalysis,
-    setAnalysisSummary,
+    setCalculatedThemes, // Use new action
     addAnalyzedPRIds,
-    setSelectedPRIds,
     toggleSelectedPR,
-    selectAllPRs,
-    setApiProvider, // Get provider action from store
-    setSelectedModel, // Get model action from store
+    setSelectedModel, // Restore action
+    setCareerDevelopmentSummary, // Use new action
+    isGeneratingSummary, // Destructure new state
+    setIsGeneratingSummary, // Destructure new action
+    commonStrengths, // Get themes from store
+    commonWeaknesses,
+    commonSuggestions,
+    averageScore,
+    careerDevelopmentSummary,
+    setSelectedPRIds,
   } = useAnalysisStore();
 
   // API configuration hook (now only manages key and saveToken preference)
   const {
     apiKey,
-    setApiKey,
-    saveToken,
-    setSaveToken,
-    handleResetApiKey,
-    // handleProviderChange, // We use the store action directly now
     saveApiKey,
+    handleProviderChange, // Need this from API hook
+    setApiKey, // Need this
+    setSaveToken, // Need this
+    saveToken, // Need this
+    handleResetApiKey, // Need this
   } = useAPIConfiguration();
 
   console.log(`[CodeQualityInsights] Rendering. apiKey state: '${apiKey}'`);
 
   // Local component state (remains local)
-  const [maxPRs, setMaxPRs] = useState(5);
+  const [maxPRs /*, setMaxPRs*/] = useState(5); // Removed unused setter
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
 
@@ -92,15 +92,19 @@ export function CodeQualityInsights({
   // Determine which PRs to potentially analyze based on filters
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
 
-  // PR Cache Hook (destructure only needed values)
-  const { cachedCount, clearAnalysisCache, cachedPRIds, newlyAnalyzedPRIds } =
-    usePRCache(
-      prsToAnalyze,
-      getAnalysisForPR,
-      getAnalysisFromMemoryCache,
-      analyzeMultiplePRs,
-      isLoading
-    );
+  // PR Cache Hook (destructure clearAnalysisCache)
+  const {
+    cachedCount,
+    clearAnalysisCache, // Destructure clearAnalysisCache
+    cachedPRIds,
+    newlyAnalyzedPRIds,
+  } = usePRCache(
+    prsToAnalyze,
+    getAnalysisForPR,
+    getAnalysisFromMemoryCache,
+    analyzeMultiplePRs,
+    isLoading
+  );
 
   // Ref to track mounted state and prevent initial effect run
   const isMountedRef = useRef(false);
@@ -130,82 +134,90 @@ export function CodeQualityInsights({
 
   // Removed wrapped handleProviderChange - use store action directly
 
-  // Function to refresh the analysis summary based on selection
-  const refreshAnalysisSummary = useCallback(async () => {
-    if (selectedPRIds.size === 0 || !analysisSummary) {
-      // If nothing is selected, or no initial summary, clear the summary
-      // setAnalysisSummary(null); // Or keep the old one? Let's keep it for now.
-      return;
-    }
+  // Combine loading states
+  const isOverallLoading = isLoading || isGeneratingSummary;
 
-    // Filter PRs that are both selected AND have been analyzed
-    const selectedAndAnalyzedPRs = prsToAnalyze.filter(
-      (pr) => selectedPRIds.has(pr.id) && allAnalyzedPRIds.has(pr.id)
-    );
-
-    if (selectedAndAnalyzedPRs.length === 0) {
-      // If selection results in no valid PRs, clear summary
-      setAnalysisSummary(null);
-      return;
-    }
-
+  // Function to *manually* generate ONLY the AI summary
+  const handleGenerateSummary = useCallback(async () => {
     if (!apiKey || !apiProvider || !selectedModel) {
-      console.warn("Cannot refresh summary: API config or model missing.");
+      console.warn(
+        "[handleGenerateSummary] Cannot generate summary: API config incomplete."
+      );
+      alert("Please ensure API provider, model, and key are configured.");
+      return;
+    }
+    // Check if themes are already calculated (they should be if this button is visible)
+    if (
+      commonStrengths.length === 0 &&
+      commonWeaknesses.length === 0 &&
+      commonSuggestions.length === 0 &&
+      averageScore === 0
+    ) {
+      console.warn(
+        "[handleGenerateSummary] Cannot generate summary: No theme data available."
+      );
+      alert(
+        "No analysis data found to generate summary from. Analyze some PRs first."
+      );
       return;
     }
 
+    console.log(`[handleGenerateSummary] Generating AI career summary...`);
+    setIsGeneratingSummary(true);
     try {
-      // Create the full config object directly
+      // Prepare data for the summary generator
+      const calculatedThemes = {
+        commonStrengths,
+        commonWeaknesses,
+        commonSuggestions,
+        averageScore,
+      };
       const config: AIAnalysisConfig = {
         apiKey,
         provider: apiProvider,
         model: selectedModel,
       };
 
-      // Re-run analysis/fetch for selected PRs (analyzeMultiplePRs should use cache)
-      // Let analyzeMultiplePRs process all provided PRs (it handles cache internally)
-      const results = await analyzeMultiplePRs(selectedAndAnalyzedPRs, config);
-      // Aggregate and update summary in the store
-      const summary = await aggregateFeedback(results);
-      setAnalysisSummary(summary);
+      // Call the function that ONLY generates the summary string
+      const summaryText = await generateAICareerSummary(
+        calculatedThemes,
+        config
+      );
+      console.log(
+        `[handleGenerateSummary] Summary text received:`,
+        summaryText
+      );
+
+      // Update ONLY the career summary state in the store
+      setCareerDevelopmentSummary(summaryText); // This action also sets isGeneratingSummary false
     } catch (error) {
-      console.error("Error refreshing analysis summary:", error);
-      // Optionally handle error, maybe clear summary
-      // setAnalysisSummary(null);
+      console.error("Error generating summary:", error);
+      alert(
+        `An error occurred while generating the summary: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Don't clear themes, just ensure loading is off
+      setIsGeneratingSummary(false);
+      setCareerDevelopmentSummary("(Error generating summary)"); // Set error state
     }
   }, [
-    selectedPRIds,
-    allAnalyzedPRIds,
-    prsToAnalyze,
-    analysisSummary, // Depend on summary existence
-    analyzeMultiplePRs,
     apiKey,
     apiProvider,
     selectedModel,
-    setAnalysisSummary,
-    aggregateFeedback,
+    commonStrengths, // Depend on existing theme data
+    commonWeaknesses,
+    commonSuggestions,
+    averageScore,
+    setIsGeneratingSummary,
+    setCareerDevelopmentSummary,
+    // generateAICareerSummary, // Stable function
   ]);
-
-  // Effect to refresh analysis summary when selection changes
-  useEffect(() => {
-    // Prevent running on initial mount
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      return;
-    }
-
-    // Only refresh if an analysis has already been run
-    // AND the selection is not empty (otherwise summary might be cleared unnecessarily)
-    if (analysisSummary && selectedPRIds.size > 0) {
-      console.log("Selection changed, refreshing analysis summary...");
-      refreshAnalysisSummary();
-    }
-  }, [selectedPRIds]); // Only run when selection changes
 
   // Effect to check initial API key state & config visibility
   useEffect(() => {
     // Logic to show config panel initially
-    if (!apiKey && !analysisSummary && allAnalyzedPRIds.size === 0) {
+    if (!apiKey && allAnalyzedPRIds.size === 0) {
       const anyKey =
         localStorage.getItem(OPENAI_KEY_STORAGE) ||
         localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
@@ -214,55 +226,191 @@ export function CodeQualityInsights({
         setIsConfigVisible(true);
       }
     }
-  }, [apiKey, analysisSummary, allAnalyzedPRIds]);
+  }, [apiKey, allAnalyzedPRIds]);
 
-  // Effect for checking cache on mount and populating store
+  // Effect for discovering analyzed IDs and setting initial selection on mount
   useEffect(() => {
-    // Flag to prevent running multiple times, e.g. due to HMR
+    // Run only once on initial mount
     if (isMountedRef.current) return;
     isMountedRef.current = true;
 
-    console.log("Checking persistent cache for previously analyzed PRs...");
+    console.log(
+      "[Initial ID Discovery Effect] RUNNING - Checking cache for new PRs..."
+    );
 
-    const checkInitialCache = async () => {
-      const knownAnalyzedIds = useAnalysisStore.getState().allAnalyzedPRIds;
-      const prsToCheck = prsToAnalyze.filter(
-        (pr) => !knownAnalyzedIds.has(pr.id)
+    const discoverAndSetInitialSelection = async () => {
+      let currentKnownIds = Array.from(
+        useAnalysisStore.getState().allAnalyzedPRIds
+      );
+      console.log(
+        `[Initial ID Discovery Effect] Known analyzed IDs before check: ${
+          currentKnownIds.join(", ") || "None"
+        }`
       );
 
-      if (prsToCheck.length === 0) {
-        console.log("No new PRs to check in cache.");
+      // Determine PRs to check in cache (those not already known)
+      const effectivePRsToCheck = useAllPRs && allPRs ? allPRs : pullRequests;
+      const prIdsToCheckInCache = effectivePRsToCheck
+        .map((pr) => pr.id)
+        .filter((id) => !currentKnownIds.includes(id)); // Use includes for array
+
+      let newlyFoundCachedIds: number[] = [];
+      if (prIdsToCheckInCache.length > 0) {
+        console.log(
+          `[Initial ID Discovery Effect] Checking cache for ${
+            prIdsToCheckInCache.length
+          } potential new PR IDs: ${prIdsToCheckInCache.join(", ")}`
+        );
+        try {
+          const cacheResults = await Promise.all(
+            prIdsToCheckInCache.map((id) => cacheService.getPRAnalysis(id))
+          );
+          newlyFoundCachedIds = cacheResults
+            .filter((result) => result !== null)
+            .map((result) => result!.prId);
+
+          if (newlyFoundCachedIds.length > 0) {
+            console.log(
+              `[Initial ID Discovery Effect] Found ${
+                newlyFoundCachedIds.length
+              } new analyzed PRs in cache. Adding IDs to store: ${newlyFoundCachedIds.join(
+                ", "
+              )}`
+            );
+            addAnalyzedPRIds(newlyFoundCachedIds); // Add new IDs to store
+            // Update our local list of known IDs for the next step
+            currentKnownIds = [...currentKnownIds, ...newlyFoundCachedIds];
+          } else {
+            console.log(
+              "[Initial ID Discovery Effect] No new analyzed PRs found in cache."
+            );
+          }
+        } catch (error) {
+          console.error(
+            "[Initial ID Discovery Effect] Error checking cache for new PRs:",
+            error
+          );
+        }
+      } else {
+        console.log(
+          "[Initial ID Discovery Effect] No new PRs to check in cache."
+        );
+      }
+
+      // --- Set initial selection ---
+      // Select ALL known analyzed PRs initially
+      if (currentKnownIds.length > 0) {
+        console.log(
+          `[Initial ID Discovery Effect] Setting initial selected PRs to ALL known analyzed IDs: ${currentKnownIds.join(
+            ", "
+          )}`
+        );
+        setSelectedPRIds(currentKnownIds);
+      } else {
+        console.log(
+          `[Initial ID Discovery Effect] No known analyzed PRs found, initial selection is empty.`
+        );
+        setSelectedPRIds([]); // Ensure it's empty if no PRs found
+      }
+
+      // DO NOT load themes or summary here - let the other effect handle it
+      console.log("[Initial ID Discovery Effect] COMPLETED.");
+    };
+
+    discoverAndSetInitialSelection();
+    // Dependencies: only actions needed to update IDs/selection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addAnalyzedPRIds, setSelectedPRIds, pullRequests, allPRs, useAllPRs]); // Added PR list dependencies
+
+  // *** NEW Effect: Update themes based on selected PRs ***
+  useEffect(() => {
+    const currentSelectedIds = Array.from(selectedPRIds); // Get current selection
+    console.log(
+      `[Selection Change Effect] Running. Selected IDs: ${
+        currentSelectedIds.join(", ") || "None"
+      }`
+    );
+
+    const updateThemesForSelection = async () => {
+      if (currentSelectedIds.length === 0) {
+        console.log(
+          "[Selection Change Effect] No PRs selected. Clearing themes."
+        );
+        setCalculatedThemes({
+          commonStrengths: [],
+          commonWeaknesses: [],
+          commonSuggestions: [],
+          averageScore: 0,
+        });
+        setCareerDevelopmentSummary(null);
         return;
       }
 
+      console.log(
+        `[Selection Change Effect] Fetching data for ${currentSelectedIds.length} selected PRs...`
+      );
       try {
-        const cacheResults = await Promise.all(
-          prsToCheck.map((pr) => cacheService.getPRAnalysis(pr.id))
-        );
-
-        const newlyFoundCachedIds = cacheResults
-          .map((result, index) => (result ? prsToCheck[index].id : null))
-          .filter((id): id is number => id !== null);
-
-        if (newlyFoundCachedIds.length > 0) {
-          console.log(
-            `Found ${newlyFoundCachedIds.length} previously analyzed PRs in cache. Adding to store.`
-          );
-          addAnalyzedPRIds(newlyFoundCachedIds);
-        } else {
-          console.log("No previously analyzed PRs found in cache.");
+        const results: PRAnalysisResult[] = [];
+        for (const id of currentSelectedIds) {
+          const result = await cacheService.getPRAnalysis(id);
+          if (result) {
+            results.push(result);
+          } else {
+            console.warn(
+              `[Selection Change Effect] Could not find cached data for selected PR #${id}`
+            );
+          }
         }
+
+        if (results.length > 0) {
+          console.log(
+            `[Selection Change Effect] Calculating themes for ${results.length} results...`
+          );
+          const themes = calculateCommonThemes(results);
+          console.log(
+            "[Selection Change Effect] Calculated themes:",
+            JSON.stringify(themes)
+          );
+          setCalculatedThemes(themes); // Update store
+        } else {
+          console.warn(
+            "[Selection Change Effect] No valid results found for selected PRs. Clearing themes."
+          );
+          setCalculatedThemes({
+            commonStrengths: [],
+            commonWeaknesses: [],
+            commonSuggestions: [],
+            averageScore: 0,
+          });
+        }
+
+        // Always clear summary when selection changes
+        setCareerDevelopmentSummary(null);
+        console.log(
+          "[Selection Change Effect] Summary cleared due to selection change."
+        );
       } catch (error) {
-        console.error("Error checking initial cache:", error);
+        console.error(
+          "[Selection Change Effect] Error fetching or processing selected PR data:",
+          error
+        );
+        // Clear themes on error
+        setCalculatedThemes({
+          commonStrengths: [],
+          commonWeaknesses: [],
+          commonSuggestions: [],
+          averageScore: 0,
+        });
+        setCareerDevelopmentSummary(null);
       }
     };
 
-    checkInitialCache();
-    // Run only once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prsToAnalyze /* Include prsToAnalyze as it's needed for filtering */]);
+    updateThemesForSelection();
 
-  // Function to trigger the analysis
+    // This effect should run when selectedPRIds changes
+  }, [selectedPRIds, setCalculatedThemes, setCareerDevelopmentSummary]); // Add necessary dependencies
+
+  // Function to trigger the *manual* analysis of PRs (handleAnalyze)
   const handleAnalyze = useCallback(async () => {
     if (isAnalyzingRef.current) {
       console.log("Analysis already in progress.");
@@ -276,33 +424,34 @@ export function CodeQualityInsights({
     }
 
     isAnalyzingRef.current = true;
-    saveApiKey(); // Save key if configured
+    saveApiKey();
 
-    // Add logging to check provider/model state just before analysis
     console.log(
-      `Starting analysis with Provider: ${apiProvider}, Model: ${selectedModel}`
+      `Starting manual analysis with Provider: ${apiProvider}, Model: ${selectedModel}`
     );
 
     try {
-      // Determine the list of PRs to potentially analyze
       const prsToConsider = useAllPRs && allPRs ? allPRs : pullRequests;
+      // Get current state to filter correctly
+      const currentAnalyzedIds = useAnalysisStore.getState().allAnalyzedPRIds;
+      const currentAnalyzingIds = useAnalysisStore.getState().analyzingPRIds;
 
-      // Filter out PRs already analyzed or currently being analyzed
       const prsToAnalyzeNow = prsToConsider
         .filter(
-          (pr) => !allAnalyzedPRIds.has(pr.id) && !analyzingPRIds.has(pr.id)
+          (pr) =>
+            !currentAnalyzedIds.has(pr.id) && !currentAnalyzingIds.has(pr.id)
         )
         .slice(0, maxPRs);
 
       if (prsToAnalyzeNow.length === 0) {
-        alert(
-          "All eligible PRs have already been analyzed or are being analyzed."
-        );
+        alert("All eligible PRs are already analyzed or being analyzed.");
         isAnalyzingRef.current = false;
         return;
       }
 
-      console.log(`Attempting to analyze ${prsToAnalyzeNow.length} PRs...`);
+      console.log(
+        `Attempting to manually analyze ${prsToAnalyzeNow.length} PRs...`
+      );
 
       const config: AIAnalysisConfig = {
         apiKey,
@@ -310,39 +459,50 @@ export function CodeQualityInsights({
         model: selectedModel,
       };
 
-      // Call the analysis function from usePRMetrics
       const results: PRAnalysisResult[] = await analyzeMultiplePRs(
         prsToAnalyzeNow,
         config,
         maxPRs
       );
-
+      // ... handle results, calculate themes, set state ...
       console.log(`Analysis completed for ${results.length} PRs.`);
       console.log(`Raw results from analyzeMultiplePRs:`, results); // Log raw results
 
-      // Aggregate feedback from successful results for the summary
       const successfulResults = results.filter((res) => !res.error);
       if (successfulResults.length > 0) {
-        const summary = aggregateFeedback(successfulResults);
-        console.log(`Aggregated summary:`, summary); // Log aggregated summary
-        setAnalysisSummary(summary);
-      } else {
-        // Handle case where analysis ran but all failed or returned no data
-        console.warn(
-          "Analysis completed, but no successful results to aggregate."
+        // Get IDs of successfully analyzed PRs
+        const newlyAnalyzedIds = successfulResults.map((r) => r.prId);
+        console.log(
+          `[handleAnalyze] Adding newly analyzed IDs to store: ${newlyAnalyzedIds.join(
+            ", "
+          )}`
         );
-        // Decide if summary should be cleared or kept
-        // setAnalysisSummary(null);
+        addAnalyzedPRIds(newlyAnalyzedIds); // Add IDs to store
+
+        // Calculate themes ONLY for the newly analyzed PRs
+        const newThemes = calculateCommonThemes(successfulResults);
+        console.log(
+          `[handleAnalyze] Calculated themes for new results:`,
+          newThemes
+        );
+
+        // Replace existing themes
+        setCalculatedThemes(newThemes);
+
+        setCareerDevelopmentSummary(null); // Clear summary when new analysis runs
+        console.log(
+          "[handleAnalyze] Store updated with new themes. Summary cleared."
+        );
+      } else {
+        console.warn(
+          "Manual analysis completed, but no successful results to aggregate."
+        );
+        // Decide if we should clear existing themes here or leave them
+        // setCalculatedThemes({ ... }); // Optional clear
+        setCareerDevelopmentSummary(null);
       }
     } catch (error: unknown) {
-      console.error("Error during analysis orchestration:", error);
-      // REMOVED the alert() call
-      // alert(
-      //   `An error occurred during analysis: ${
-      //     error instanceof Error ? error.message : String(error)
-      //   }`
-      // );
-      // Toast is handled within analyzePRCode now
+      console.error("Error during manual analysis orchestration:", error);
     } finally {
       isAnalyzingRef.current = false;
     }
@@ -353,13 +513,13 @@ export function CodeQualityInsights({
     useAllPRs,
     allPRs,
     pullRequests,
-    allAnalyzedPRIds,
-    analyzingPRIds,
+    // Removed allAnalyzedPRIds, analyzingPRIds from deps - use getState inside
     analyzeMultiplePRs,
-    setAnalysisSummary,
+    setCalculatedThemes,
+    setCareerDevelopmentSummary,
     saveApiKey,
     maxPRs,
-    // Add other dependencies if needed (e.g., failAnalysis if used in catch)
+    addAnalyzedPRIds,
   ]);
 
   // Toggle between filtered PRs and all PRs
@@ -369,17 +529,52 @@ export function CodeQualityInsights({
     // setSelectedPRIds([]);
   };
 
+  const handleClearCacheAndStore = useCallback(async () => {
+    await clearAnalysisCache(); // Clear indexDB cache via hook
+    // No need to call clearAnalysisData() here, as it's handled by the hook now?
+    // Let's double-check usePRCache.ts - yes, it calls clearAnalysisData.
+  }, [clearAnalysisCache]);
+
   // Log state just before rendering conditional UI
   console.log(
-    `[CodeQualityInsights Render] isLoading: ${isLoading}, hasApiKey: ${!!apiKey}, analysisSummary: ${
-      analysisSummary ? "Exists" : "Null"
-    }, allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}, selectedPRIds.size: ${
-      selectedPRIds.size
-    }, isConfigVisible: ${isConfigVisible}`
+    `[CodeQualityInsights Render] =========================================`
+  );
+  console.log(
+    `[CodeQualityInsights Render] isLoading (analyzingPRIds.size > 0): ${isLoading} (size: ${analyzingPRIds.size})`
+  );
+  console.log(
+    `[CodeQualityInsights Render] isGeneratingSummary: ${isGeneratingSummary}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] isOverallLoading: ${isOverallLoading}`
+  );
+  console.log(`[CodeQualityInsights Render] hasApiKey: ${!!apiKey}`);
+  console.log(
+    `[CodeQualityInsights Render] careerDevelopmentSummary: ${
+      careerDevelopmentSummary ? "Exists" : "Null"
+    }`
+  );
+  console.log(
+    `[CodeQualityInsights Render] allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] selectedPRIds.size: ${selectedPRIds.size}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] commonStrengths.length: ${commonStrengths.length}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] cachedCount (from usePRCache): ${cachedCount}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] isConfigVisible: ${isConfigVisible}`
+  );
+  console.log(
+    `[CodeQualityInsights Render] =========================================`
   );
 
   return (
-    <div className="bg-white p-5 rounded-lg border border-gray-100">
+    <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
       {/* Header with settings toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
@@ -394,68 +589,50 @@ export function CodeQualityInsights({
         )}
       </div>
 
-      {/* PR Selection Panel - Show if analysis exists and not loading */}
-      {!isLoading && analysisSummary && allAnalyzedPRIds.size > 0 && (
-        <PRSelectionPanel
-          // Pass only PRs that *have* been analyzed for selection
-          prsToAnalyze={prsToAnalyze}
-          allAnalyzedPRIds={allAnalyzedPRIdsArray}
-          selectedPRIds={selectedPRIdsArray}
-          loadingPRIds={Array.from(analyzingPRIds)}
-          onTogglePR={toggleSelectedPR}
-        />
-      )}
-
-      {/* Configuration Panel */}
+      {/* --- Configuration Panel (Render when visible) --- */}
       {isConfigVisible && (
         <ConfigurationPanel
           apiKey={apiKey}
-          apiProvider={apiProvider} // Pass provider from store
-          selectedModel={selectedModel} // Pass model from store
-          setSelectedModel={setSelectedModel} // Pass action from store
+          apiProvider={apiProvider}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
           maxPRs={maxPRs}
           saveToken={saveToken}
           setSaveToken={setSaveToken}
-          handleProviderChange={setApiProvider} // Pass provider action from store
+          handleProviderChange={handleProviderChange}
           useAllPRs={useAllPRs}
           handleToggleAllPRs={handleToggleAllPRs}
           allPRs={allPRs}
           pullRequests={pullRequests}
-          showOnlyImportantPRs={showOnlyImportantPRs}
-          cachedCount={allAnalyzedPRIds.size} // Use store count
-          isAnalyzing={isLoading}
+          // showOnlyImportantPRs={showOnlyImportantPRs} // Prop removed
+          cachedCount={cachedCount}
+          isAnalyzing={isOverallLoading} // Use combined loading state
           handleAnalyze={handleAnalyze}
           setApiKey={setApiKey}
           handleResetApiKey={handleResetApiKey}
-          handleClearCache={async () => {
-            const success = await clearAnalysisCache();
-            if (success) {
-              alert("Cache cleared.");
-              if (!apiKey) setIsConfigVisible(true);
-            } else {
-              alert("Failed to clear cache.");
-            }
-          }}
+          handleClearCache={handleClearCacheAndStore} // Pass combined clear function
+          allAnalyzedPRIdsSize={allAnalyzedPRIds.size}
         />
       )}
 
       {/* --- Conditional Content Rendering --- */}
 
-      {/* Loading Indicator */}
-      {isLoading && <AnalysisLoadingIndicator />}
+      {/* Loading Indicator (Top Level) */}
+      {isOverallLoading && !isConfigVisible && <AnalysisLoadingIndicator />}
 
-      {/* Initial State: No API Key, No Analysis, Config Hidden */}
-      {!isLoading &&
-        !apiKey && // Rely only on apiKey state
-        !analysisSummary &&
+      {/* Initial State (No API key, No Analysis) */}
+      {!isOverallLoading &&
+        !apiKey &&
+        !careerDevelopmentSummary &&
+        allAnalyzedPRIds.size === 0 && // Ensure no analyzed PRs exist either
         !isConfigVisible && (
           <InitialState setIsConfigVisible={setIsConfigVisible} />
         )}
 
-      {/* Status: API Key exists, No Analysis yet, Config Hidden */}
-      {!isLoading &&
-        apiKey && // Rely only on apiKey state
-        !analysisSummary &&
+      {/* Ready to Analyze State (API Key, No Analysis yet) */}
+      {!isOverallLoading &&
+        apiKey &&
+        !careerDevelopmentSummary &&
         allAnalyzedPRIds.size === 0 &&
         !isConfigVisible && (
           <NoAnalyzedPRsState
@@ -465,33 +642,43 @@ export function CodeQualityInsights({
           />
         )}
 
-      {/* Analysis Results: Analysis exists, PRs selected */}
-      {!isLoading && analysisSummary && selectedPRIds.size > 0 && (
-        <AnalysisResults
-          analysisSummary={analysisSummary}
-          // Pass relevant IDs as arrays if needed by the component
-          cachedPRIds={cachedPRIds}
-          newlyAnalyzedPRIds={newlyAnalyzedPRIds}
-          allAnalyzedPRIds={allAnalyzedPRIdsArray}
-        />
-      )}
+      {/* --- Main Results Area (Render if PRs have been analyzed) --- */}
+      {!isOverallLoading &&
+        allAnalyzedPRIds.size > 0 &&
+        !isConfigVisible && ( // Hide results when config is visible
+          <>
+            {/* PR Selection Panel (Always show if PRs analyzed) */}
+            <PRSelectionPanel
+              prsToAnalyze={prsToAnalyze}
+              allAnalyzedPRIds={allAnalyzedPRIdsArray}
+              selectedPRIds={selectedPRIdsArray}
+              loadingPRIds={Array.from(analyzingPRIds)}
+              onTogglePR={toggleSelectedPR}
+            />
 
-      {/* Empty Selection State: Analysis exists, but NO PRs selected */}
-      {!isLoading &&
-        analysisSummary &&
-        selectedPRIds.size === 0 &&
-        allAnalyzedPRIds.size > 0 && (
-          <EmptySelectionState
-            // Pass only the IDs that *have* been analyzed
-            onSelectAllPRs={() => selectAllPRs(allAnalyzedPRIdsArray)}
-          />
+            {/* Analysis Results Container - Renders structure always */}
+            {/* It handles showing button or details internally */}
+            <AnalysisResults
+              // Pass individual state pieces
+              commonStrengths={commonStrengths}
+              commonWeaknesses={commonWeaknesses}
+              commonSuggestions={commonSuggestions}
+              averageScore={averageScore}
+              careerDevelopmentSummary={careerDevelopmentSummary} // Pass summary (can be null)
+              isGeneratingSummary={isGeneratingSummary}
+              cachedPRIds={cachedPRIds}
+              newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+              allAnalyzedPRIds={allAnalyzedPRIdsArray}
+              onGenerateSummary={handleGenerateSummary}
+              canGenerateSummary={!!apiKey && !isConfigVisible}
+            />
+          </>
         )}
 
-      {/* Fallback/Analysis Status (Cached Count): Key exists, no summary, but cache might have items */}
-      {/* This might overlap with NoAnalyzedPRsState - review conditions */}
-      {!isLoading &&
-        apiKey && // Rely only on apiKey state
-        !analysisSummary &&
+      {/* Fallback Status (Cached Count - less likely needed now but kept for safety) */}
+      {!isOverallLoading &&
+        apiKey &&
+        !careerDevelopmentSummary &&
         !isConfigVisible &&
         cachedCount > 0 &&
         allAnalyzedPRIds.size === 0 && (

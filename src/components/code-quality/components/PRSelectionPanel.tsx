@@ -19,6 +19,14 @@ export default function PRSelectionPanel({
   loadingPRIds = [],
   onTogglePR,
 }: PRSelectionPanelProps) {
+  // Log received props on each render
+  console.log("[PRSelectionPanel Render] Received props:", {
+    allAnalyzedPRIds,
+    selectedPRIds,
+    loadingPRIds,
+    // Don't log prsToAnalyze as it can be large
+  });
+
   return (
     <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
       <h4 className="text-sm font-medium text-gray-700 mb-2">
@@ -30,7 +38,10 @@ export default function PRSelectionPanel({
           .map((pr) => (
             <div
               key={pr.id}
-              onClick={() => onTogglePR(pr.id)}
+              onClick={() => {
+                console.log(`[PRSelectionPanel Click] Toggling PR #${pr.id}`);
+                onTogglePR(pr.id);
+              }}
               className={`px-3 py-1 text-xs rounded-full cursor-pointer flex items-center ${
                 selectedPRIds.includes(pr.id)
                   ? "bg-blue-100 text-blue-800"

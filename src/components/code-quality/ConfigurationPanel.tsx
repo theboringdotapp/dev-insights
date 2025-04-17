@@ -31,13 +31,13 @@ interface ConfigurationPanelProps {
   handleToggleAllPRs: () => void;
   allPRs?: PullRequestItem[];
   pullRequests: PullRequestItem[];
-  showOnlyImportantPRs: boolean;
   cachedCount: number;
   isAnalyzing: boolean;
   handleAnalyze: () => Promise<void>;
   setApiKey: (key: string) => void;
   handleResetApiKey: () => void;
   handleClearCache: () => Promise<void>;
+  allAnalyzedPRIdsSize: number;
 }
 
 export default function ConfigurationPanel({
@@ -53,13 +53,13 @@ export default function ConfigurationPanel({
   handleToggleAllPRs,
   allPRs,
   pullRequests,
-  showOnlyImportantPRs,
   cachedCount,
   isAnalyzing,
   handleAnalyze,
   setApiKey,
   handleResetApiKey,
   handleClearCache,
+  allAnalyzedPRIdsSize,
 }: ConfigurationPanelProps) {
   // Handle model change - ensure a model is selected for the current provider
   const handleModelChange = (modelId: string) => {
@@ -196,8 +196,7 @@ export default function ConfigurationPanel({
               className="ml-2 text-sm text-gray-600 cursor-pointer"
             >
               Include all PRs ({allPRs.length} total) instead of only{" "}
-              {pullRequests.length}{" "}
-              {showOnlyImportantPRs ? "important" : "filtered"} PRs
+              {pullRequests.length} filtered PRs
             </Label>
           </div>
           <p className="mt-1 text-xs text-gray-500">
@@ -231,10 +230,10 @@ export default function ConfigurationPanel({
             variant="outline"
             size="sm"
             onClick={handleClearCache}
-            disabled={isAnalyzing || cachedCount === 0}
+            disabled={isAnalyzing || allAnalyzedPRIdsSize === 0}
             className={`text-xs ${
-              isAnalyzing || cachedCount === 0
-                ? "text-gray-400"
+              isAnalyzing || allAnalyzedPRIdsSize === 0
+                ? "text-gray-400 cursor-not-allowed"
                 : "text-red-600 border-red-200 hover:bg-red-50"
             }`}
             title="Remove all cached PR analysis data"

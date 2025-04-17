@@ -107,6 +107,6 @@ export interface AggregatedFeedback {
   commonStrengths: FeedbackFrequency[];
   commonWeaknesses: FeedbackFrequency[];
   commonSuggestions: FeedbackFrequency[];
-  overallSummary: string;
+  careerDevelopmentSummary: string;
   averageScore: number;
 }

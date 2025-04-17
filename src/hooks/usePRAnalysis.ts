@@ -2,7 +2,11 @@ import { useEffect, useCallback, useState } from "react";
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
-import { AIAnalysisConfig, aggregateFeedback } from "../lib/aiAnalysisService";
+import {
+  AIAnalysisConfig,
+  calculateCommonThemes,
+  generateAICareerSummary,
+} from "../lib/aiAnalysisService";
 import cacheService from "../lib/cacheService";
 import { useAPIConfiguration } from "./useAPIConfiguration";
 
@@ -18,7 +22,8 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
     apiProvider,
     selectedModel,
     failAnalysis,
-    setAnalysisSummary,
+    setCalculatedThemes,
+    setIsGeneratingSummary,
   } = useAnalysisStore();
 
   const { apiKey } = useAPIConfiguration();
@@ -88,20 +93,22 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
           );
           const allAnalyzedResults = await Promise.all(allAnalyzedDataPromises);
           const successfulResults = allAnalyzedResults.filter(
-            (res): res is PRAnalysisResult => res !== null && !res.error
+            (res): res is PRAnalysisResult => !!res && !res.error
           );
 
           if (successfulResults.length > 0) {
-            const summary = aggregateFeedback(successfulResults);
-            setAnalysisSummary(summary);
-            console.log(
-              `[handleAnalyzePR] Updated summary after analyzing PR #${pr.number}`
-            );
+            // Calculate themes ONLY
+            const themes = calculateCommonThemes(successfulResults);
+            console.log(`[handleAnalyzePR] Calculated themes:`, themes);
+            // Update store with themes/score
+            setCalculatedThemes(themes);
+            // DO NOT generate AI summary here
           } else {
             console.warn(
-              `[handleAnalyzePR] No successful results found to aggregate after analyzing PR #${pr.number}`
+              `[handleAnalyzePR] No successful results to calculate themes from.`
             );
-            setAnalysisSummary(null);
+            // Clear previous themes if analysis failed?
+            // setCalculatedThemes({ commonStrengths: [], commonWeaknesses: [], commonSuggestions: [], averageScore: 0 });
           }
         } else {
           console.warn(`Analysis function returned null for PR #${pr.number}`);
@@ -123,7 +130,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       toggleSelectedPR,
       failAnalysis,
       getAnalysisForPR,
-      setAnalysisSummary,
+      setCalculatedThemes,
     ]
   );
 
@@ -165,20 +172,22 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
           );
           const allAnalyzedResults = await Promise.all(allAnalyzedDataPromises);
           const successfulResults = allAnalyzedResults.filter(
-            (res): res is PRAnalysisResult => res !== null && !res.error
+            (res): res is PRAnalysisResult => !!res && !res.error
           );
 
           if (successfulResults.length > 0) {
-            const summary = aggregateFeedback(successfulResults);
-            setAnalysisSummary(summary);
-            console.log(
-              `[handleReanalyzePR] Updated summary after re-analyzing PR #${pr.number}`
-            );
+            // Calculate themes ONLY
+            const themes = calculateCommonThemes(successfulResults);
+            console.log(`[handleReanalyzePR] Calculated themes:`, themes);
+            // Update store with themes/score
+            setCalculatedThemes(themes);
+            // DO NOT generate AI summary here
           } else {
             console.warn(
-              `[handleReanalyzePR] No successful results found to aggregate after re-analyzing PR #${pr.number}`
+              `[handleReanalyzePR] No successful results to calculate themes from.`
             );
-            setAnalysisSummary(null);
+            // Clear previous themes?
+            // setCalculatedThemes({ commonStrengths: [], commonWeaknesses: [], commonSuggestions: [], averageScore: 0 });
           }
         } else {
           console.warn(
@@ -202,7 +211,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       toggleSelectedPR,
       failAnalysis,
       getAnalysisForPR,
-      setAnalysisSummary,
+      setCalculatedThemes,
     ]
   );
 

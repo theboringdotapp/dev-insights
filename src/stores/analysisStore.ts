@@ -1,21 +1,29 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { AggregatedFeedback } from "../lib/types";
+import { AggregatedFeedback, FeedbackFrequency } from "../lib/types";
 import { AIProvider } from "../hooks/useAPIConfiguration";
 
 // Define the state structure
 interface AnalysisState {
   analyzingPRIds: Set<number>;
-  analysisSummary: AggregatedFeedback | null;
+  commonStrengths: FeedbackFrequency[];
+  commonWeaknesses: FeedbackFrequency[];
+  commonSuggestions: FeedbackFrequency[];
+  averageScore: number;
+  careerDevelopmentSummary: string | null;
   allAnalyzedPRIds: Set<number>;
   selectedPRIds: Set<number>;
   apiProvider: AIProvider;
   selectedModel: string | undefined;
+  isGeneratingSummary: boolean;
   // --- Actions ---
   startAnalysis: (prId: number) => void;
   completeAnalysis: (prId: number, newlyAnalyzed: boolean) => void;
   failAnalysis: (prId: number) => void;
-  setAnalysisSummary: (summary: AggregatedFeedback | null) => void;
+  setCalculatedThemes: (
+    themes: Omit<AggregatedFeedback, "careerDevelopmentSummary">
+  ) => void;
+  setCareerDevelopmentSummary: (summary: string | null) => void;
   addAnalyzedPRIds: (ids: number[]) => void;
   setSelectedPRIds: (ids: number[]) => void;
   toggleSelectedPR: (prId: number) => void;
@@ -23,6 +31,7 @@ interface AnalysisState {
   clearAnalysisData: () => void;
   setApiProvider: (provider: AIProvider) => void;
   setSelectedModel: (modelId: string | undefined) => void;
+  setIsGeneratingSummary: (isLoading: boolean) => void;
 }
 
 // Helper to handle Set serialization/deserialization for persist middleware
@@ -59,11 +68,16 @@ export const useAnalysisStore = create<AnalysisState>()(
     (set) => ({
       // --- Initial State ---
       analyzingPRIds: new Set(),
-      analysisSummary: null,
+      commonStrengths: [],
+      commonWeaknesses: [],
+      commonSuggestions: [],
+      averageScore: 0,
+      careerDevelopmentSummary: null,
       allAnalyzedPRIds: new Set(),
       selectedPRIds: new Set(),
       apiProvider: "openai",
       selectedModel: undefined,
+      isGeneratingSummary: false,
 
       // --- Actions Implementation ---
       startAnalysis: (prId) =>
@@ -91,7 +105,19 @@ export const useAnalysisStore = create<AnalysisState>()(
           return { analyzingPRIds: newAnalyzing };
         }),
 
-      setAnalysisSummary: (summary) => set({ analysisSummary: summary }),
+      setCalculatedThemes: (themes) =>
+        set({
+          commonStrengths: themes.commonStrengths,
+          commonWeaknesses: themes.commonWeaknesses,
+          commonSuggestions: themes.commonSuggestions,
+          averageScore: themes.averageScore,
+        }),
+
+      setCareerDevelopmentSummary: (summary) =>
+        set({
+          careerDevelopmentSummary: summary,
+          isGeneratingSummary: false,
+        }),
 
       addAnalyzedPRIds: (ids) =>
         set((state) => ({
@@ -121,14 +147,21 @@ export const useAnalysisStore = create<AnalysisState>()(
 
       clearAnalysisData: () =>
         set({
-          analysisSummary: null,
+          commonStrengths: [],
+          commonWeaknesses: [],
+          commonSuggestions: [],
+          averageScore: 0,
+          careerDevelopmentSummary: null,
           allAnalyzedPRIds: new Set(),
           selectedPRIds: new Set(),
           analyzingPRIds: new Set(),
+          isGeneratingSummary: false,
         }),
 
       setApiProvider: (provider) => set({ apiProvider: provider }),
       setSelectedModel: (modelId) => set({ selectedModel: modelId }),
+      setIsGeneratingSummary: (isLoading) =>
+        set({ isGeneratingSummary: isLoading }),
     }),
     {
       name: "analysis-store",

@@ -11,7 +11,6 @@ import {
   AIAnalysisConfig,
   analyzePRWithAI,
   formatPRFilesForAnalysis,
-  aggregateFeedback,
 } from "./aiAnalysisService";
 import cacheService from "./cacheService";
 import { toast } from "sonner";
@@ -416,7 +415,6 @@ export function usePRMetrics() {
     analyzeAdditionalPR,
     getAnalysisForPR,
     getAnalysisFromMemoryCache,
-    aggregateFeedback,
   };
 }
 

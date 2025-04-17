@@ -3,7 +3,8 @@ import { PullRequestItem, PRAnalysisResult } from "../../../lib/types";
 import { useAnalysisStore } from "../../../stores/analysisStore";
 import {
   AIAnalysisConfig,
-  aggregateFeedback,
+  calculateCommonThemes,
+  generateAICareerSummary,
 } from "../../../lib/aiAnalysisService";
 import cacheService from "../../../lib/cacheService";
 
@@ -25,9 +26,11 @@ export function usePRCache(
   const {
     allAnalyzedPRIds,
     addAnalyzedPRIds,
-    setAnalysisSummary,
+    setCalculatedThemes,
+    setCareerDevelopmentSummary,
     setSelectedPRIds,
     clearAnalysisData,
+    setIsGeneratingSummary,
   } = useAnalysisStore();
 
   // Local state specific to this hook
@@ -76,11 +79,7 @@ export function usePRCache(
           }
         });
 
-        // Include already known analyzed IDs in the `allIds` for return consistency if needed
-        const finalAllIds = Array.from(
-          new Set([...knownAnalyzedIds, ...allIds])
-        );
-        const finalCachedCount = cachedIds.length; // Count *newly found* cached items
+        const finalCachedCount = cachedIds.length;
 
         // Update store and local state only if not in check-only mode
         if (!checkOnly) {
@@ -95,7 +94,7 @@ export function usePRCache(
         }
 
         // Return the result of this specific check
-        return { count: finalCachedCount, cachedIds, allIds: finalAllIds };
+        return { count: finalCachedCount, cachedIds };
       } finally {
         cacheCheckInProgressRef.current = false;
       }
@@ -107,36 +106,63 @@ export function usePRCache(
    * Auto-shows analysis for cached PRs
    */
   const autoShowAnalysis = useCallback(
-    (prs: PullRequestItem[], config: AIAnalysisConfig) => {
-      if (prs.length === 0 || autoShowCompletedRef.current)
-        return Promise.resolve(); // Return a resolved promise
+    async (prs: PullRequestItem[], config: AIAnalysisConfig) => {
+      if (prs.length === 0 || autoShowCompletedRef.current) return;
 
-      // Mark that we've auto-shown the analysis to prevent recurring calls
       autoShowCompletedRef.current = true;
+      setIsGeneratingSummary(true); // Indicate summary generation started
 
-      // Analyze these PRs (even if cached, to get fresh data/summary)
-      // Pass maxPRs = 0 or prs.length to analyze all provided PRs
-      return analyzeMultiplePRs(prs, config, prs.length) // Use passed analyzeMultiplePRs
-        .then(async (results) => {
-          if (results && results.length > 0) {
-            // Aggregate feedback
-            const summary = await aggregateFeedback(results);
-            // Update store summary
-            setAnalysisSummary(summary);
-            // Select these PRs in the store
-            setSelectedPRIds(results.map((r) => r.prId));
-          } else {
-            // Clear summary if analysis yielded no results?
-            // setAnalysisSummary(null);
-          }
-        })
-        .catch((error) => {
-          console.error("Error during autoShowAnalysis analysis call:", error);
-          // Optionally clear summary or handle error state in store
-          // setAnalysisSummary(null);
+      try {
+        // Analyze these PRs (even if cached, to get fresh data/summary)
+        const results = await analyzeMultiplePRs(prs, config, prs.length);
+
+        if (results && results.length > 0) {
+          // Calculate common themes and score
+          const themes = calculateCommonThemes(results);
+          // Update store themes
+          setCalculatedThemes(themes);
+
+          // Generate the career summary based on themes
+          const summary = await generateAICareerSummary(themes, config);
+          // Update store summary
+          setCareerDevelopmentSummary(summary);
+
+          // Select these PRs in the store
+          setSelectedPRIds(results.map((r) => r.prId));
+        } else {
+          // Handle case where analysis yields no results (optional: clear themes/summary)
+          setCalculatedThemes({
+            commonStrengths: [],
+            commonWeaknesses: [],
+            commonSuggestions: [],
+            averageScore: 0,
+          });
+          setCareerDevelopmentSummary(null);
+          console.log("Auto-analysis yielded no results.");
+        }
+      } catch (error) {
+        console.error("Error during autoShowAnalysis:", error);
+        // Clear summary/themes on error
+        setCalculatedThemes({
+          commonStrengths: [],
+          commonWeaknesses: [],
+          commonSuggestions: [],
+          averageScore: 0,
         });
+        setCareerDevelopmentSummary(
+          "Error generating analysis summary. Please try again."
+        );
+      } finally {
+        setIsGeneratingSummary(false); // Indicate summary generation finished
+      }
     },
-    [analyzeMultiplePRs, setAnalysisSummary, setSelectedPRIds]
+    [
+      analyzeMultiplePRs,
+      setCalculatedThemes,
+      setCareerDevelopmentSummary,
+      setSelectedPRIds,
+      setIsGeneratingSummary,
+    ]
   );
 
   /**
@@ -178,7 +204,8 @@ export function usePRCache(
     cachedPRIds,
     allAnalyzedPRIds,
     addAnalyzedPRIds,
-    setAnalysisSummary,
+    setCalculatedThemes,
+    setCareerDevelopmentSummary,
     setSelectedPRIds,
     clearAnalysisData,
     newlyAnalyzedPRIds,
