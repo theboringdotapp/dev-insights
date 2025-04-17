@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useState } from "react";
-import { PullRequestItem } from "../lib/types";
+import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
-import { AIAnalysisConfig } from "../lib/aiAnalysisService";
+import { AIAnalysisConfig, aggregateFeedback } from "../lib/aiAnalysisService";
 import cacheService from "../lib/cacheService";
+import { useAPIConfiguration } from "./useAPIConfiguration";
 
 export function usePRAnalysis(pullRequests: PullRequestItem[]) {
   const { analyzeAdditionalPR, getAnalysisForPR, getAnalysisFromMemoryCache } =
@@ -14,7 +15,17 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
     allAnalyzedPRIds,
     addAnalyzedPRIds,
     toggleSelectedPR,
+    apiProvider,
+    selectedModel,
+    failAnalysis,
+    setAnalysisSummary,
   } = useAnalysisStore();
+
+  const { apiKey } = useAPIConfiguration();
+  const hasApiKey = !!apiKey;
+  console.log(
+    `[usePRAnalysis] Rendering. apiKey: '${apiKey}', derived hasApiKey: ${hasApiKey}`
+  );
 
   // Check for cached PR analyses when component mounts or PRs change
   useEffect(() => {
@@ -38,15 +49,6 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
     checkCachedPRs();
   }, [pullRequests, getAnalysisForPR, allAnalyzedPRIds, addAnalyzedPRIds]);
 
-  // Check for API keys directly from localStorage (as before, for simplicity)
-  // TODO: Centralize API key state management later
-  const [hasApiKeys, setHasApiKeys] = useState(false);
-  useEffect(() => {
-    const openaiKey = localStorage.getItem("github-review-openai-key");
-    const anthropicKey = localStorage.getItem("github-review-anthropic-key");
-    setHasApiKeys(!!(openaiKey || anthropicKey));
-  }, []);
-
   // Function to handle analyzing a single PR
   const handleAnalyzePR = useCallback(
     async (pr: PullRequestItem) => {
@@ -55,57 +57,73 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
         return;
       }
 
-      // Get necessary API keys from local storage
-      // This duplicates the check in the effect, but is needed here
-      const openaiKey = localStorage.getItem("github-review-openai-key");
-      const anthropicKey = localStorage.getItem("github-review-anthropic-key");
-      const currentApiKey = openaiKey || anthropicKey;
-      const currentApiProvider = openaiKey ? "openai" : "anthropic";
-
-      if (!currentApiKey) {
+      if (!apiKey || !apiProvider || !selectedModel) {
         alert(
-          "Please set up your API key in the AI Code Quality Insights section first."
+          "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first."
         );
         return;
       }
 
       const config: AIAnalysisConfig = {
-        apiKey: currentApiKey,
-        provider: currentApiProvider,
+        apiKey,
+        provider: apiProvider,
+        model: selectedModel,
       };
 
       const wasPreviouslyAnalyzed = allAnalyzedPRIds.has(pr.id);
 
       try {
-        // Call the analysis function from usePRMetrics
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
           if (!wasPreviouslyAnalyzed) {
             addAnalyzedPRIds([pr.id]);
           }
-          // Add to selection (toggle ensures it's added if not present)
           toggleSelectedPR(pr.id);
-        } else {
-          // Only show alert if it wasn't a silent failure/skip
-          // analyzeAdditionalPR (and analyzePRCode) logs errors internally
-          if (!result) {
-            alert(`Analysis failed for PR #${pr.number}.`);
+
+          const currentAnalyzedIds =
+            useAnalysisStore.getState().allAnalyzedPRIds;
+          const allAnalyzedDataPromises = Array.from(currentAnalyzedIds).map(
+            (id) => getAnalysisForPR(id)
+          );
+          const allAnalyzedResults = await Promise.all(allAnalyzedDataPromises);
+          const successfulResults = allAnalyzedResults.filter(
+            (res): res is PRAnalysisResult => res !== null && !res.error
+          );
+
+          if (successfulResults.length > 0) {
+            const summary = aggregateFeedback(successfulResults);
+            setAnalysisSummary(summary);
+            console.log(
+              `[handleAnalyzePR] Updated summary after analyzing PR #${pr.number}`
+            );
+          } else {
+            console.warn(
+              `[handleAnalyzePR] No successful results found to aggregate after analyzing PR #${pr.number}`
+            );
+            setAnalysisSummary(null);
           }
+        } else {
+          console.warn(`Analysis function returned null for PR #${pr.number}`);
         }
       } catch (error) {
-        console.error(`Error analyzing PR #${pr.number}:`, error);
-        // failAnalysis should be called within analyzePRCode/analyzeAdditionalPR
+        console.error(`Error in handleAnalyzePR for PR #${pr.number}:`, error);
+        failAnalysis(pr.id);
         alert(`An error occurred while analyzing PR #${pr.number}.`);
       }
     },
     [
       analyzingPRIds,
-      hasApiKeys,
+      apiKey,
+      apiProvider,
+      selectedModel,
       allAnalyzedPRIds,
       analyzeAdditionalPR,
       addAnalyzedPRIds,
       toggleSelectedPR,
+      failAnalysis,
+      getAnalysisForPR,
+      setAnalysisSummary,
     ]
   );
 
@@ -117,63 +135,80 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
         return;
       }
 
-      // Get necessary API keys from local storage
-      // This duplicates the check in the effect, but is needed here
-      const openaiKey = localStorage.getItem("github-review-openai-key");
-      const anthropicKey = localStorage.getItem("github-review-anthropic-key");
-      const currentApiKey = openaiKey || anthropicKey;
-      const currentApiProvider = openaiKey ? "openai" : "anthropic";
-
-      if (!currentApiKey) {
+      if (!apiKey || !apiProvider || !selectedModel) {
         alert(
-          "Please set up your API key in the AI Code Quality Insights section first."
+          "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first."
         );
         return;
       }
 
       try {
+        console.log(`Clearing cache for PR #${pr.id} before re-analysis.`);
         await cacheService.deletePRAnalysis(pr.id);
 
         const config: AIAnalysisConfig = {
-          apiKey: currentApiKey,
-          provider: currentApiProvider,
+          apiKey,
+          provider: apiProvider,
+          model: selectedModel,
         };
 
-        // Call the analysis function from usePRMetrics
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
-          // Update store: Analysis completed (it was already analyzed, so newlyAnalyzed=false)
           addAnalyzedPRIds([pr.id]);
-          // Add to selection (toggle ensures it's added if not present)
           toggleSelectedPR(pr.id);
-        } else {
-          // Only show alert if it wasn't a silent failure/skip
-          if (!result) {
-            alert(`Re-analysis failed for PR #${pr.number}.`);
+
+          const currentAnalyzedIds =
+            useAnalysisStore.getState().allAnalyzedPRIds;
+          const allAnalyzedDataPromises = Array.from(currentAnalyzedIds).map(
+            (id) => getAnalysisForPR(id)
+          );
+          const allAnalyzedResults = await Promise.all(allAnalyzedDataPromises);
+          const successfulResults = allAnalyzedResults.filter(
+            (res): res is PRAnalysisResult => res !== null && !res.error
+          );
+
+          if (successfulResults.length > 0) {
+            const summary = aggregateFeedback(successfulResults);
+            setAnalysisSummary(summary);
+            console.log(
+              `[handleReanalyzePR] Updated summary after re-analyzing PR #${pr.number}`
+            );
+          } else {
+            console.warn(
+              `[handleReanalyzePR] No successful results found to aggregate after re-analyzing PR #${pr.number}`
+            );
+            setAnalysisSummary(null);
           }
+        } else {
+          console.warn(
+            `Re-analysis function returned null for PR #${pr.number}`
+          );
+          failAnalysis(pr.id);
         }
       } catch (error) {
-        console.error("Error re-analyzing PR:", error);
-        // failAnalysis should be called within analyzePRCode/analyzeAdditionalPR
+        console.error(`Error re-analyzing PR #${pr.number}:`, error);
+        failAnalysis(pr.id);
         alert(`An error occurred while re-analyzing PR #${pr.number}.`);
       }
     },
     [
       analyzingPRIds,
-      hasApiKeys,
-      allAnalyzedPRIds,
+      apiKey,
+      apiProvider,
+      selectedModel,
       analyzeAdditionalPR,
       addAnalyzedPRIds,
       toggleSelectedPR,
+      failAnalysis,
+      getAnalysisForPR,
+      setAnalysisSummary,
     ]
   );
 
   // Check if a PR has been analyzed
   const isPRAnalyzed = useCallback(
     (prId: number): boolean => {
-      // Check store first, then check memory cache as fallback
-      // Note: getAnalysisForPR was async, use sync getAnalysisFromMemoryCache
       return allAnalyzedPRIds.has(prId) || !!getAnalysisFromMemoryCache(prId);
     },
     [allAnalyzedPRIds, getAnalysisFromMemoryCache]
@@ -188,7 +223,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
   );
 
   return {
-    hasApiKeys,
+    hasApiKey,
     analyzingPRIds,
     isAnalyzingPR,
     isPRAnalyzed,

@@ -1,15 +1,20 @@
 import { useState, useCallback } from "react";
-import { PullRequestItem, PullRequestMetrics, DeveloperStats } from "./types";
+import {
+  PullRequestItem,
+  PullRequestMetrics,
+  DeveloperStats,
+  PRAnalysisResult,
+} from "./types";
 import { useGitHubService } from "./useGitHubService";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
   AIAnalysisConfig,
-  PRAnalysisResult,
   analyzePRWithAI,
   formatPRFilesForAnalysis,
   aggregateFeedback,
 } from "./aiAnalysisService";
 import cacheService from "./cacheService";
+import { toast } from "sonner";
 
 export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
 
@@ -122,11 +127,9 @@ export function usePRMetrics() {
         return metricsCache[pr.id];
       }
 
-      // Initiate load if not already in cache
-      loadPRMetrics(pr);
       return undefined;
     },
-    [metricsCache, loadPRMetrics]
+    [metricsCache]
   );
 
   /**
@@ -219,6 +222,12 @@ export function usePRMetrics() {
         // Format the PR content for analysis
         const prContent = formatPRFilesForAnalysis(files, pr.title, pr.number);
 
+        // Log config before calling the analysis service
+        console.log(
+          `[usePRMetrics] analyzePRCode for PR #${pr.number}: Passing config to analyzePRWithAI:`,
+          JSON.stringify(config)
+        );
+
         // Analyze with AI
         const feedback = await analyzePRWithAI(prContent, config);
 
@@ -243,12 +252,31 @@ export function usePRMetrics() {
         completeAnalysis(pr.id, !previouslyAnalyzed); // Mark as complete
         return result;
       } catch (error) {
-        console.error("Error analyzing PR code:", error);
+        console.error(`Error analyzing PR #${pr.number} (${pr.title}):`, error);
         failAnalysis(pr.id); // Mark as failed
+
+        // Show toast notification - Ensure the actual error message is shown
+        let displayMessage = "An unknown error occurred during analysis";
+        if (error instanceof Error) {
+          // Use the message from the error object caught here
+          displayMessage = error.message;
+          // If the error message itself is generic, but contains a more specific cause
+          // (like the error thrown from analyzePRWithAI/analyzeWithClaude), use that.
+          // Note: Standard 'Error' might not have a 'cause', depends on how it was thrown.
+          // We'll rely on the message being descriptive enough for now.
+          // Example: If analyzeWithClaude throws 'Error: Failed to parse Claude response. Error: ...',
+          // that full message should be displayed.
+        }
+
+        toast.error(`Analysis Error (PR #${pr.number})`, {
+          description: displayMessage,
+          duration: 7000, // Increase duration slightly more for errors
+        });
+
         return null;
       }
     },
-    [isReady, service]
+    [isReady, service, analyzePRWithAI, formatPRFilesForAnalysis, cacheService]
   );
 
   // Get Zustand actions

@@ -34,6 +34,10 @@ export default function PullRequestCard({
     ? colorClass.replace("bg-", "border-")
     : "border-gray-300";
 
+  console.log(
+    `[PullRequestCard] Rendering PR #${pr.number}. hasApiKeys prop: ${hasApiKeys}`
+  );
+
   return (
     <div
       key={pr.id}

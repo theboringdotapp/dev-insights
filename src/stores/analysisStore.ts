@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { AggregatedFeedback } from "../lib/types";
+import { AIProvider } from "../hooks/useAPIConfiguration";
 
 // Define the state structure
 interface AnalysisState {
@@ -7,6 +9,8 @@ interface AnalysisState {
   analysisSummary: AggregatedFeedback | null;
   allAnalyzedPRIds: Set<number>;
   selectedPRIds: Set<number>;
+  apiProvider: AIProvider;
+  selectedModel: string | undefined;
   // --- Actions ---
   startAnalysis: (prId: number) => void;
   completeAnalysis: (prId: number, newlyAnalyzed: boolean) => void;
@@ -17,78 +21,123 @@ interface AnalysisState {
   toggleSelectedPR: (prId: number) => void;
   selectAllPRs: (ids: number[]) => void;
   clearAnalysisData: () => void;
+  setApiProvider: (provider: AIProvider) => void;
+  setSelectedModel: (modelId: string | undefined) => void;
 }
 
-// Create the store
-export const useAnalysisStore = create<AnalysisState>((set) => ({
-  // --- Initial State ---
-  analyzingPRIds: new Set(),
-  analysisSummary: null,
-  allAnalyzedPRIds: new Set(),
-  selectedPRIds: new Set(),
-
-  // --- Actions Implementation ---
-  startAnalysis: (prId) =>
-    set((state) => ({
-      analyzingPRIds: new Set(state.analyzingPRIds).add(prId),
-    })),
-
-  completeAnalysis: (prId, newlyAnalyzed) =>
-    set((state) => {
-      const newAnalyzing = new Set(state.analyzingPRIds);
-      newAnalyzing.delete(prId);
-      const newAnalyzed = newlyAnalyzed
-        ? new Set(state.allAnalyzedPRIds).add(prId)
-        : state.allAnalyzedPRIds;
-      return {
-        analyzingPRIds: newAnalyzing,
-        allAnalyzedPRIds: newAnalyzed,
-      };
-    }),
-
-  failAnalysis: (prId) =>
-    set((state) => {
-      const newAnalyzing = new Set(state.analyzingPRIds);
-      newAnalyzing.delete(prId);
-      return { analyzingPRIds: newAnalyzing };
-    }),
-
-  setAnalysisSummary: (summary) => set({ analysisSummary: summary }),
-
-  addAnalyzedPRIds: (ids) =>
-    set((state) => ({
-      allAnalyzedPRIds: new Set([...state.allAnalyzedPRIds, ...ids]),
-    })),
-
-  setSelectedPRIds: (ids) => set({ selectedPRIds: new Set(ids) }),
-
-  toggleSelectedPR: (prId) =>
-    set((state) => {
-      const newSelection = new Set(state.selectedPRIds);
-      if (newSelection.has(prId)) {
-        newSelection.delete(prId);
-      } else {
-        newSelection.add(prId);
+// Helper to handle Set serialization/deserialization for persist middleware
+const jsonStorageWithSet = createJSONStorage(() => localStorage, {
+  reviver: (key, value) => {
+    if (
+      key === "analyzingPRIds" ||
+      key === "allAnalyzedPRIds" ||
+      key === "selectedPRIds"
+    ) {
+      if (Array.isArray(value)) {
+        return new Set(value);
       }
-      return { selectedPRIds: newSelection };
-    }),
-
-  selectAllPRs: (ids) => {
-    set((state) => {
-      // Select only those IDs that have also been analyzed
-      const analyzedIds = state.allAnalyzedPRIds;
-      const selectableIds = ids.filter((id) => analyzedIds.has(id));
-      return { selectedPRIds: new Set(selectableIds) };
-    });
+    }
+    return value;
   },
+  replacer: (key, value) => {
+    if (
+      key === "analyzingPRIds" ||
+      key === "allAnalyzedPRIds" ||
+      key === "selectedPRIds"
+    ) {
+      if (value instanceof Set) {
+        return Array.from(value);
+      }
+    }
+    return value;
+  },
+});
 
-  clearAnalysisData: () =>
-    set({
+// Create the store with persistence
+export const useAnalysisStore = create<AnalysisState>()(
+  persist(
+    (set) => ({
+      // --- Initial State ---
+      analyzingPRIds: new Set(),
       analysisSummary: null,
       allAnalyzedPRIds: new Set(),
       selectedPRIds: new Set(),
-      // Note: analyzingPRIds is usually cleared by complete/fail actions,
-      // but clearing here too ensures reset if cache is cleared mid-analysis.
-      analyzingPRIds: new Set(),
+      apiProvider: "openai",
+      selectedModel: undefined,
+
+      // --- Actions Implementation ---
+      startAnalysis: (prId) =>
+        set((state) => ({
+          analyzingPRIds: new Set(state.analyzingPRIds).add(prId),
+        })),
+
+      completeAnalysis: (prId, newlyAnalyzed) =>
+        set((state) => {
+          const newAnalyzing = new Set(state.analyzingPRIds);
+          newAnalyzing.delete(prId);
+          const newAnalyzed = newlyAnalyzed
+            ? new Set(state.allAnalyzedPRIds).add(prId)
+            : state.allAnalyzedPRIds;
+          return {
+            analyzingPRIds: newAnalyzing,
+            allAnalyzedPRIds: newAnalyzed,
+          };
+        }),
+
+      failAnalysis: (prId) =>
+        set((state) => {
+          const newAnalyzing = new Set(state.analyzingPRIds);
+          newAnalyzing.delete(prId);
+          return { analyzingPRIds: newAnalyzing };
+        }),
+
+      setAnalysisSummary: (summary) => set({ analysisSummary: summary }),
+
+      addAnalyzedPRIds: (ids) =>
+        set((state) => ({
+          allAnalyzedPRIds: new Set([...state.allAnalyzedPRIds, ...ids]),
+        })),
+
+      setSelectedPRIds: (ids) => set({ selectedPRIds: new Set(ids) }),
+
+      toggleSelectedPR: (prId) =>
+        set((state) => {
+          const newSelection = new Set(state.selectedPRIds);
+          if (newSelection.has(prId)) {
+            newSelection.delete(prId);
+          } else {
+            newSelection.add(prId);
+          }
+          return { selectedPRIds: newSelection };
+        }),
+
+      selectAllPRs: (ids) => {
+        set((state) => {
+          const analyzedIds = state.allAnalyzedPRIds;
+          const selectableIds = ids.filter((id) => analyzedIds.has(id));
+          return { selectedPRIds: new Set(selectableIds) };
+        });
+      },
+
+      clearAnalysisData: () =>
+        set({
+          analysisSummary: null,
+          allAnalyzedPRIds: new Set(),
+          selectedPRIds: new Set(),
+          analyzingPRIds: new Set(),
+        }),
+
+      setApiProvider: (provider) => set({ apiProvider: provider }),
+      setSelectedModel: (modelId) => set({ selectedModel: modelId }),
     }),
-}));
+    {
+      name: "analysis-store",
+      storage: jsonStorageWithSet,
+      partialize: (state) => ({
+        allAnalyzedPRIds: state.allAnalyzedPRIds,
+        apiProvider: state.apiProvider,
+        selectedModel: state.selectedModel,
+      }),
+    }
+  )
+);

@@ -77,6 +77,12 @@ export async function analyzePRWithAI(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
+  // Log the received config object immediately
+  console.log(
+    `[aiAnalysisService] analyzePRWithAI received config:`,
+    JSON.stringify(config)
+  );
+
   try {
     if (config.provider === "openai") {
       return await analyzeWithOpenAI(prContent, config);
@@ -105,8 +111,11 @@ async function analyzeWithOpenAI(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
-  // Use gpt-3.5-turbo instead as it better supports JSON mode
-  const model = config.model || "gpt-3.5-turbo";
+  // Ensure model is provided via config
+  const model = config.model;
+  if (!model) {
+    throw new Error("OpenAI model not specified in config.");
+  }
 
   const prompt = `
 You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
@@ -268,7 +277,11 @@ async function analyzeWithClaude(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
-  const model = config.model || "claude-3-sonnet-20240229";
+  // Ensure model is provided via config
+  const model = config.model;
+  if (!model) {
+    throw new Error("Claude model not specified in config.");
+  }
 
   const prompt = `
 You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
@@ -344,7 +357,8 @@ Do not include any explanations or text outside of this JSON structure. Respond 
       },
       body: JSON.stringify({
         model,
-        max_tokens: 4000,
+        // Increase max_tokens as 1000 seemed too low, causing truncation
+        max_tokens: 2000, // Increased from 1000
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
       }),
@@ -356,67 +370,78 @@ Do not include any explanations or text outside of this JSON structure. Respond 
     }
 
     const data = await response.json();
-    const content = data.content?.[0]?.text;
+    // Extract the text content first
+    const textContent = data.content?.[0]?.text;
 
-    if (!content) {
-      throw new Error("No content in Claude response");
+    if (!textContent) {
+      throw new Error("No text content found in Claude response");
     }
 
-    // Find the JSON in the response
-    const jsonMatch =
-      content.match(/```json\n([\s\S]*?)\n```/) ||
-      content.match(/```\n([\s\S]*?)\n```/) ||
-      content.match(/({[\s\S]*})/);
+    // --- Robust JSON Parsing Logic ---
+    let parsedResponse: AICodeFeedback | null = null;
+    let parseError: unknown = null;
+    let attemptedJsonString: string | null = textContent; // Start by attempting the full text content
 
-    if (!jsonMatch) {
-      console.error(
-        "No valid JSON found in Claude response, raw content:",
-        content
-      );
-      // Fallback for parsing errors, providing empty arrays for the new structure
-      return {
-        strengths: [],
-        areas_for_improvement: [],
-        growth_opportunities: [],
-        career_impact_summary:
-          "The analysis couldn't be completed due to issues with the AI response format.",
-        overall_quality: 5,
-      };
-    }
-
-    const jsonString = jsonMatch[1] || jsonMatch[0];
-
+    // 1. Try parsing the extracted text content directly
     try {
-      const parsedResponse = JSON.parse(jsonString);
-      // Validate and structure the final response, providing defaults for the new structure
+      parsedResponse = JSON.parse(textContent) as AICodeFeedback;
+      console.log("Successfully parsed raw text content from Claude as JSON.");
+    } catch (directParseError) {
+      // 2. If direct parse fails, try extracting from markdown code block (as fallback)
+      parseError = directParseError; // Store initial error
+      console.log(
+        "Raw text content not valid JSON, attempting markdown extraction as fallback."
+      );
+      const jsonMatch =
+        textContent.match(/```json\n([\s\S]*?)\n```/) ||
+        textContent.match(/```\n([\s\S]*?)\n```/);
+
+      if (jsonMatch && jsonMatch[1]) {
+        attemptedJsonString = jsonMatch[1].trim();
+        try {
+          parsedResponse = JSON.parse(attemptedJsonString) as AICodeFeedback;
+          console.log(
+            "Successfully parsed JSON extracted from markdown fallback."
+          );
+          parseError = null; // Clear error if fallback succeeded
+        } catch (extractionParseError) {
+          parseError = extractionParseError; // Store the extraction parse error
+          console.error(
+            "Failed to parse extracted JSON from markdown fallback:",
+            parseError
+          );
+        }
+      } else {
+        console.log("Could not find JSON markdown block in text content.");
+      }
+    }
+
+    // 3. Check if parsing was successful at any stage
+    if (parsedResponse) {
+      // Validate and structure the final response (add null checks)
       return {
         strengths: parsedResponse.strengths || [],
-        areas_for_improvement:
-          parsedResponse.areas_for_improvement ||
-          parsedResponse.weaknesses || // Keep fallback for older formats if needed
-          [],
-        growth_opportunities:
-          parsedResponse.growth_opportunities ||
-          parsedResponse.suggestions || // Keep fallback for older formats if needed
-          [],
+        areas_for_improvement: parsedResponse.areas_for_improvement || [],
+        growth_opportunities: parsedResponse.growth_opportunities || [],
         career_impact_summary:
-          parsedResponse.career_impact_summary ||
-          parsedResponse.summary ||
-          "No summary provided",
-        overall_quality:
-          parsedResponse.overall_quality || parsedResponse.qualityScore,
+          parsedResponse.career_impact_summary || "No summary provided",
+        overall_quality: parsedResponse.overall_quality,
       };
-    } catch (error) {
-      console.error("Failed to parse Claude response:", error);
-      // Fallback for parsing errors, providing empty arrays for the new structure
-      return {
-        strengths: [],
-        areas_for_improvement: [],
-        growth_opportunities: [],
-        career_impact_summary:
-          "The code analysis could not be completed due to technical issues with the AI response format.",
-        overall_quality: 5,
-      };
+    } else {
+      // 4. If parsing failed completely, throw an informative error
+      console.error("Failed to parse Claude response after all attempts.");
+      console.error("Original content received from Claude:", textContent);
+      if (attemptedJsonString) {
+        console.error(
+          "Attempted to parse this extracted string:",
+          attemptedJsonString
+        );
+      }
+      throw new Error(
+        `Failed to parse Claude response. Error: ${
+          parseError instanceof Error ? parseError.message : String(parseError)
+        }`
+      );
     }
   } catch (error) {
     console.error("Error in Claude analysis:", error);
@@ -437,8 +462,11 @@ async function analyzeWithGemini(
   prContent: string,
   config: AIAnalysisConfig
 ): Promise<AICodeFeedback> {
-  // Use a common Gemini model, allow override via config
-  const model = config.model || "gemini-1.5-flash-latest";
+  // Ensure model is provided via config
+  const model = config.model;
+  if (!model) {
+    throw new Error("Gemini model not specified in config.");
+  }
   // Default temperature (can be configured later if needed)
   const temperature = 0.7;
 

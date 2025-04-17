@@ -13,23 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Info, Trash2 } from "lucide-react";
+import { MODEL_OPTIONS } from "../../lib/models";
 
 // Define available models for each provider (Updated List)
-const MODEL_OPTIONS: Record<AIProvider, { id: string; name: string }[]> = {
-  openai: [
-    { id: "gpt-4.1", name: "OpenAI GPT-4.1" },
-    { id: "o4-mini", name: "OpenAI o4-mini" },
-  ],
-  anthropic: [
-    { id: "claude-3-7-sonnet-20250219", name: "Anthropic Claude 3.7 Sonnet" },
-    // Note: Claude 3 Opus and Haiku removed as per user list
-  ],
-  gemini: [
-    { id: "gemini-2.5-pro-exp-03-25", name: "Google Gemini 2.5 Pro Exp" },
-    { id: "models/gemini-1.5-pro", name: "Google Gemini 1.5 Pro" },
-    // Note: Gemini 1.5 Flash removed as per user list
-  ],
-};
+// const MODEL_OPTIONS: Record<AIProvider, { id: string; name: string }[]> = { ... }; // Removed constant definition
 
 interface ConfigurationPanelProps {
   apiKey: string;

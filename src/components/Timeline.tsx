@@ -29,12 +29,13 @@ export function Timeline({
 
   // Use PR analysis hook
   const {
-    hasApiKeys,
+    hasApiKey,
     isAnalyzingPR,
     isPRAnalyzed,
     handleAnalyzePR,
     handleReanalyzePR,
   } = usePRAnalysis(pullRequests);
+  console.log(`[Timeline] Rendering. hasApiKey from hook: ${hasApiKey}`);
 
   // Use PR grouping hook
   const { groupedPRs, sortedMonths } = usePRGroups(pullRequests);
@@ -97,7 +98,7 @@ export function Timeline({
             loadPRMetrics={loadPRMetrics}
             isPRAnalyzed={isPRAnalyzed}
             isAnalyzingPR={isAnalyzingPR}
-            hasApiKeys={hasApiKeys}
+            hasApiKeys={hasApiKey}
             handleAnalyzePR={handleAnalyzePR}
             handleReanalyzePR={handleReanalyzePR}
           />

@@ -17,10 +17,13 @@ import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import EmptySelectionState from "./code-quality/components/EmptySelectionState";
 import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
+import { MODEL_OPTIONS } from "../lib/models"; // Import MODEL_OPTIONS
+import cacheService from "../lib/cacheService"; // Import cacheService
 
 // Local storage keys
 const OPENAI_KEY_STORAGE = "github-review-openai-key";
 const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
+const GEMINI_KEY_STORAGE = "github-review-gemini-key";
 
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
@@ -39,49 +42,45 @@ export function CodeQualityInsights({
   showOnlyImportantPRs = true,
   onToggleFilter,
 }: CodeQualityInsightsProps) {
-  // Core metrics and analysis hooks
-  const {
-    analyzeMultiplePRs,
-    getAnalysisForPR, // Needed for usePRCache
-    getAnalysisFromMemoryCache, // Needed for usePRCache
-  } = usePRMetrics();
+  // Core metrics hook (re-added destructuring)
+  const { analyzeMultiplePRs, getAnalysisForPR, getAnalysisFromMemoryCache } =
+    usePRMetrics();
 
-  // Get state and actions from Zustand store
+  // Get ALL relevant state and actions from Zustand store
   const {
     analyzingPRIds,
     analysisSummary,
     allAnalyzedPRIds,
     selectedPRIds,
+    apiProvider, // Get provider from store
+    selectedModel, // Get model from store
     failAnalysis,
     setAnalysisSummary,
     addAnalyzedPRIds,
     setSelectedPRIds,
     toggleSelectedPR,
     selectAllPRs,
+    setApiProvider, // Get provider action from store
+    setSelectedModel, // Get model action from store
   } = useAnalysisStore();
 
-  // API configuration hook
+  // API configuration hook (now only manages key and saveToken preference)
   const {
     apiKey,
     setApiKey,
-    apiProvider,
     saveToken,
     setSaveToken,
-    handleProviderChange,
     handleResetApiKey,
+    // handleProviderChange, // We use the store action directly now
     saveApiKey,
   } = useAPIConfiguration();
 
-  // Component state (remains local)
+  console.log(`[CodeQualityInsights] Rendering. apiKey state: '${apiKey}'`);
+
+  // Local component state (remains local)
   const [maxPRs, setMaxPRs] = useState(5);
-  const [hasApiKey, setHasApiKey] = useState(false);
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
-
-  // Add state for the selected model
-  const [selectedModel, setSelectedModel] = useState<string | undefined>(
-    undefined
-  );
 
   // Convert Sets to arrays for components that need arrays
   const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
@@ -93,29 +92,15 @@ export function CodeQualityInsights({
   // Determine which PRs to potentially analyze based on filters
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
 
-  // --- PR Cache Hook ---
-  // This hook now likely needs modification to interact with the Zustand store
-  // instead of receiving/managing allAnalyzedPRIds, analysisSummary etc. via props/state.
-  // For now, pass necessary functions and potentially API config.
-  const {
-    cachedCount, // Keep track of how many analyses are in the persistent cache
-    autoShowCompletedRef, // Keep if still needed internally by usePRCache
-    checkCachedAnalyses, // Keep for potential initial load logic
-    autoShowAnalysis, // Keep for potential initial load logic
-    clearAnalysisCache, // Keep cache clearing functionality
-    createConfig, // Keep config creation utility
-    cachedPRIds, // Restore for AnalysisResults
-    newlyAnalyzedPRIds, // Kept for AnalysisResults
-    setNewlyAnalyzedPRIds, // Kept for handleAnalyze
-  } = usePRCache(
-    prsToAnalyze,
-    getAnalysisForPR,
-    getAnalysisFromMemoryCache,
-    analyzeMultiplePRs, // Pass analyze function
-    isLoading, // Pass derived loading state
-    apiProvider,
-    apiKey
-  );
+  // PR Cache Hook (destructure only needed values)
+  const { cachedCount, clearAnalysisCache, cachedPRIds, newlyAnalyzedPRIds } =
+    usePRCache(
+      prsToAnalyze,
+      getAnalysisForPR,
+      getAnalysisFromMemoryCache,
+      analyzeMultiplePRs,
+      isLoading
+    );
 
   // Ref to track mounted state and prevent initial effect run
   const isMountedRef = useRef(false);
@@ -123,8 +108,27 @@ export function CodeQualityInsights({
   // Ref to prevent duplicate analysis calls
   const isAnalyzingRef = useRef(false);
 
-  // Determine max PRs to analyze in one go
-  const maxPRsToFetch = 5; // Or use a configurable value
+  // Effect to handle model auto-selection (uses store state/actions)
+  useEffect(() => {
+    const models = MODEL_OPTIONS[apiProvider] || [];
+    if (models.length === 1) {
+      if (selectedModel !== models[0].id) {
+        // Only update if different
+        setSelectedModel(models[0].id);
+        console.log(`Auto-selected model for ${apiProvider}: ${models[0].id}`);
+      }
+    } else {
+      // Clear selection if multiple models or provider invalid
+      // Only clear if a model *is* currently selected
+      if (selectedModel !== undefined) {
+        setSelectedModel(undefined);
+        console.log(`Cleared model selection for ${apiProvider}.`);
+      }
+    }
+    // Depend on apiProvider from store and the action setter
+  }, [apiProvider, selectedModel, setSelectedModel]);
+
+  // Removed wrapped handleProviderChange - use store action directly
 
   // Function to refresh the analysis summary based on selection
   const refreshAnalysisSummary = useCallback(async () => {
@@ -145,9 +149,19 @@ export function CodeQualityInsights({
       return;
     }
 
+    if (!apiKey || !apiProvider || !selectedModel) {
+      console.warn("Cannot refresh summary: API config or model missing.");
+      return;
+    }
+
     try {
-      // Create config (needed for analyzeMultiplePRs)
-      const config = createConfig();
+      // Create the full config object directly
+      const config: AIAnalysisConfig = {
+        apiKey,
+        provider: apiProvider,
+        model: selectedModel,
+      };
+
       // Re-run analysis/fetch for selected PRs (analyzeMultiplePRs should use cache)
       // Let analyzeMultiplePRs process all provided PRs (it handles cache internally)
       const results = await analyzeMultiplePRs(selectedAndAnalyzedPRs, config);
@@ -165,7 +179,9 @@ export function CodeQualityInsights({
     prsToAnalyze,
     analysisSummary, // Depend on summary existence
     analyzeMultiplePRs,
-    createConfig,
+    apiKey,
+    apiProvider,
+    selectedModel,
     setAnalysisSummary,
     aggregateFeedback,
   ]);
@@ -186,85 +202,65 @@ export function CodeQualityInsights({
     }
   }, [selectedPRIds]); // Only run when selection changes
 
-  // Check if API key exists on mount
+  // Effect to check initial API key state & config visibility
   useEffect(() => {
-    const openaiKey = localStorage.getItem(OPENAI_KEY_STORAGE);
-    const anthropicKey = localStorage.getItem(ANTHROPIC_KEY_STORAGE);
-    const hasKey = !!(openaiKey || anthropicKey);
-    setHasApiKey(hasKey);
-    // Only show config if no keys are found and no analysis yet
-    if (!hasKey && !analysisSummary && allAnalyzedPRIds.size === 0) {
-      setIsConfigVisible(true);
+    // Logic to show config panel initially
+    if (!apiKey && !analysisSummary && allAnalyzedPRIds.size === 0) {
+      const anyKey =
+        localStorage.getItem(OPENAI_KEY_STORAGE) ||
+        localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
+        localStorage.getItem(GEMINI_KEY_STORAGE);
+      if (!anyKey) {
+        setIsConfigVisible(true);
+      }
     }
-  }, [analysisSummary, allAnalyzedPRIds]); // Re-run if analysis appears
+  }, [apiKey, analysisSummary, allAnalyzedPRIds]);
 
-  // Effect for checking cache and auto-showing (Needs review/refactor with Zustand)
+  // Effect for checking cache on mount and populating store
   useEffect(() => {
-    // Skip if we have no PRs, analysis already shown, already loading, no key, or already done
-    if (
-      prsToAnalyze.length === 0 ||
-      analysisSummary ||
-      isLoading ||
-      !hasApiKey ||
-      autoShowCompletedRef.current
-    ) {
-      return;
-    }
+    // Flag to prevent running multiple times, e.g. due to HMR
+    if (isMountedRef.current) return;
+    isMountedRef.current = true;
 
-    const fetchAndShowCachedAnalyses = async () => {
-      // This logic needs careful review. Does checkCachedAnalyses update the store now?
-      // Or should we initialize the store from the cache here?
-      // For now, assuming checkCachedAnalyses might populate the store or return data.
-      console.log("Attempting to check/auto-show cached analysis...");
+    console.log("Checking persistent cache for previously analyzed PRs...");
+
+    const checkInitialCache = async () => {
+      const knownAnalyzedIds = useAnalysisStore.getState().allAnalyzedPRIds;
+      const prsToCheck = prsToAnalyze.filter(
+        (pr) => !knownAnalyzedIds.has(pr.id)
+      );
+
+      if (prsToCheck.length === 0) {
+        console.log("No new PRs to check in cache.");
+        return;
+      }
+
       try {
-        // Check cache (assuming this might update store or return IDs)
-        const initialCheckResult = await checkCachedAnalyses(
-          maxPRs,
-          true,
-          true
-        ); // hasApiKey=true
-
-        if (!initialCheckResult || initialCheckResult.allIds.length === 0) {
-          console.log("No cached analysis found to auto-show.");
-          return; // No cached analysis found
-        }
-
-        // Add found IDs to the store if not already there (checkCachedAnalyses might do this already)
-        addAnalyzedPRIds(initialCheckResult.allIds);
-
-        // Get the actual PR objects for the cached IDs
-        const analyzedPRs = prsToAnalyze.filter(
-          (pr) => initialCheckResult.allIds.includes(pr.id) // Use includes here as it's an array from checkCachedAnalyses
+        const cacheResults = await Promise.all(
+          prsToCheck.map((pr) => cacheService.getPRAnalysis(pr.id))
         );
 
-        if (analyzedPRs.length > 0 && !analysisSummary) {
-          // Only auto-show if no summary exists yet
+        const newlyFoundCachedIds = cacheResults
+          .map((result, index) => (result ? prsToCheck[index].id : null))
+          .filter((id): id is number => id !== null);
+
+        if (newlyFoundCachedIds.length > 0) {
           console.log(
-            `Auto-showing analysis for ${analyzedPRs.length} cached PRs.`
+            `Found ${newlyFoundCachedIds.length} previously analyzed PRs in cache. Adding to store.`
           );
-          // Call autoShowAnalysis (assuming it now updates the store's analysisSummary)
-          const config = createConfig();
-          await autoShowAnalysis(analyzedPRs, config); // This should update the store
-          autoShowCompletedRef.current = true; // Mark as done for this session
+          addAnalyzedPRIds(newlyFoundCachedIds);
+        } else {
+          console.log("No previously analyzed PRs found in cache.");
         }
       } catch (error) {
-        console.error("Error during auto-show cached analysis:", error);
+        console.error("Error checking initial cache:", error);
       }
     };
 
-    fetchAndShowCachedAnalyses();
-  }, [
-    prsToAnalyze,
-    maxPRs,
-    hasApiKey,
-    analysisSummary, // React to store changes
-    isLoading, // React to derived loading state
-    checkCachedAnalyses,
-    autoShowAnalysis,
-    createConfig,
-    autoShowCompletedRef,
-    addAnalyzedPRIds, // Added store action dependency
-  ]);
+    checkInitialCache();
+    // Run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prsToAnalyze /* Include prsToAnalyze as it's needed for filtering */]);
 
   // Function to trigger the analysis
   const handleAnalyze = useCallback(async () => {
@@ -282,6 +278,11 @@ export function CodeQualityInsights({
     isAnalyzingRef.current = true;
     saveApiKey(); // Save key if configured
 
+    // Add logging to check provider/model state just before analysis
+    console.log(
+      `Starting analysis with Provider: ${apiProvider}, Model: ${selectedModel}`
+    );
+
     try {
       // Determine the list of PRs to potentially analyze
       const prsToConsider = useAllPRs && allPRs ? allPRs : pullRequests;
@@ -291,7 +292,7 @@ export function CodeQualityInsights({
         .filter(
           (pr) => !allAnalyzedPRIds.has(pr.id) && !analyzingPRIds.has(pr.id)
         )
-        .slice(0, maxPRsToFetch);
+        .slice(0, maxPRs);
 
       if (prsToAnalyzeNow.length === 0) {
         alert(
@@ -303,27 +304,27 @@ export function CodeQualityInsights({
 
       console.log(`Attempting to analyze ${prsToAnalyzeNow.length} PRs...`);
 
-      // Create the config object including the selected model
       const config: AIAnalysisConfig = {
         apiKey,
         provider: apiProvider,
-        model: selectedModel, // Pass the selected model
+        model: selectedModel,
       };
 
       // Call the analysis function from usePRMetrics
-      // (Assuming analyzeMultiplePRs handles calling startAnalysis/completeAnalysis/failAnalysis internally)
       const results: PRAnalysisResult[] = await analyzeMultiplePRs(
         prsToAnalyzeNow,
         config,
-        maxPRsToFetch
+        maxPRs
       );
 
       console.log(`Analysis completed for ${results.length} PRs.`);
+      console.log(`Raw results from analyzeMultiplePRs:`, results); // Log raw results
 
       // Aggregate feedback from successful results for the summary
       const successfulResults = results.filter((res) => !res.error);
       if (successfulResults.length > 0) {
         const summary = aggregateFeedback(successfulResults);
+        console.log(`Aggregated summary:`, summary); // Log aggregated summary
         setAnalysisSummary(summary);
       } else {
         // Handle case where analysis ran but all failed or returned no data
@@ -335,15 +336,13 @@ export function CodeQualityInsights({
       }
     } catch (error: unknown) {
       console.error("Error during analysis orchestration:", error);
-      // Generic error handling for the overall process
-      alert(
-        `An error occurred during analysis: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-      // Optionally mark remaining attempted PRs as failed if analyzeMultiplePRs doesn't guarantee it
-      // const attemptedIds = prsToAnalyzeNow.map(pr => pr.id);
-      // attemptedIds.forEach(id => failAnalysis(id)); // Be careful not to double-mark
+      // REMOVED the alert() call
+      // alert(
+      //   `An error occurred during analysis: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
+      // Toast is handled within analyzePRCode now
     } finally {
       isAnalyzingRef.current = false;
     }
@@ -359,7 +358,7 @@ export function CodeQualityInsights({
     analyzeMultiplePRs,
     setAnalysisSummary,
     saveApiKey,
-    maxPRsToFetch,
+    maxPRs,
     // Add other dependencies if needed (e.g., failAnalysis if used in catch)
   ]);
 
@@ -370,13 +369,22 @@ export function CodeQualityInsights({
     // setSelectedPRIds([]);
   };
 
+  // Log state just before rendering conditional UI
+  console.log(
+    `[CodeQualityInsights Render] isLoading: ${isLoading}, hasApiKey: ${!!apiKey}, analysisSummary: ${
+      analysisSummary ? "Exists" : "Null"
+    }, allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}, selectedPRIds.size: ${
+      selectedPRIds.size
+    }, isConfigVisible: ${isConfigVisible}`
+  );
+
   return (
     <div className="bg-white p-5 rounded-lg border border-gray-100">
       {/* Header with settings toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
-        {/* Show settings toggle if API key exists OR if analysis has been performed */}
-        {(hasApiKey || allAnalyzedPRIds.size > 0) && (
+        {/* Simplify toggle condition to just check apiKey */}
+        {(apiKey || allAnalyzedPRIds.size > 0) && (
           <button
             onClick={() => setIsConfigVisible(!isConfigVisible)}
             className="text-sm text-blue-600 hover:text-blue-800"
@@ -402,41 +410,30 @@ export function CodeQualityInsights({
       {isConfigVisible && (
         <ConfigurationPanel
           apiKey={apiKey}
-          apiProvider={apiProvider}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
+          apiProvider={apiProvider} // Pass provider from store
+          selectedModel={selectedModel} // Pass model from store
+          setSelectedModel={setSelectedModel} // Pass action from store
           maxPRs={maxPRs}
           saveToken={saveToken}
           setSaveToken={setSaveToken}
-          handleProviderChange={handleProviderChange}
+          handleProviderChange={setApiProvider} // Pass provider action from store
           useAllPRs={useAllPRs}
           handleToggleAllPRs={handleToggleAllPRs}
           allPRs={allPRs}
           pullRequests={pullRequests}
           showOnlyImportantPRs={showOnlyImportantPRs}
-          // Pass the count of analyzed PRs from the store
-          cachedCount={allAnalyzedPRIds.size}
+          cachedCount={allAnalyzedPRIds.size} // Use store count
           isAnalyzing={isLoading}
-          handleAnalyze={handleAnalyze} // Keep analyze button here
+          handleAnalyze={handleAnalyze}
           setApiKey={setApiKey}
           handleResetApiKey={handleResetApiKey}
           handleClearCache={async () => {
-            // Wrap the call to match expected void promise type
             const success = await clearAnalysisCache();
             if (success) {
-              alert(
-                "All cached PR analysis data and current results have been cleared."
-              );
-              // Show config if no API key after clearing
-              if (
-                !apiKey &&
-                !localStorage.getItem(OPENAI_KEY_STORAGE) &&
-                !localStorage.getItem(ANTHROPIC_KEY_STORAGE)
-              ) {
-                setIsConfigVisible(true);
-              }
+              alert("Cache cleared.");
+              if (!apiKey) setIsConfigVisible(true);
             } else {
-              alert("Failed to clear persistent cache. Please try again.");
+              alert("Failed to clear cache.");
             }
           }}
         />
@@ -449,8 +446,7 @@ export function CodeQualityInsights({
 
       {/* Initial State: No API Key, No Analysis, Config Hidden */}
       {!isLoading &&
-        !hasApiKey &&
-        !apiKey &&
+        !apiKey && // Rely only on apiKey state
         !analysisSummary &&
         !isConfigVisible && (
           <InitialState setIsConfigVisible={setIsConfigVisible} />
@@ -458,16 +454,14 @@ export function CodeQualityInsights({
 
       {/* Status: API Key exists, No Analysis yet, Config Hidden */}
       {!isLoading &&
-        (hasApiKey || apiKey) &&
+        apiKey && // Rely only on apiKey state
         !analysisSummary &&
         allAnalyzedPRIds.size === 0 &&
         !isConfigVisible && (
           <NoAnalyzedPRsState
             handleAnalyze={handleAnalyze}
-            hasApiKey={hasApiKey || !!apiKey}
             maxPRs={maxPRs}
-            setMaxPRs={setMaxPRs}
-            cachedCount={cachedCount} // Show count from cache hook
+            cachedCount={cachedCount}
           />
         )}
 
@@ -496,7 +490,7 @@ export function CodeQualityInsights({
       {/* Fallback/Analysis Status (Cached Count): Key exists, no summary, but cache might have items */}
       {/* This might overlap with NoAnalyzedPRsState - review conditions */}
       {!isLoading &&
-        (hasApiKey || apiKey) &&
+        apiKey && // Rely only on apiKey state
         !analysisSummary &&
         !isConfigVisible &&
         cachedCount > 0 &&

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { PullRequestItem } from "../../../lib/types";
+import { PullRequestItem, PRAnalysisResult } from "../../../lib/types";
 import { useAnalysisStore } from "../../../stores/analysisStore";
 import {
   AIAnalysisConfig,
-  PRAnalysisResult,
   aggregateFeedback,
 } from "../../../lib/aiAnalysisService";
 import cacheService from "../../../lib/cacheService";
@@ -20,9 +19,7 @@ export function usePRCache(
     config: AIAnalysisConfig,
     maxPRs?: number
   ) => Promise<PRAnalysisResult[]>,
-  isAnalyzing: boolean,
-  apiProvider: string,
-  apiKey?: string
+  isAnalyzing: boolean
 ) {
   // Get state and actions from Zustand store
   const {
@@ -168,27 +165,6 @@ export function usePRCache(
     }
   }, [isAnalyzing, clearAnalysisData]);
 
-  /**
-   * Creates a config object with API key
-   */
-  const createConfig = useCallback(
-    (customApiKey?: string): AIAnalysisConfig => {
-      const OPENAI_KEY_STORAGE = "github-review-openai-key";
-      const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
-
-      return {
-        apiKey:
-          customApiKey ||
-          apiKey ||
-          localStorage.getItem(OPENAI_KEY_STORAGE) ||
-          localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
-          "",
-        provider: apiProvider as "openai" | "anthropic",
-      };
-    },
-    [apiKey, apiProvider]
-  );
-
   // Reset auto-show flag when the component unmounts
   useEffect(() => {
     return () => {
@@ -211,6 +187,5 @@ export function usePRCache(
     checkCachedAnalyses,
     autoShowAnalysis,
     clearAnalysisCache,
-    createConfig,
   };
 }
