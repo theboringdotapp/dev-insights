@@ -5,9 +5,6 @@ import { FeedbackFrequency } from "../../../lib/types";
 interface PRFeatureListProps {
   features: FeedbackFrequency[];
   type: "strength" | "weakness" | "suggestion";
-  // Keep these props for backward compatibility but don't use them
-  cachedPRIds: number[];
-  newlyAnalyzedPRIds: number[];
   displayedPRIds?: number[];
 }
 

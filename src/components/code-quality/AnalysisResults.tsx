@@ -15,8 +15,7 @@ interface AnalysisResultsProps {
   averageScore: number;
   careerDevelopmentSummary: string | null;
   isGeneratingSummary: boolean;
-  cachedPRIds: number[];
-  newlyAnalyzedPRIds: number[];
+  selectedPRIds: number[];
   allAnalyzedPRIds?: number[];
   onGenerateSummary: () => Promise<void>;
   canGenerateSummary: boolean;
@@ -29,12 +28,11 @@ export default function AnalysisResults({
   averageScore,
   careerDevelopmentSummary,
   isGeneratingSummary,
-  cachedPRIds,
-  newlyAnalyzedPRIds,
+  selectedPRIds,
   onGenerateSummary,
   canGenerateSummary,
 }: AnalysisResultsProps) {
-  const displayedPRIds = [...cachedPRIds, ...newlyAnalyzedPRIds];
+  const displayedPRIds = selectedPRIds;
 
   const hasThemes =
     commonStrengths.length > 0 ||
@@ -103,8 +101,6 @@ export default function AnalysisResults({
               <PRFeatureList
                 features={commonStrengths}
                 type="strength"
-                cachedPRIds={cachedPRIds}
-                newlyAnalyzedPRIds={newlyAnalyzedPRIds}
                 displayedPRIds={displayedPRIds}
               />
             ) : (
@@ -136,8 +132,6 @@ export default function AnalysisResults({
               <PRFeatureList
                 features={commonWeaknesses}
                 type="weakness"
-                cachedPRIds={cachedPRIds}
-                newlyAnalyzedPRIds={newlyAnalyzedPRIds}
                 displayedPRIds={displayedPRIds}
               />
             ) : (
@@ -165,8 +159,6 @@ export default function AnalysisResults({
               <PRFeatureList
                 features={commonSuggestions}
                 type="suggestion"
-                cachedPRIds={cachedPRIds}
-                newlyAnalyzedPRIds={newlyAnalyzedPRIds}
                 displayedPRIds={displayedPRIds}
               />
             ) : (

@@ -3,7 +3,6 @@ import React from "react";
 interface NoAnalyzedPRsStateProps {
   handleAnalyze: () => void;
   maxPRs: number;
-  cachedCount: number;
 }
 
 /**
@@ -13,15 +12,9 @@ interface NoAnalyzedPRsStateProps {
 export default function NoAnalyzedPRsState({
   handleAnalyze,
   maxPRs,
-  cachedCount,
 }: NoAnalyzedPRsStateProps) {
-  // Determine CTA text based on state
-  const buttonText =
-    cachedCount === maxPRs
-      ? "Show Analysis"
-      : cachedCount > 0
-      ? `Analyze ${maxPRs - cachedCount} New PRs`
-      : `Analyze last ${maxPRs} PRs`;
+  // Simplified button text
+  const buttonText = `Analyze last ${maxPRs} PRs`;
 
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-card">

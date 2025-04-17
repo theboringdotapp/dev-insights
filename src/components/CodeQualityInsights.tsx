@@ -8,7 +8,6 @@ import {
   AIAnalysisConfig,
 } from "../lib/aiAnalysisService";
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
-import { usePRCache } from "./code-quality/hooks/usePRCache";
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 import AnalysisStatus from "./code-quality/AnalysisStatus";
 import AnalysisResults from "./code-quality/AnalysisResults";
@@ -38,9 +37,8 @@ export function CodeQualityInsights({
   pullRequests,
   allPRs,
 }: CodeQualityInsightsProps) {
-  // Core metrics hook (re-added destructuring)
-  const { analyzeMultiplePRs, getAnalysisForPR, getAnalysisFromMemoryCache } =
-    usePRMetrics();
+  // Core metrics hook
+  const { analyzeMultiplePRs } = usePRMetrics();
 
   // Get ALL relevant state and actions from Zustand store
   const {
@@ -62,6 +60,7 @@ export function CodeQualityInsights({
     averageScore,
     careerDevelopmentSummary,
     setSelectedPRIds,
+    clearAnalysisData, // Need this for clear cache
   } = useAnalysisStore();
 
   // API configuration hook (now only manages key and saveToken preference)
@@ -91,20 +90,6 @@ export function CodeQualityInsights({
 
   // Determine which PRs to potentially analyze based on filters
   const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
-
-  // PR Cache Hook (destructure clearAnalysisCache)
-  const {
-    cachedCount,
-    clearAnalysisCache, // Destructure clearAnalysisCache
-    cachedPRIds,
-    newlyAnalyzedPRIds,
-  } = usePRCache(
-    prsToAnalyze,
-    getAnalysisForPR,
-    getAnalysisFromMemoryCache,
-    analyzeMultiplePRs,
-    isLoading
-  );
 
   // Ref to track mounted state and prevent initial effect run
   const isMountedRef = useRef(false);
@@ -529,11 +514,24 @@ export function CodeQualityInsights({
     // setSelectedPRIds([]);
   };
 
+  // Update clear cache function to work without the hook
   const handleClearCacheAndStore = useCallback(async () => {
-    await clearAnalysisCache(); // Clear indexDB cache via hook
-    // No need to call clearAnalysisData() here, as it's handled by the hook now?
-    // Let's double-check usePRCache.ts - yes, it calls clearAnalysisData.
-  }, [clearAnalysisCache]);
+    try {
+      console.log("[handleClearCacheAndStore] Clearing cache and store...");
+      await cacheService.clearAllPRAnalysis(); // Clear IndexedDB
+      clearAnalysisData(); // Clear Zustand store
+      console.log("[handleClearCacheAndStore] Cache and store cleared.");
+      // Reset local component state related to analysis if needed
+      // e.g., setUseAllPRs(false)?
+      setIsConfigVisible(true); // Show config after clearing
+    } catch (error) {
+      console.error(
+        "[handleClearCacheAndStore] Error clearing cache/store:",
+        error
+      );
+      alert("Failed to clear cache."); // Inform user
+    }
+  }, [clearAnalysisData]); // Dependency on store action
 
   // Log state just before rendering conditional UI
   console.log(
@@ -562,9 +560,6 @@ export function CodeQualityInsights({
   );
   console.log(
     `[CodeQualityInsights Render] commonStrengths.length: ${commonStrengths.length}`
-  );
-  console.log(
-    `[CodeQualityInsights Render] cachedCount (from usePRCache): ${cachedCount}`
   );
   console.log(
     `[CodeQualityInsights Render] isConfigVisible: ${isConfigVisible}`
@@ -605,7 +600,6 @@ export function CodeQualityInsights({
           allPRs={allPRs}
           pullRequests={pullRequests}
           // showOnlyImportantPRs={showOnlyImportantPRs} // Prop removed
-          cachedCount={cachedCount}
           isAnalyzing={isOverallLoading} // Use combined loading state
           handleAnalyze={handleAnalyze}
           setApiKey={setApiKey}
@@ -624,7 +618,7 @@ export function CodeQualityInsights({
       {!isOverallLoading &&
         !apiKey &&
         !careerDevelopmentSummary &&
-        allAnalyzedPRIds.size === 0 && // Ensure no analyzed PRs exist either
+        allAnalyzedPRIds.size === 0 &&
         !isConfigVisible && (
           <InitialState setIsConfigVisible={setIsConfigVisible} />
         )}
@@ -635,11 +629,7 @@ export function CodeQualityInsights({
         !careerDevelopmentSummary &&
         allAnalyzedPRIds.size === 0 &&
         !isConfigVisible && (
-          <NoAnalyzedPRsState
-            handleAnalyze={handleAnalyze}
-            maxPRs={maxPRs}
-            cachedCount={cachedCount}
-          />
+          <NoAnalyzedPRsState handleAnalyze={handleAnalyze} maxPRs={maxPRs} />
         )}
 
       {/* --- Main Results Area (Render if PRs have been analyzed) --- */}
@@ -666,8 +656,7 @@ export function CodeQualityInsights({
               averageScore={averageScore}
               careerDevelopmentSummary={careerDevelopmentSummary} // Pass summary (can be null)
               isGeneratingSummary={isGeneratingSummary}
-              cachedPRIds={cachedPRIds}
-              newlyAnalyzedPRIds={newlyAnalyzedPRIds}
+              selectedPRIds={selectedPRIdsArray} // ADDED selected PRs
               allAnalyzedPRIds={allAnalyzedPRIdsArray}
               onGenerateSummary={handleGenerateSummary}
               canGenerateSummary={!!apiKey && !isConfigVisible}
@@ -675,15 +664,12 @@ export function CodeQualityInsights({
           </>
         )}
 
-      {/* Fallback Status (Cached Count - less likely needed now but kept for safety) */}
+      {/* Fallback Status */}
       {!isOverallLoading &&
         apiKey &&
         !careerDevelopmentSummary &&
         !isConfigVisible &&
-        cachedCount > 0 &&
-        allAnalyzedPRIds.size === 0 && (
-          <AnalysisStatus cachedCount={cachedCount} />
-        )}
+        allAnalyzedPRIds.size === 0 && <AnalysisStatus />}
     </div>
   );
 }

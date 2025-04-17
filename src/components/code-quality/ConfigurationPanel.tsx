@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Info, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { MODEL_OPTIONS } from "../../lib/models";
 
 // Define available models for each provider (Updated List)
@@ -23,7 +23,6 @@ interface ConfigurationPanelProps {
   apiProvider: AIProvider;
   selectedModel: string | undefined;
   setSelectedModel: (modelId: string | undefined) => void;
-  maxPRs: number;
   saveToken: boolean;
   setSaveToken: (value: boolean) => void;
   handleProviderChange: (provider: AIProvider) => void;
@@ -31,7 +30,6 @@ interface ConfigurationPanelProps {
   handleToggleAllPRs: () => void;
   allPRs?: PullRequestItem[];
   pullRequests: PullRequestItem[];
-  cachedCount: number;
   isAnalyzing: boolean;
   handleAnalyze: () => Promise<void>;
   setApiKey: (key: string) => void;
@@ -45,7 +43,6 @@ export default function ConfigurationPanel({
   apiProvider,
   selectedModel,
   setSelectedModel,
-  maxPRs,
   saveToken,
   setSaveToken,
   handleProviderChange,
@@ -53,7 +50,6 @@ export default function ConfigurationPanel({
   handleToggleAllPRs,
   allPRs,
   pullRequests,
-  cachedCount,
   isAnalyzing,
   handleAnalyze,
   setApiKey,
@@ -211,19 +207,6 @@ export default function ConfigurationPanel({
         <Label className="block text-sm font-medium text-gray-700 mb-1">
           Cache Management
         </Label>
-
-        {cachedCount > 0 && (
-          <div className="mb-3 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center border border-blue-200">
-            <Info className="h-4 w-4 mr-1.5 flex-shrink-0" />
-            {cachedCount === maxPRs ? (
-              <span>All selected PRs ({cachedCount}) are cached</span>
-            ) : (
-              <span>
-                {cachedCount} of {maxPRs} selected PRs are cached
-              </span>
-            )}
-          </div>
-        )}
 
         <div className="flex items-center">
           <Button
