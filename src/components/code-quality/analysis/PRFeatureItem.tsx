@@ -107,7 +107,7 @@ export default function PRFeatureItem({
         return {
           // Softer background, subtle border, removed colored border
           container:
-            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+            "dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
           icon: "text-green-600 dark:text-green-400",
           link: "border-green-300 bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700 dark:hover:bg-green-800/60",
           text: "text-zinc-900 dark:text-zinc-100", // Updated text color for contrast
@@ -115,7 +115,7 @@ export default function PRFeatureItem({
       case "bg-red-50":
         return {
           container:
-            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+            "dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
           icon: "text-red-600 dark:text-red-400",
           link: "border-red-300 bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200 dark:border-red-700 dark:hover:bg-red-800/60",
           text: "text-zinc-900 dark:text-zinc-100",
@@ -124,7 +124,7 @@ export default function PRFeatureItem({
       default:
         return {
           container:
-            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+            "dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
           icon: "text-blue-600 dark:text-blue-400",
           link: "border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700 dark:hover:bg-blue-800/60",
           text: "text-zinc-900 dark:text-zinc-100",
@@ -135,9 +135,7 @@ export default function PRFeatureItem({
   const modernStyles = getModernStyles();
 
   return (
-    <div
-      className={`relative p-5 ${modernStyles.container} rounded-lg shadow-sm`}
-    >
+    <div className={`relative p-5 ${modernStyles.container} rounded-lg`}>
       {/* PR Links moved to top-right */}
       <div className="absolute top-4 right-4 flex flex-wrap gap-2">
         {instancesToShow.map((instance, idx) => (

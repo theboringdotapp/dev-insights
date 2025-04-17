@@ -71,7 +71,7 @@ export function Timeline({
   };
 
   return (
-    <div className="mt-8 border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30 shadow-sm">
+    <div className="mt-8 border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30 ">
       {/* Header */}
       <TimelineHeader
         timeframeLabel={timeframeLabel}

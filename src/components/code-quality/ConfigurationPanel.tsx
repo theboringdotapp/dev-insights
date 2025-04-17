@@ -1,13 +1,45 @@
 import React from "react";
 import { PullRequestItem } from "../../lib/types";
+import { AIProvider } from "../../hooks/useAPIConfiguration";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Info, Trash2 } from "lucide-react";
+
+// Define available models for each provider (Updated List)
+const MODEL_OPTIONS: Record<AIProvider, { id: string; name: string }[]> = {
+  openai: [
+    { id: "gpt-4.1", name: "OpenAI GPT-4.1" },
+    { id: "o4-mini", name: "OpenAI o4-mini" },
+  ],
+  anthropic: [
+    { id: "claude-3-7-sonnet-20250219", name: "Anthropic Claude 3.7 Sonnet" },
+    // Note: Claude 3 Opus and Haiku removed as per user list
+  ],
+  gemini: [
+    { id: "gemini-2.5-pro-exp-03-25", name: "Google Gemini 2.5 Pro Exp" },
+    { id: "models/gemini-1.5-pro", name: "Google Gemini 1.5 Pro" },
+    // Note: Gemini 1.5 Flash removed as per user list
+  ],
+};
 
 interface ConfigurationPanelProps {
   apiKey: string;
-  apiProvider: "openai" | "anthropic";
+  apiProvider: AIProvider;
+  selectedModel: string | undefined;
+  setSelectedModel: (modelId: string | undefined) => void;
   maxPRs: number;
   saveToken: boolean;
   setSaveToken: (value: boolean) => void;
-  handleProviderChange: (provider: "openai" | "anthropic") => void;
+  handleProviderChange: (provider: AIProvider) => void;
   useAllPRs: boolean;
   handleToggleAllPRs: () => void;
   allPRs?: PullRequestItem[];
@@ -24,6 +56,8 @@ interface ConfigurationPanelProps {
 export default function ConfigurationPanel({
   apiKey,
   apiProvider,
+  selectedModel,
+  setSelectedModel,
   maxPRs,
   saveToken,
   setSaveToken,
@@ -40,95 +74,144 @@ export default function ConfigurationPanel({
   handleResetApiKey,
   handleClearCache,
 }: ConfigurationPanelProps) {
+  // Handle model change - ensure a model is selected for the current provider
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+  };
+
+  // Get model options for the currently selected provider
+  const currentModelOptions = MODEL_OPTIONS[apiProvider] || [];
+
   return (
-    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          API Provider
-        </label>
-        <div className="flex space-x-4">
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              className="form-radio"
-              name="apiProvider"
-              value="openai"
-              checked={apiProvider === "openai"}
-              onChange={() => handleProviderChange("openai")}
-            />
-            <span className="ml-2">OpenAI</span>
-          </label>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              className="form-radio"
-              name="apiProvider"
-              value="anthropic"
-              checked={apiProvider === "anthropic"}
-              onChange={() => handleProviderChange("anthropic")}
-            />
-            <span className="ml-2">Anthropic (Claude)</span>
-          </label>
+    <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6 border border-gray-200">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Provider Selection */}
+        <div>
+          <Label
+            htmlFor="apiProviderSelect"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            AI Provider
+          </Label>
+          <Select
+            value={apiProvider}
+            onValueChange={(value) => {
+              handleProviderChange(value as AIProvider);
+              // Reset model selection when provider changes
+              setSelectedModel(undefined);
+            }}
+          >
+            <SelectTrigger id="apiProviderSelect" className="w-full">
+              <SelectValue placeholder="Select AI Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+              <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+              <SelectItem value="gemini">Google (Gemini)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Model Selection - Conditional */}
+        <div>
+          <Label
+            htmlFor="modelSelect"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Model
+          </Label>
+          <Select
+            value={selectedModel ?? ""} // Handle undefined case
+            onValueChange={handleModelChange}
+            disabled={!apiProvider} // Disable if no provider selected
+          >
+            <SelectTrigger id="modelSelect" className="w-full">
+              <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {currentModelOptions.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!selectedModel && apiProvider && (
+            <p className="text-xs text-red-600 mt-1">
+              Please select a model for {apiProvider}.
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      {/* API Key Input */}
+      <div className="mt-4">
+        <Label
+          htmlFor="apiKeyInput"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           API Key
-        </label>
+        </Label>
         <div className="flex items-center">
-          <input
+          <Input
+            id="apiKeyInput"
             type="password"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={`Enter your ${
-              apiProvider === "openai" ? "OpenAI" : "Anthropic"
+              apiProvider.charAt(0).toUpperCase() + apiProvider.slice(1)
             } API key`}
+            aria-label={`${apiProvider} API Key`}
           />
           {apiKey && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleResetApiKey}
-              className="ml-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md"
+              className="ml-2 text-gray-500 hover:text-gray-700"
               title="Clear API key"
             >
+              <Trash2 className="h-4 w-4 mr-1" />
               Reset
-            </button>
+            </Button>
           )}
         </div>
         <div className="mt-2 flex items-center">
-          <input
-            type="checkbox"
+          <Checkbox
             id="saveToken"
             checked={saveToken}
-            onChange={() => setSaveToken(!saveToken)}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            onCheckedChange={(checked) => setSaveToken(Boolean(checked))}
           />
-          <label htmlFor="saveToken" className="ml-2 text-xs text-gray-500">
+          <Label
+            htmlFor="saveToken"
+            className="ml-2 text-xs text-gray-500 cursor-pointer"
+          >
             Save API key in browser for future sessions
-          </label>
+          </Label>
         </div>
       </div>
 
-      {/* PR selection option */}
+      {/* PR Selection Option - Only show if applicable */}
       {allPRs && allPRs.length > pullRequests.length && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="mt-4 border-t pt-4">
+          <Label className="block text-sm font-medium text-gray-700 mb-1">
             PRs to Analyze
-          </label>
+          </Label>
           <div className="flex items-center">
-            <input
-              type="checkbox"
+            <Checkbox
               id="useAllPRs"
               checked={useAllPRs}
-              onChange={handleToggleAllPRs}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              onCheckedChange={handleToggleAllPRs}
             />
-            <label htmlFor="useAllPRs" className="ml-2 text-sm text-gray-600">
+            <Label
+              htmlFor="useAllPRs"
+              className="ml-2 text-sm text-gray-600 cursor-pointer"
+            >
               Include all PRs ({allPRs.length} total) instead of only{" "}
               {pullRequests.length}{" "}
               {showOnlyImportantPRs ? "important" : "filtered"} PRs
-            </label>
+            </Label>
           </div>
           <p className="mt-1 text-xs text-gray-500">
             When enabled, analysis will include all PRs, not just the filtered
@@ -137,87 +220,56 @@ export default function ConfigurationPanel({
         </div>
       )}
 
-      {/* Caching information and controls */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      {/* Cache Management */}
+      <div className="mt-4 border-t pt-4">
+        <Label className="block text-sm font-medium text-gray-700 mb-1">
           Cache Management
-        </label>
+        </Label>
 
         {cachedCount > 0 && (
-          <div className="mb-3 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-1.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+          <div className="mb-3 p-2 bg-blue-50 rounded text-sm text-blue-700 flex items-center border border-blue-200">
+            <Info className="h-4 w-4 mr-1.5 flex-shrink-0" />
             {cachedCount === maxPRs ? (
-              <span>
-                All selected PRs ({cachedCount}) already analyzed and cached
-              </span>
+              <span>All selected PRs ({cachedCount}) are cached</span>
             ) : (
               <span>
-                {cachedCount} of {maxPRs} PRs already analyzed and cached
+                {cachedCount} of {maxPRs} selected PRs are cached
               </span>
             )}
           </div>
         )}
 
         <div className="flex items-center">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleClearCache}
             disabled={isAnalyzing || cachedCount === 0}
-            className={`px-3 py-1.5 text-xs rounded ${
+            className={`text-xs ${
               isAnalyzing || cachedCount === 0
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-red-100 text-red-700 hover:bg-red-200"
+                ? "text-gray-400"
+                : "text-red-600 border-red-200 hover:bg-red-50"
             }`}
             title="Remove all cached PR analysis data"
           >
-            <div className="flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3.5 w-3.5 mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              Clear All Cached Analysis
-            </div>
-          </button>
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Clear All Cached Analysis
+          </Button>
           <p className="ml-3 text-xs text-gray-500">
-            Removes all cached analysis data to free up space and start fresh.
+            Removes all cached analysis data to start fresh.
           </p>
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button
+      {/* Analyze Button */}
+      <div className="mt-6 flex justify-end border-t pt-4">
+        <Button
           onClick={handleAnalyze}
-          disabled={isAnalyzing || !apiKey}
-          className={`px-4 py-2 rounded-md ${
-            isAnalyzing || !apiKey
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700 text-white"
-          }`}
+          disabled={isAnalyzing || !apiKey || !selectedModel} // Disable if analyzing, no key, or no model selected
+          size="lg"
         >
           {isAnalyzing ? "Analyzing..." : "Analyze Code Quality"}
-        </button>
+        </Button>
       </div>
     </div>
   );

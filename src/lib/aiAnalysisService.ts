@@ -6,11 +6,16 @@ import {
   PRAnalysisResult,
   FeedbackInstance,
 } from "./types";
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+} from "@google/generative-ai"; // Import Gemini SDK
 
 // Types for AI analysis
 export interface AIAnalysisConfig {
   apiKey: string;
-  provider: "openai" | "anthropic";
+  provider: "openai" | "anthropic" | "gemini";
   model?: string;
 }
 
@@ -66,7 +71,7 @@ export function formatPRFilesForAnalysis(
 }
 
 /**
- * Analyze a PR's code using OpenAI or Claude
+ * Analyze a PR's code using OpenAI, Claude, or Gemini
  */
 export async function analyzePRWithAI(
   prContent: string,
@@ -75,8 +80,13 @@ export async function analyzePRWithAI(
   try {
     if (config.provider === "openai") {
       return await analyzeWithOpenAI(prContent, config);
-    } else {
+    } else if (config.provider === "anthropic") {
       return await analyzeWithClaude(prContent, config);
+    } else if (config.provider === "gemini") {
+      return await analyzeWithGemini(prContent, config);
+    } else {
+      console.error(`Unsupported AI provider: ${config.provider}`);
+      throw new Error(`Unsupported AI provider: ${config.provider}`);
     }
   } catch (error) {
     console.error("AI analysis failed:", error);
@@ -419,6 +429,210 @@ Do not include any explanations or text outside of this JSON structure. Respond 
         "The code analysis could not be completed due to technical issues with the Claude API.",
       overall_quality: 5,
     };
+  }
+}
+
+// Placeholder for the Gemini analysis function
+async function analyzeWithGemini(
+  prContent: string,
+  config: AIAnalysisConfig
+): Promise<AICodeFeedback> {
+  // Use a common Gemini model, allow override via config
+  const model = config.model || "gemini-1.5-flash-latest";
+  // Default temperature (can be configured later if needed)
+  const temperature = 0.7;
+
+  // Construct the prompt for Gemini, asking for JSON output.
+  // This prompt structure mirrors the ones used for OpenAI and Claude.
+  const prompt = `
+You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
+
+Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
+
+The PR details:
+${prContent}
+
+IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
+{
+  "strengths": [
+    {
+      "text": "Clear variable naming in function X.",
+      "codeContext": {
+        "filePath": "src/utils/helpers.ts",
+        "startLine": 25,
+        "endLine": 28,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Good use of async/await." }
+  ],
+  "areas_for_improvement": [
+    {
+      "text": "Consider adding error handling for API call.",
+      "codeContext": {
+        "filePath": "src/services/api.ts",
+        "startLine": 102,
+        "endLine": 105,
+        "codeSnippet": "..."
+      }
+    }
+  ],
+  "growth_opportunities": [
+    {
+      "text": "Explore using dependency injection for better testability.",
+      "codeContext": {
+        "filePath": "src/controllers/mainController.ts",
+        "startLine": 15,
+        "endLine": 20,
+        "codeSnippet": "..."
+      }
+    },
+    { "text": "Learn about SOLID principles." }
+  ],
+  "career_impact_summary": "Summary of how addressing these points will help career progression",
+  "overall_quality": 7 // An integer score from 1 (poor) to 10 (excellent)
+}
+
+Follow these important guidelines:
+1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
+    *   Provide the feedback in the "text" field.
+    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
+    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
+    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
+2.  Provide an "overall_quality" score as an integer between 1 and 10.
+3.  Focus on substantial issues/points that impact the developer's growth.
+4.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
+5.  Connect each point to career development and professional growth.
+6.  Provide actionable insights.
+
+Respond ONLY with the JSON object.
+`;
+
+  try {
+    // Initialize the Gemini client
+    const genAI = new GoogleGenerativeAI(config.apiKey);
+    const geminiModel = genAI.getGenerativeModel({
+      model: model,
+      // Basic safety settings - adjust as needed
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+      ],
+      generationConfig: {
+        temperature: temperature,
+        // Explicitly ask for JSON output
+        responseMimeType: "application/json",
+      },
+    });
+
+    // Make the API call
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response;
+    const responseText = response.text();
+
+    // Attempt to parse the JSON response
+    try {
+      const parsedResponse = JSON.parse(responseText) as AICodeFeedback;
+      // Basic validation: check if essential keys exist
+      if (
+        !parsedResponse ||
+        !Array.isArray(parsedResponse.strengths) ||
+        !Array.isArray(parsedResponse.areas_for_improvement) ||
+        !Array.isArray(parsedResponse.growth_opportunities) ||
+        typeof parsedResponse.career_impact_summary !== "string"
+        // typeof parsedResponse.overall_quality !== 'number' // Allow optional quality
+      ) {
+        throw new Error("Gemini response JSON structure is invalid.");
+      }
+      return {
+        strengths: parsedResponse.strengths || [],
+        areas_for_improvement: parsedResponse.areas_for_improvement || [],
+        growth_opportunities: parsedResponse.growth_opportunities || [],
+        career_impact_summary:
+          parsedResponse.career_impact_summary || "No summary provided.",
+        overall_quality: parsedResponse.overall_quality, // Pass through if present
+      };
+    } catch (parseError: unknown) {
+      console.error("Failed to parse Gemini JSON response:", parseError);
+      console.error("Raw Gemini response text:", responseText);
+      // Attempt to find JSON within ```json ... ``` blocks if parsing failed
+      const jsonMatch =
+        responseText.match(/```json\n([\s\S]*?)\n```/) ||
+        responseText.match(/```\n([\s\S]*?)\n```/) ||
+        responseText.match(/({[\s\S]*})/); // Fallback to any object
+
+      if (jsonMatch) {
+        try {
+          const jsonString = jsonMatch[1] || jsonMatch[0];
+          const parsedFallback = JSON.parse(jsonString) as AICodeFeedback;
+          // Basic validation for fallback
+          if (
+            !parsedFallback ||
+            !Array.isArray(parsedFallback.strengths) ||
+            !Array.isArray(parsedFallback.areas_for_improvement) ||
+            !Array.isArray(parsedFallback.growth_opportunities) ||
+            typeof parsedFallback.career_impact_summary !== "string"
+          ) {
+            throw new Error("Gemini fallback JSON structure is invalid.");
+          }
+          return {
+            strengths: parsedFallback.strengths || [],
+            areas_for_improvement: parsedFallback.areas_for_improvement || [],
+            growth_opportunities: parsedFallback.growth_opportunities || [],
+            career_impact_summary:
+              parsedFallback.career_impact_summary || "No summary provided.",
+            overall_quality: parsedFallback.overall_quality,
+          };
+        } catch (fallbackParseError) {
+          console.error(
+            "Failed to parse fallback Gemini JSON:",
+            fallbackParseError
+          );
+          // Fall through to generic error if fallback parsing fails
+        }
+      }
+
+      throw new Error(
+        `Failed to parse Gemini response as valid JSON. Raw text: ${responseText.substring(
+          0,
+          200
+        )}...`
+      );
+    }
+  } catch (error: unknown) {
+    console.error("Error calling Gemini API:", error);
+    let message = "Failed to generate text using Gemini.";
+    if (error instanceof Error) {
+      message = error.message;
+    }
+    // Check for CORS errors
+    if (
+      message.includes("CORS") ||
+      message.includes("Access-Control-Allow-Origin")
+    ) {
+      throw new Error(
+        "A CORS error occurred. Direct browser calls to the Gemini API are likely blocked. Consider using a backend proxy or Vertex AI in Firebase."
+      );
+    }
+    // Check for API key errors (example, adjust based on actual error messages)
+    if (message.includes("API key not valid")) {
+      throw new Error("Invalid Gemini API Key provided.");
+    }
+    throw new Error(`Gemini API Error: ${message}`);
   }
 }
 

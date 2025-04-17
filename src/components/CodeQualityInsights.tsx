@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
-import { aggregateFeedback } from "../lib/aiAnalysisService"; // Assuming path
+import {
+  aggregateFeedback,
+  AIAnalysisConfig, // Import AIAnalysisConfig
+} from "../lib/aiAnalysisService";
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import { usePRCache } from "./code-quality/hooks/usePRCache";
 // Removed usePRSelection as its state is now in Zustand
@@ -75,6 +78,11 @@ export function CodeQualityInsights({
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
 
+  // Add state for the selected model
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(
+    undefined
+  );
+
   // Convert Sets to arrays for components that need arrays
   const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
   const selectedPRIdsArray = Array.from(selectedPRIds);
@@ -111,6 +119,12 @@ export function CodeQualityInsights({
 
   // Ref to track mounted state and prevent initial effect run
   const isMountedRef = useRef(false);
+
+  // Ref to prevent duplicate analysis calls
+  const isAnalyzingRef = useRef(false);
+
+  // Determine max PRs to analyze in one go
+  const maxPRsToFetch = 5; // Or use a configurable value
 
   // Function to refresh the analysis summary based on selection
   const refreshAnalysisSummary = useCallback(async () => {
@@ -252,102 +266,102 @@ export function CodeQualityInsights({
     addAnalyzedPRIds, // Added store action dependency
   ]);
 
-  // Handle analyze button click
-  const handleAnalyze = async () => {
-    if (!apiKey) {
-      alert("Please enter an API key");
-      setIsConfigVisible(true);
+  // Function to trigger the analysis
+  const handleAnalyze = useCallback(async () => {
+    if (isAnalyzingRef.current) {
+      console.log("Analysis already in progress.");
       return;
     }
-    if (isLoading) return;
+    if (!apiKey || !selectedModel) {
+      console.error("API key or model not selected.");
+      alert("Please select an AI provider, a model, and enter your API key.");
+      // Optionally, bring focus to the config panel if hidden
+      return;
+    }
+
+    isAnalyzingRef.current = true;
+    saveApiKey(); // Save key if configured
 
     try {
-      saveApiKey();
-      setHasApiKey(true);
-      setIsConfigVisible(false); // Hide config on successful analysis start
+      // Determine the list of PRs to potentially analyze
+      const prsToConsider = useAllPRs && allPRs ? allPRs : pullRequests;
 
-      const config = createConfig(apiKey);
-
-      // Get currently analyzed PRs from the store for comparison
-      const previouslyAnalyzedIds = new Set(allAnalyzedPRIds);
-
-      // Determine which PRs to analyze now (up to maxPRs, excluding already analyzed)
-      const prsToAnalyzeNow = prsToAnalyze
-        .filter((pr) => !previouslyAnalyzedIds.has(pr.id))
-        .slice(0, maxPRs);
+      // Filter out PRs already analyzed or currently being analyzed
+      const prsToAnalyzeNow = prsToConsider
+        .filter(
+          (pr) => !allAnalyzedPRIds.has(pr.id) && !analyzingPRIds.has(pr.id)
+        )
+        .slice(0, maxPRsToFetch);
 
       if (prsToAnalyzeNow.length === 0) {
-        alert("All visible PRs have already been analyzed.");
-        // Optionally, select all analyzed PRs if none are selected
-        if (selectedPRIds.size === 0 && allAnalyzedPRIds.size > 0) {
-          selectAllPRs(Array.from(allAnalyzedPRIds));
-        }
+        alert(
+          "All eligible PRs have already been analyzed or are being analyzed."
+        );
+        isAnalyzingRef.current = false;
         return;
       }
 
-      // Call analyzeMultiplePRs API
+      console.log(`Attempting to analyze ${prsToAnalyzeNow.length} PRs...`);
+
+      // Create the config object including the selected model
+      const config: AIAnalysisConfig = {
+        apiKey,
+        provider: apiProvider,
+        model: selectedModel, // Pass the selected model
+      };
+
+      // Call the analysis function from usePRMetrics
+      // (Assuming analyzeMultiplePRs handles calling startAnalysis/completeAnalysis/failAnalysis internally)
       const results: PRAnalysisResult[] = await analyzeMultiplePRs(
-        prsToAnalyzeNow, // Only analyze the ones not previously analyzed
-        config
+        prsToAnalyzeNow,
+        config,
+        maxPRsToFetch
       );
 
-      const successfulResultIds: number[] = [];
-      const newlyAnalyzedIds: number[] = [];
+      console.log(`Analysis completed for ${results.length} PRs.`);
 
-      // Update store for PRs that were attempted
-      results.forEach((result) => {
-        successfulResultIds.push(result.prId);
-        if (!previouslyAnalyzedIds.has(result.prId)) {
-          newlyAnalyzedIds.push(result.prId);
-        }
-      });
-
-      // Update analysis summary in the store (aggregate only successful results)
-      if (results.length > 0) {
-        const summary = await aggregateFeedback(results);
+      // Aggregate feedback from successful results for the summary
+      const successfulResults = results.filter((res) => !res.error);
+      if (successfulResults.length > 0) {
+        const summary = aggregateFeedback(successfulResults);
         setAnalysisSummary(summary);
-      } else if (prsToAnalyzeNow.length > 0) {
-        // No results, but analysis was attempted, maybe clear summary?
-        // Or keep existing summary if desired? For now, clear if no results.
+      } else {
+        // Handle case where analysis ran but all failed or returned no data
+        console.warn(
+          "Analysis completed, but no successful results to aggregate."
+        );
+        // Decide if summary should be cleared or kept
         // setAnalysisSummary(null);
-        console.warn("Analysis ran but returned no results.");
       }
-
-      // Add newly analyzed IDs to the global set in the store
-      if (newlyAnalyzedIds.length > 0) {
-        addAnalyzedPRIds(newlyAnalyzedIds);
-        // Update local state for highlighting in AnalysisResults
-        setNewlyAnalyzedPRIds(newlyAnalyzedIds);
-      }
-
-      // Automatically select the PRs that were just successfully analyzed
-      if (successfulResultIds.length > 0) {
-        // Add successfully analyzed PRs to the current selection
-        const currentSelection = new Set(selectedPRIds);
-        successfulResultIds.forEach((id) => currentSelection.add(id));
-        setSelectedPRIds(Array.from(currentSelection));
-      }
-
-      // Update filter if analyzing all PRs and not already showing all
-      if (useAllPRs && showOnlyImportantPRs && onToggleFilter) {
-        onToggleFilter(false);
-      }
-    } catch (error) {
-      console.error("Error during analysis:", error);
-      // Mark all attempted PRs as failed in the store on general error
-      const attemptedPRIds = prsToAnalyze
-        .filter((pr) => !allAnalyzedPRIds.has(pr.id))
-        .slice(0, maxPRs)
-        .map((pr) => pr.id);
-      attemptedPRIds.forEach((id) => failAnalysis(id));
-      // Note: failAnalysis might have already been called inside analyzeMultiplePRs for specific PRs,
-      // but this ensures any PRs attempted by handleAnalyze but missed in results are marked as failed.
-      // Optionally show user-facing error message
-      alert(`An error occurred during analysis: ${error.message || error}`);
+    } catch (error: unknown) {
+      console.error("Error during analysis orchestration:", error);
+      // Generic error handling for the overall process
+      alert(
+        `An error occurred during analysis: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      // Optionally mark remaining attempted PRs as failed if analyzeMultiplePRs doesn't guarantee it
+      // const attemptedIds = prsToAnalyzeNow.map(pr => pr.id);
+      // attemptedIds.forEach(id => failAnalysis(id)); // Be careful not to double-mark
     } finally {
-      // No explicit finally block needed for loading state reset
+      isAnalyzingRef.current = false;
     }
-  };
+  }, [
+    apiKey,
+    selectedModel,
+    apiProvider,
+    useAllPRs,
+    allPRs,
+    pullRequests,
+    allAnalyzedPRIds,
+    analyzingPRIds,
+    analyzeMultiplePRs,
+    setAnalysisSummary,
+    saveApiKey,
+    maxPRsToFetch,
+    // Add other dependencies if needed (e.g., failAnalysis if used in catch)
+  ]);
 
   // Toggle between filtered PRs and all PRs
   const handleToggleAllPRs = () => {
@@ -357,7 +371,7 @@ export function CodeQualityInsights({
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
+    <div className="bg-white p-5 rounded-lg border border-gray-100">
       {/* Header with settings toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
@@ -389,6 +403,8 @@ export function CodeQualityInsights({
         <ConfigurationPanel
           apiKey={apiKey}
           apiProvider={apiProvider}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
           maxPRs={maxPRs}
           saveToken={saveToken}
           setSaveToken={setSaveToken}
