@@ -1,7 +1,7 @@
 import React from "react";
 import { FeedbackInstance, CodeContext } from "../../../lib/types";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism"; // Or choose another style
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Feature {
   text: string;
@@ -18,7 +18,6 @@ interface TypeStyles {
 interface PRFeatureItemProps {
   feature: Feature;
   typeStyles: TypeStyles;
-  icon: React.ReactNode;
   displayedPRIds?: number[];
 }
 
@@ -70,16 +69,16 @@ const CodeBlock = ({ codeContext }: { codeContext: CodeContext }) => {
   const language = getLanguage(codeContext.filePath);
 
   return (
-    <div className="mt-2 mb-3 border border-gray-200 rounded text-xs overflow-hidden">
-      <div className="text-gray-500 px-3 py-1 bg-gray-50 border-b border-gray-200">
+    <div className="mt-2 mb-1 text-xs overflow-hidden rounded-md shadow-sm">
+      <div className="text-gray-500 px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600 text-sm text-left">
         {codeContext.filePath} ({codeContext.startLine}-{codeContext.endLine})
       </div>
       <SyntaxHighlighter
         language={language}
-        style={atomDark} // Use the imported style
-        customStyle={{ margin: 0, padding: "0.75rem" }} // Adjust padding/margin
+        style={vscDarkPlus}
+        customStyle={{ margin: 0, padding: "0.75rem", fontSize: "0.875rem" }}
         wrapLines={true}
-        showLineNumbers={false} // Line numbers from context are more relevant
+        showLineNumbers={false}
       >
         {codeContext.codeSnippet}
       </SyntaxHighlighter>
@@ -90,71 +89,92 @@ const CodeBlock = ({ codeContext }: { codeContext: CodeContext }) => {
 export default function PRFeatureItem({
   feature,
   typeStyles,
-  icon,
   displayedPRIds = [],
 }: PRFeatureItemProps) {
-  // Filter displayed PRs
-  const visiblePRs = feature.instances.map((instance) => instance.prId);
+  // Determine which instances to show based on displayedPRIds
+  const instancesToShow =
+    displayedPRIds.length === 0
+      ? feature.instances // Show all if displayedPRIds is empty
+      : feature.instances.filter((instance) =>
+          displayedPRIds.includes(instance.prId)
+        );
 
-  // If no displayedPRIds provided, show all
-  const showAll = displayedPRIds.length === 0;
-  const filteredPRs = showAll
-    ? visiblePRs
-    : visiblePRs.filter((id) => displayedPRIds.includes(id));
-  const actualCount = filteredPRs.length;
+  // More modern styling based on type - Overriding parts of the old typeStyles prop logic
+  const getModernStyles = () => {
+    // Using softer neutral background, subtle border, relying on icon color
+    switch (typeStyles.container.split(" ")[0]) {
+      case "bg-green-50":
+        return {
+          // Softer background, subtle border, removed colored border
+          container:
+            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+          icon: "text-green-600 dark:text-green-400",
+          link: "border-green-300 bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700 dark:hover:bg-green-800/60",
+          text: "text-zinc-900 dark:text-zinc-100", // Updated text color for contrast
+        };
+      case "bg-red-50":
+        return {
+          container:
+            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+          icon: "text-red-600 dark:text-red-400",
+          link: "border-red-300 bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200 dark:border-red-700 dark:hover:bg-red-800/60",
+          text: "text-zinc-900 dark:text-zinc-100",
+        };
+      case "bg-blue-50":
+      default:
+        return {
+          container:
+            "bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60",
+          icon: "text-blue-600 dark:text-blue-400",
+          link: "border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700 dark:hover:bg-blue-800/60",
+          text: "text-zinc-900 dark:text-zinc-100",
+        };
+    }
+  };
+
+  const modernStyles = getModernStyles();
 
   return (
-    <div className={`p-4 ${typeStyles.container} rounded-lg border`}>
-      <div className="flex items-start mb-2">
-        <div className={`${typeStyles.icon} mr-3 flex-shrink-0 mt-0.5`}>
-          {icon}
-        </div>
-        <div>
-          <h5 className="font-medium text-gray-800 text-base">
-            {feature.text.charAt(0).toUpperCase() + feature.text.slice(1)}
-          </h5>
-        </div>
+    <div
+      className={`relative p-5 ${modernStyles.container} rounded-lg shadow-sm`}
+    >
+      {/* PR Links moved to top-right */}
+      <div className="absolute top-4 right-4 flex flex-wrap gap-2">
+        {instancesToShow.map((instance, idx) => (
+          <a
+            key={`${instance.prId}-${idx}`}
+            href={instance.prUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors duration-150 ${modernStyles.link}`}
+            title={instance.prTitle}
+          >
+            #{instance.prUrl.split("/").pop()}
+          </a>
+        ))}
       </div>
 
-      <div className="ml-8">
-        <div className="text-xs text-gray-500 text-left">
-          {!showAll && actualCount !== feature.count ? (
-            <span>
-              Found in {feature.count} PRs (showing {actualCount}):
-            </span>
-          ) : (
-            <span>
-              Found in {feature.count} PR{feature.count !== 1 ? "s" : ""}:
-            </span>
+      {/* Main content: Title Only - Icon Removed */}
+      <div className="mb-3">
+        <h5
+          className={`font-semibold ${modernStyles.text} text-base text-left`}
+        >
+          {feature.text.charAt(0).toUpperCase() + feature.text.slice(1)}
+        </h5>
+      </div>
+
+      {/* Content: Snippets - No longer indented relative to icon */}
+      <div>
+        {/* Render Code Snippets Section */}
+        <div className="space-y-3">
+          {instancesToShow.map((instance, idx) =>
+            instance.codeContext ? (
+              <CodeBlock
+                key={`code-${instance.prId}-${idx}`}
+                codeContext={instance.codeContext}
+              />
+            ) : null
           )}
-
-          {/* Group PR links and then show code snippets */}
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {feature.instances.map((instance, idx) => (
-              <a
-                key={instance.prId}
-                href={instance.prUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center px-2 py-1 bg-white rounded border ${typeStyles.link}`}
-                title={instance.prTitle}
-              >
-                #{instance.prUrl.split("/").pop()}
-              </a>
-            ))}
-          </div>
-
-          {/* Render Code Snippets */}
-          <div className="mt-3 space-y-2">
-            {feature.instances.map((instance, idx) =>
-              instance.codeContext ? (
-                <CodeBlock
-                  key={`code-${instance.prId}-${idx}`}
-                  codeContext={instance.codeContext}
-                />
-              ) : null
-            )}
-          </div>
         </div>
       </div>
     </div>
