@@ -97,10 +97,10 @@ export default function PullRequestCard({
               day: "numeric",
             })}
           </div>
-          {/* PR Analysis Buttons - Conditional positioning based on screen size */}
-          {hasApiKeys && (
+          {/* PR Analysis Buttons / Prompt - Conditional positioning */}
+          {hasApiKeys ? (
             <>
-              {/* Mobile Button (Top Left) - Handles all states */}
+              {/* Mobile Button (Top Left) */}
               <span className="absolute top-3 left-3 block sm:hidden">
                 <AnalysisButton
                   pr={pr}
@@ -110,8 +110,7 @@ export default function PullRequestCard({
                   onReanalyze={onReanalyzePR}
                 />
               </span>
-
-              {/* Desktop Button (Bottom Right Flow) - Handles all states */}
+              {/* Desktop Button (Bottom Right Flow) */}
               <div className="hidden sm:block mt-auto sm:mt-0 ml-auto sm:ml-0">
                 <AnalysisButton
                   pr={pr}
@@ -120,6 +119,17 @@ export default function PullRequestCard({
                   onAnalyze={onAnalyzePR}
                   onReanalyze={onReanalyzePR}
                 />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Mobile Prompt (Top Left) */}
+              <span className="absolute top-3 left-3 block sm:hidden text-xs text-gray-400 dark:text-gray-500 p-1 bg-gray-100 dark:bg-gray-800 rounded">
+                Configure API Key
+              </span>
+              {/* Desktop Prompt (Bottom Right Flow) */}
+              <div className="hidden sm:block mt-auto sm:mt-0 ml-auto sm:ml-0 text-xs text-gray-400 dark:text-gray-500">
+                Configure API Key for Analysis
               </div>
             </>
           )}

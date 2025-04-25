@@ -10,12 +10,13 @@ const GEMINI_KEY_STORAGE = "github-review-gemini-key";
 export type AIProvider = "openai" | "anthropic" | "gemini";
 
 export function useAPIConfiguration() {
-  // Read provider state and setter from Zustand store
+  // Read state and setters from Zustand store
   const apiProvider = useAnalysisStore((state) => state.apiProvider);
   const setApiProvider = useAnalysisStore((state) => state.setApiProvider);
+  const apiKey = useAnalysisStore((state) => state.apiKey); // Read apiKey from store
+  const setApiKey = useAnalysisStore((state) => state.setApiKey); // Get setApiKey action
 
-  // Manage API key state locally within the hook
-  const [apiKey, setApiKey] = useState("");
+  // Manage saveToken locally (or move to store if needed globally)
   const [saveToken, setSaveToken] = useState(true);
 
   // Function to get the correct API key storage key based on provider
@@ -31,57 +32,65 @@ export function useAPIConfiguration() {
         console.warn("Unknown API provider for storage key:", provider);
         return OPENAI_KEY_STORAGE; // Default fallback
     }
-  }, []); // No dependencies needed here
+  }, []);
 
-  // Load saved API key when the provider (from store) changes
+  // Load saved API key into the store when the provider changes
   useEffect(() => {
     const storageKey = getStorageKey(apiProvider);
     const savedKey = localStorage.getItem(storageKey);
-    if (savedKey) {
-      setApiKey(savedKey);
-      console.log(
-        `[useAPIConfiguration] Loaded API key for ${apiProvider}. Key length: ${savedKey.length}`
-      );
-    } else {
-      setApiKey("");
-      console.log(`[useAPIConfiguration] No API key found for ${apiProvider}.`);
-    }
-    // Also load the saveToken preference (assuming it's global for now)
+    setApiKey(savedKey || ""); // Update store with loaded key
+    console.log(
+      `[useAPIConfiguration] Loaded API key for ${apiProvider} into store. Key length: ${
+        savedKey?.length || 0
+      }`
+    );
+
+    // Also load the saveToken preference
     const savedSaveToken = localStorage.getItem("github-review-save-token");
     if (savedSaveToken !== null) {
       setSaveToken(savedSaveToken === "true");
     }
-  }, [apiProvider, getStorageKey]);
+  }, [apiProvider, getStorageKey, setApiKey]);
 
-  // Handle clearing the currently active API key
+  // Handle clearing the currently active API key from store and storage
   const handleResetApiKey = useCallback(() => {
     const storageKey = getStorageKey(apiProvider);
     localStorage.removeItem(storageKey);
-    setApiKey("");
+    setApiKey(""); // Update store
     console.log(`[useAPIConfiguration] Cleared API key for ${apiProvider}.`);
-  }, [apiProvider, getStorageKey]);
+  }, [apiProvider, getStorageKey, setApiKey]);
 
-  // Save the current API key (if saveToken is enabled)
+  // Save the current API key from store (if saveToken is enabled)
   const saveApiKey = useCallback(() => {
-    if (saveToken && apiKey) {
+    const currentApiKey = useAnalysisStore.getState().apiKey; // Get current key from store
+    if (saveToken && currentApiKey) {
       const storageKey = getStorageKey(apiProvider);
-      localStorage.setItem(storageKey, apiKey);
+      localStorage.setItem(storageKey, currentApiKey);
       console.log(`Saved API key for ${apiProvider}.`);
+    } else if (saveToken && !currentApiKey) {
+      // If saving is enabled but key is empty, remove from storage
+      const storageKey = getStorageKey(apiProvider);
+      localStorage.removeItem(storageKey);
     }
     // Save the saveToken preference globally
     localStorage.setItem("github-review-save-token", String(saveToken));
-  }, [apiKey, apiProvider, saveToken, getStorageKey]);
+  }, [apiProvider, saveToken, getStorageKey]);
 
-  // Update the local API key state and potentially save it
-  const updateApiKey = useCallback(
+  // Update the store API key and potentially save it
+  const updateApiKeyAndSave = useCallback(
     (newKey: string) => {
-      setApiKey(newKey);
+      setApiKey(newKey); // Update store
       if (saveToken) {
         const storageKey = getStorageKey(apiProvider);
-        localStorage.setItem(storageKey, newKey);
+        if (newKey) {
+          localStorage.setItem(storageKey, newKey);
+        } else {
+          // Remove from storage if key is cleared
+          localStorage.removeItem(storageKey);
+        }
       }
     },
-    [saveToken, apiProvider, getStorageKey]
+    [saveToken, apiProvider, getStorageKey, setApiKey]
   );
 
   // The function to change the provider now just calls the Zustand action
@@ -97,11 +106,15 @@ export function useAPIConfiguration() {
   // Update saveToken state and save preference
   const updateSaveToken = useCallback(
     (shouldSave: boolean) => {
+      const currentApiKey = useAnalysisStore.getState().apiKey; // Get current key from store
       setSaveToken(shouldSave);
       localStorage.setItem("github-review-save-token", String(shouldSave));
-      // If disabling saveToken, remove the currently loaded key from storage
-      if (!shouldSave) {
-        const storageKey = getStorageKey(apiProvider);
+      const storageKey = getStorageKey(apiProvider);
+      if (shouldSave && currentApiKey) {
+        // If enabling save and key exists, save it now
+        localStorage.setItem(storageKey, currentApiKey);
+      } else if (!shouldSave) {
+        // If disabling saveToken, remove the currently loaded key from storage
         localStorage.removeItem(storageKey);
         console.log(
           `Removed API key for ${apiProvider} from storage as saveToken is disabled.`
@@ -112,13 +125,13 @@ export function useAPIConfiguration() {
   );
 
   return {
+    // Provide apiKey and setApiKey from the store
     apiKey,
-    setApiKey: updateApiKey,
-    // apiProvider is now read directly from useAnalysisStore where needed
+    setApiKey: updateApiKeyAndSave, // Use the updated setter
     saveToken,
-    setSaveToken: updateSaveToken, // Use updated setter
+    setSaveToken: updateSaveToken,
     handleResetApiKey,
-    handleProviderChange, // This now dispatches to Zustand
-    saveApiKey, // Keep for explicit saving if needed elsewhere
+    handleProviderChange,
+    saveApiKey, // Keep for explicit saving (e.g., on analyze button click)
   };
 }

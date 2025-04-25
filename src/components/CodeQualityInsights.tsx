@@ -9,9 +9,7 @@ import {
 } from "../lib/aiAnalysisService";
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
-import AnalysisStatus from "./code-quality/AnalysisStatus";
 import AnalysisResults from "./code-quality/AnalysisResults";
-import InitialState from "./code-quality/InitialState";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
@@ -100,22 +98,28 @@ export function CodeQualityInsights({
   // Effect to handle model auto-selection (uses store state/actions)
   useEffect(() => {
     const models = MODEL_OPTIONS[apiProvider] || [];
+    const currentProviderModels = models.map((m) => m.id);
+
     if (models.length === 1) {
+      // Auto-select if only one model exists and it's not already selected
       if (selectedModel !== models[0].id) {
-        // Only update if different
         setSelectedModel(models[0].id);
         console.log(`Auto-selected model for ${apiProvider}: ${models[0].id}`);
       }
     } else {
-      // Clear selection if multiple models or provider invalid
-      // Only clear if a model *is* currently selected
-      if (selectedModel !== undefined) {
+      // If multiple models exist for the provider OR no models exist (invalid provider?):
+      // Check if a model is selected AND if it's NOT valid for the CURRENT provider.
+      if (selectedModel && !currentProviderModels.includes(selectedModel)) {
+        // Clear the selection ONLY if the currently selected model is incompatible
         setSelectedModel(undefined);
-        console.log(`Cleared model selection for ${apiProvider}.`);
+        console.log(
+          `Cleared incompatible model selection (${selectedModel}) for provider ${apiProvider}.`
+        );
       }
+      // If a model is selected AND it *is* valid, do nothing - keep the user's/persisted choice.
     }
-    // Depend on apiProvider from store and the action setter
-  }, [apiProvider, setSelectedModel]);
+    // Depend on provider AND the selected model itself
+  }, [apiProvider, selectedModel, setSelectedModel]);
 
   // Removed wrapped handleProviderChange - use store action directly
 
@@ -198,20 +202,6 @@ export function CodeQualityInsights({
     setCareerDevelopmentSummary,
     // generateAICareerSummary, // Stable function
   ]);
-
-  // Effect to check initial API key state & config visibility
-  useEffect(() => {
-    // Logic to show config panel initially
-    if (!apiKey && allAnalyzedPRIds.size === 0) {
-      const anyKey =
-        localStorage.getItem(OPENAI_KEY_STORAGE) ||
-        localStorage.getItem(ANTHROPIC_KEY_STORAGE) ||
-        localStorage.getItem(GEMINI_KEY_STORAGE);
-      if (!anyKey) {
-        setIsConfigVisible(true);
-      }
-    }
-  }, [apiKey, allAnalyzedPRIds]);
 
   // Effect for discovering analyzed IDs and setting initial selection on mount
   useEffect(() => {
@@ -573,15 +563,13 @@ export function CodeQualityInsights({
       {/* Header with settings toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
-        {/* Simplify toggle condition to just check apiKey */}
-        {(apiKey || allAnalyzedPRIds.size > 0) && (
-          <button
-            onClick={() => setIsConfigVisible(!isConfigVisible)}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            {isConfigVisible ? "Hide Settings" : "Show Settings"}
-          </button>
-        )}
+        {/* Always show the toggle button */}
+        <button
+          onClick={() => setIsConfigVisible(!isConfigVisible)}
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          {isConfigVisible ? "Hide Settings" : "Show Settings"}
+        </button>
       </div>
 
       {/* --- Configuration Panel (Render when visible) --- */}
@@ -591,7 +579,6 @@ export function CodeQualityInsights({
           apiProvider={apiProvider}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
-          maxPRs={maxPRs}
           saveToken={saveToken}
           setSaveToken={setSaveToken}
           handleProviderChange={handleProviderChange}
@@ -599,38 +586,30 @@ export function CodeQualityInsights({
           handleToggleAllPRs={handleToggleAllPRs}
           allPRs={allPRs}
           pullRequests={pullRequests}
-          // showOnlyImportantPRs={showOnlyImportantPRs} // Prop removed
-          isAnalyzing={isOverallLoading} // Use combined loading state
-          handleAnalyze={handleAnalyze}
+          // Pass setIsConfigVisible to allow the panel to close itself
+          setIsConfigVisible={setIsConfigVisible}
+          // handleAnalyze is no longer needed for the primary button
+          // isAnalyzing is no longer needed for the primary button
           setApiKey={setApiKey}
           handleResetApiKey={handleResetApiKey}
-          handleClearCache={handleClearCacheAndStore} // Pass combined clear function
+          handleClearCache={handleClearCacheAndStore}
           allAnalyzedPRIdsSize={allAnalyzedPRIds.size}
         />
       )}
 
-      {/* --- Conditional Content Rendering --- */}
-
       {/* Loading Indicator (Top Level) */}
       {isOverallLoading && !isConfigVisible && <AnalysisLoadingIndicator />}
 
-      {/* Initial State (No API key, No Analysis) */}
-      {!isOverallLoading &&
-        !apiKey &&
-        !careerDevelopmentSummary &&
-        allAnalyzedPRIds.size === 0 &&
-        !isConfigVisible && (
-          <InitialState setIsConfigVisible={setIsConfigVisible} />
-        )}
-
-      {/* Ready to Analyze State (API Key, No Analysis yet) */}
-      {!isOverallLoading &&
-        apiKey &&
-        !careerDevelopmentSummary &&
-        allAnalyzedPRIds.size === 0 &&
-        !isConfigVisible && (
-          <NoAnalyzedPRsState handleAnalyze={handleAnalyze} maxPRs={maxPRs} />
-        )}
+      {/* Initial State / Ready to Analyze State - Combined Logic */}
+      {/* Show NoAnalyzedPRsState if config is hidden and no PRs analyzed yet */}
+      {!isOverallLoading && allAnalyzedPRIds.size === 0 && !isConfigVisible && (
+        <NoAnalyzedPRsState
+          handleAnalyze={handleAnalyze}
+          maxPRs={maxPRs}
+          hasApiKey={!!apiKey} // Pass API key status
+          setIsConfigVisible={setIsConfigVisible} // Pass function to open config
+        />
+      )}
 
       {/* --- Main Results Area (Render if PRs have been analyzed) --- */}
       {!isOverallLoading &&
@@ -663,13 +642,6 @@ export function CodeQualityInsights({
             />
           </>
         )}
-
-      {/* Fallback Status */}
-      {!isOverallLoading &&
-        apiKey &&
-        !careerDevelopmentSummary &&
-        !isConfigVisible &&
-        allAnalyzedPRIds.size === 0 && <AnalysisStatus />}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { AIProvider } from "../hooks/useAPIConfiguration";
 
 // Define the state structure
 interface AnalysisState {
+  apiKey: string;
   analyzingPRIds: Set<number>;
   commonStrengths: FeedbackFrequency[];
   commonWeaknesses: FeedbackFrequency[];
@@ -32,6 +33,7 @@ interface AnalysisState {
   setApiProvider: (provider: AIProvider) => void;
   setSelectedModel: (modelId: string | undefined) => void;
   setIsGeneratingSummary: (isLoading: boolean) => void;
+  setApiKey: (key: string) => void;
 }
 
 // Helper to handle Set serialization/deserialization for persist middleware
@@ -67,6 +69,7 @@ export const useAnalysisStore = create<AnalysisState>()(
   persist(
     (set) => ({
       // --- Initial State ---
+      apiKey: "",
       analyzingPRIds: new Set(),
       commonStrengths: [],
       commonWeaknesses: [],
@@ -162,6 +165,7 @@ export const useAnalysisStore = create<AnalysisState>()(
       setSelectedModel: (modelId) => set({ selectedModel: modelId }),
       setIsGeneratingSummary: (isLoading) =>
         set({ isGeneratingSummary: isLoading }),
+      setApiKey: (key) => set({ apiKey: key }),
     }),
     {
       name: "analysis-store",
@@ -170,6 +174,7 @@ export const useAnalysisStore = create<AnalysisState>()(
         allAnalyzedPRIds: state.allAnalyzedPRIds,
         apiProvider: state.apiProvider,
         selectedModel: state.selectedModel,
+        apiKey: state.apiKey,
       }),
     }
   )

@@ -3,6 +3,8 @@ import React from "react";
 interface NoAnalyzedPRsStateProps {
   handleAnalyze: () => void;
   maxPRs: number;
+  hasApiKey: boolean;
+  setIsConfigVisible: (visible: boolean) => void;
 }
 
 /**
@@ -12,6 +14,8 @@ interface NoAnalyzedPRsStateProps {
 export default function NoAnalyzedPRsState({
   handleAnalyze,
   maxPRs,
+  hasApiKey,
+  setIsConfigVisible,
 }: NoAnalyzedPRsStateProps) {
   // Simplified button text
   const buttonText = `Analyze last ${maxPRs} PRs`;
@@ -56,7 +60,12 @@ export default function NoAnalyzedPRsState({
           <div>
             <button
               onClick={handleAnalyze}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center"
+              disabled={!hasApiKey}
+              className={`px-6 py-3 rounded-md transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center ${
+                hasApiKey
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
             >
               <svg
                 className="w-4 h-4 mr-2"
@@ -74,6 +83,19 @@ export default function NoAnalyzedPRsState({
               </svg>
               {buttonText}
             </button>
+            {!hasApiKey && (
+              <div className="mt-4">
+                <p className="text-sm text-red-600 mb-2">
+                  An API key is required to analyze pull requests.
+                </p>
+                <button
+                  onClick={() => setIsConfigVisible(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Click here to configure your API key.
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

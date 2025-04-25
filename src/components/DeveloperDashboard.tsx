@@ -13,6 +13,7 @@ import { ActivityCharts } from "./ActivityCharts";
 import { PerformanceMetrics } from "./PerformanceMetrics";
 import { CodeQualityInsights } from "./CodeQualityInsights";
 import { useSearchParams } from "react-router-dom";
+import UnauthenticatedView from "./UnauthenticatedView";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -123,14 +124,7 @@ export default function DeveloperDashboard() {
   };
 
   if (!isAuthenticated) {
-    return (
-      <div className="bg-card rounded-lg shadow p-6 text-center">
-        <p className="text-foreground mb-4">
-          Please log in with your GitHub token to view developer performance
-          metrics.
-        </p>
-      </div>
-    );
+    return <UnauthenticatedView />;
   }
 
   const timeframeLabel = getTimeframeLabel(timeframe);

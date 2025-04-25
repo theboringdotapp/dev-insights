@@ -6,6 +6,7 @@ import { useRepositoryColors } from "../hooks/useRepositoryColors";
 import { usePRAnalysis } from "../hooks/usePRAnalysis";
 import { usePRGroups } from "../hooks/usePRGroups";
 import { useTimeframeInfo } from "../hooks/useTimeframeInfo";
+import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import TimelineHeader from "./timeline/TimelineHeader";
 import MonthGroup from "./timeline/MonthGroup";
 import TimelineMessages from "./timeline/TimelineMessages";
@@ -28,14 +29,13 @@ export function Timeline({
   const { repoColors, getRepoName } = useRepositoryColors(pullRequests);
 
   // Use PR analysis hook
-  const {
-    hasApiKey,
-    isAnalyzingPR,
-    isPRAnalyzed,
-    handleAnalyzePR,
-    handleReanalyzePR,
-  } = usePRAnalysis(pullRequests);
-  console.log(`[Timeline] Rendering. hasApiKey from hook: ${hasApiKey}`);
+  const { isAnalyzingPR, isPRAnalyzed, handleAnalyzePR, handleReanalyzePR } =
+    usePRAnalysis(pullRequests);
+
+  // Get API key status directly to ensure reactivity
+  const { apiKey } = useAPIConfiguration();
+  const hasApiKey = !!apiKey;
+  console.log(`[Timeline] Rendering. hasApiKey from config hook: ${hasApiKey}`);
 
   // Use PR grouping hook
   const { groupedPRs, sortedMonths } = usePRGroups(pullRequests);

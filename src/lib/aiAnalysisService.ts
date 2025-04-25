@@ -743,17 +743,23 @@ function calculateCommonThemes(
       { count: number; instances: FeedbackInstance[] }
     > = {};
     items.forEach(({ item, prId, prUrl, prTitle }) => {
-      const normalized = item.text.toLowerCase().trim();
-      if (!groups[normalized]) {
-        groups[normalized] = { count: 0, instances: [] };
+      // Add check for item and item.text being a string
+      if (item && typeof item.text === "string") {
+        const normalized = item.text.toLowerCase().trim();
+        if (!groups[normalized]) {
+          groups[normalized] = { count: 0, instances: [] };
+        }
+        groups[normalized].count++;
+        groups[normalized].instances.push({
+          prId,
+          prUrl,
+          prTitle,
+          codeContext: item.codeContext,
+        });
+      } else {
+        // Log a warning if an item is invalid
+        console.warn(`[countFrequency] Skipping invalid feedback item:`, item);
       }
-      groups[normalized].count++;
-      groups[normalized].instances.push({
-        prId,
-        prUrl,
-        prTitle,
-        codeContext: item.codeContext,
-      });
     });
     return Object.entries(groups)
       .map(([text, { count, instances }]) => ({ text, count, instances }))

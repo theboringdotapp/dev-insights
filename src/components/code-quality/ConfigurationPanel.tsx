@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { MODEL_OPTIONS } from "../../lib/models";
+import { useAPIConfiguration } from "../../hooks/useAPIConfiguration";
 
 // Define available models for each provider (Updated List)
 // const MODEL_OPTIONS: Record<AIProvider, { id: string; name: string }[]> = { ... }; // Removed constant definition
@@ -30,8 +31,7 @@ interface ConfigurationPanelProps {
   handleToggleAllPRs: () => void;
   allPRs?: PullRequestItem[];
   pullRequests: PullRequestItem[];
-  isAnalyzing: boolean;
-  handleAnalyze: () => Promise<void>;
+  setIsConfigVisible: (visible: boolean) => void;
   setApiKey: (key: string) => void;
   handleResetApiKey: () => void;
   handleClearCache: () => Promise<void>;
@@ -50,13 +50,15 @@ export default function ConfigurationPanel({
   handleToggleAllPRs,
   allPRs,
   pullRequests,
-  isAnalyzing,
-  handleAnalyze,
+  setIsConfigVisible,
   setApiKey,
   handleResetApiKey,
   handleClearCache,
   allAnalyzedPRIdsSize,
 }: ConfigurationPanelProps) {
+  // Get saveApiKey from the hook to save explicitly on button click
+  const { saveApiKey } = useAPIConfiguration();
+
   // Handle model change - ensure a model is selected for the current provider
   const handleModelChange = (modelId: string) => {
     console.log("Selected model ID:", modelId);
@@ -214,9 +216,9 @@ export default function ConfigurationPanel({
             variant="outline"
             size="sm"
             onClick={handleClearCache}
-            disabled={isAnalyzing || allAnalyzedPRIdsSize === 0}
+            disabled={allAnalyzedPRIdsSize === 0}
             className={`text-xs ${
-              isAnalyzing || allAnalyzedPRIdsSize === 0
+              allAnalyzedPRIdsSize === 0
                 ? "text-gray-400 cursor-not-allowed"
                 : "text-red-600 border-red-200 hover:bg-red-50"
             }`}
@@ -231,14 +233,18 @@ export default function ConfigurationPanel({
         </div>
       </div>
 
-      {/* Analyze Button */}
+      {/* Analyze Button -> Save Button */}
       <div className="mt-6 flex justify-end border-t pt-4">
         <Button
-          onClick={handleAnalyze}
-          disabled={isAnalyzing || !apiKey || !selectedModel} // Disable if analyzing, no key, or no model selected
+          onClick={() => {
+            saveApiKey(); // Explicitly save settings
+            setIsConfigVisible(false); // Close the panel
+          }}
+          // Disable only if no key or no model selected
+          disabled={!apiKey || !selectedModel}
           size="lg"
         >
-          {isAnalyzing ? "Analyzing..." : "Analyze Code Quality"}
+          Save
         </Button>
       </div>
     </div>
