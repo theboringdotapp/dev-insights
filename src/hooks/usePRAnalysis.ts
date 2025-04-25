@@ -1,11 +1,10 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback } from "react";
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
   AIAnalysisConfig,
   calculateCommonThemes,
-  generateAICareerSummary,
 } from "../lib/aiAnalysisService";
 import cacheService from "../lib/cacheService";
 import { useAPIConfiguration } from "./useAPIConfiguration";
@@ -23,7 +22,6 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
     selectedModel,
     failAnalysis,
     setCalculatedThemes,
-    setIsGeneratingSummary,
   } = useAnalysisStore();
 
   const { apiKey } = useAPIConfiguration();
@@ -86,14 +84,35 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
           }
           toggleSelectedPR(pr.id);
 
+          console.log(
+            `[handleAnalyzePR] Analysis complete for PR #${pr.id}. Recalculating themes...`
+          );
+
           const currentAnalyzedIds =
             useAnalysisStore.getState().allAnalyzedPRIds;
+          console.log(
+            `[handleAnalyzePR] All known analyzed IDs for theme recalc:`,
+            Array.from(currentAnalyzedIds)
+          );
+
           const allAnalyzedDataPromises = Array.from(currentAnalyzedIds).map(
             (id) => getAnalysisForPR(id)
           );
           const allAnalyzedResults = await Promise.all(allAnalyzedDataPromises);
+          console.log(
+            `[handleAnalyzePR] Results fetched for theme recalc (includes nulls):`,
+            allAnalyzedResults
+          );
+
           const successfulResults = allAnalyzedResults.filter(
             (res): res is PRAnalysisResult => !!res && !res.error
+          );
+          const successfulResultIds = successfulResults.map((res) => res.prId);
+          console.log(
+            `[handleAnalyzePR] Successful results used for theme recalc (Count: ${
+              successfulResults.length
+            }, IDs: ${successfulResultIds.join(", ") || "None"}):`,
+            successfulResults
           );
 
           if (successfulResults.length > 0) {

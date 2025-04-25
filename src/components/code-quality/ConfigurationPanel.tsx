@@ -59,6 +59,7 @@ export default function ConfigurationPanel({
 }: ConfigurationPanelProps) {
   // Handle model change - ensure a model is selected for the current provider
   const handleModelChange = (modelId: string) => {
+    console.log("Selected model ID:", modelId);
     setSelectedModel(modelId);
   };
 

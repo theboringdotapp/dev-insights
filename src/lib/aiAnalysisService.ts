@@ -757,8 +757,7 @@ function calculateCommonThemes(
     });
     return Object.entries(groups)
       .map(([text, { count, instances }]) => ({ text, count, instances }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
+      .sort((a, b) => b.count - a.count);
   };
 
   // Collect all feedback items (remains the same)
@@ -925,7 +924,45 @@ Write a concise summary (around 100-150 words) in English evaluating the develop
   try {
     let summaryText = "";
     if (config.provider === "openai") {
-      // ... (placeholder OpenAI call)
+      // --- IMPLEMENTED OpenAI call ---
+      const model = config.model;
+      if (!model) {
+        throw new Error(
+          "OpenAI model not specified in config for summary generation."
+        );
+      }
+      const response = await fetch("/api/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are providing a career development summary based on aggregated code review feedback.",
+            },
+            { role: "user", content: prompt }, // Use the constructed prompt
+          ],
+          temperature: 0.6, // Slightly lower temp for summary
+          max_tokens: 500, // Summary should be shorter
+          // No response_format needed, expecting text
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `OpenAI summary generation API error (${response.status}): ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      summaryText = data.choices?.[0]?.message?.content || "";
+      // --- End OpenAI call ---
     } else if (config.provider === "anthropic") {
       summaryText = await generateClaudeText(prompt, config);
     } else if (config.provider === "gemini") {

@@ -47,6 +47,8 @@ export default function PRFeatureList({
 
   return (
     <div className="space-y-3">
+      {/* TEMP: Slice to test rendering limits - REVERTED */}
+      {/* {features.slice(0, 5).map((feature, i) => ( */}
       {features.map((feature, i) => (
         <PRFeatureItem
           key={i}

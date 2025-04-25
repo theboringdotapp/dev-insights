@@ -115,7 +115,7 @@ export function CodeQualityInsights({
       }
     }
     // Depend on apiProvider from store and the action setter
-  }, [apiProvider, selectedModel, setSelectedModel]);
+  }, [apiProvider, setSelectedModel]);
 
   // Removed wrapped handleProviderChange - use store action directly
 

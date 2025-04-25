@@ -2,8 +2,6 @@ import React from "react";
 import OverallSummary from "./analysis/OverallSummary";
 import PRFeatureList from "./analysis/PRFeatureList";
 import { FeedbackFrequency } from "../../lib/types";
-import { Button } from "../ui/button";
-import { Sparkles, Loader2 } from "lucide-react";
 
 // REMOVED unused interface definition
 // interface AnalysisResultsDisplayProps { ... }
@@ -46,35 +44,9 @@ export default function AnalysisResults({
         careerDevelopmentSummary={careerDevelopmentSummary}
         averageScore={averageScore}
         isGeneratingSummary={isGeneratingSummary}
+        onGenerateSummary={onGenerateSummary}
+        canGenerateSummary={canGenerateSummary}
       />
-
-      {/* Button to Generate Summary (Show if needed and possible) */}
-      {!careerDevelopmentSummary &&
-        canGenerateSummary &&
-        !isGeneratingSummary && (
-          <div className="text-center p-4 border-t border-gray-200 dark:border-gray-700">
-            <Button onClick={onGenerateSummary} disabled={isGeneratingSummary}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Generate Career Development Summary
-              {isGeneratingSummary && (
-                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Generates an AI summary based on the selected PRs (or all analyzed
-              PRs if none selected).
-            </p>
-          </div>
-        )}
-
-      {/* Placeholder if cannot generate summary (e.g., missing API key) */}
-      {!careerDevelopmentSummary &&
-        !canGenerateSummary &&
-        !isGeneratingSummary && (
-          <div className="text-center p-4 border-t border-gray-200 dark:border-gray-700 text-muted-foreground italic">
-            Configure API Key in settings to generate summary.
-          </div>
-        )}
 
       {/* Detailed Results (Show if themes exist, regardless of summary) */}
       {hasThemes && (
