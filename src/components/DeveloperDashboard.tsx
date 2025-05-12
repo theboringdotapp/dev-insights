@@ -14,6 +14,7 @@ import { PerformanceMetrics } from "./PerformanceMetrics";
 import { CodeQualityInsights } from "./CodeQualityInsights";
 import { useSearchParams } from "react-router-dom";
 import UnauthenticatedView from "./UnauthenticatedView";
+import ScrollToTop from "./ui/ScrollToTop";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -199,41 +200,42 @@ export default function DeveloperDashboard() {
             />
           )}
 
-          {/* AI Code Quality Analysis */}
-          {filteredPRs.length > 0 && (
-            <CodeQualityInsights
-              pullRequests={filteredPRs}
-              allPRs={allPRs}
-              showOnlyImportantPRs={showOnlyImportantPRs}
-              onToggleFilter={handleFilterChange}
-            />
-          )}
-
-          {/* No PRs after filtering message */}
-          {allPRs.length > 0 && filteredPRs.length === 0 && (
+          {/* Two-column layout for Dashboard and Timeline */}
+          {filteredPRs.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8">
+              {/* Main column (Timeline) - Takes 2/3 of the space on large screens */}
+              <div className="lg:col-span-2 order-2 lg:order-1">
+                {/* Timeline View */}
+                <Timeline
+                  pullRequests={filteredPRs}
+                  timeframeLabel={timeframeLabel}
+                  timeframe={timeframe}
+                />
+              </div>
+              
+              {/* Side column (Code Quality Assistant) - Takes 1/3 of the space */}
+              <div className="lg:col-span-1 lg:mt-0 order-1 lg:order-2">
+                {/* AI Code Quality Analysis */}
+                <CodeQualityInsights
+                  pullRequests={filteredPRs}
+                  allPRs={allPRs}
+                />
+              </div>
+            </div>
+          ) : allPRs.length > 0 ? (
             <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
               No important PRs (feat/fix) found in the selected timeframe.
               Toggle the filter to see all PRs.
             </div>
-          )}
-
-          {/* Pull Requests */}
-          {filteredPRs.length > 0 && (
-            <>
-              {/* Timeline View */}
-              <Timeline
-                pullRequests={filteredPRs}
-                timeframeLabel={timeframeLabel}
-                timeframe={timeframe}
-              />
-            </>
-          )}
+          ) : null}
         </div>
       )}
+      <ScrollToTop />
     </div>
   );
 }
 
+// Helper functions
 function getTimeframeLabel(timeframe: Timeframe): string {
   switch (timeframe) {
     case "1week":

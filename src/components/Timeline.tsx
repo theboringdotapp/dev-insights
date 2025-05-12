@@ -72,7 +72,7 @@ export function Timeline({
   };
 
   return (
-    <div className="mt-8 border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30 ">
+    <div className="border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30">
       {/* Header */}
       <TimelineHeader
         timeframeLabel={timeframeLabel}
@@ -82,9 +82,9 @@ export function Timeline({
         isLikelyHittingLimit={isLikelyHittingLimit}
       />
 
-      <div className="relative">
+      <div className="relative pt-2">
         {/* Timeline line - Hide on mobile */}
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-zinc-700 hidden sm:block"></div>
+        <div className="absolute left-4 top-2 bottom-0 w-0.5 bg-gray-200 dark:bg-zinc-700 hidden sm:block"></div>
 
         {/* Month groups */}
         {sortedMonths.map((month) => (

@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import MetricsSummary from "./insights/MetricsSummary";
+import InsightsSummary from "./insights/InsightsSummary";
+import EmptyState from "./insights/EmptyState";
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
@@ -12,7 +15,7 @@ import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 import AnalysisResults from "./code-quality/AnalysisResults";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
-import NoAnalyzedPRsState from "./code-quality/components/NoAnalyzedPRsState";
+
 import { MODEL_OPTIONS } from "../lib/models";
 import cacheService from "../lib/cacheService";
 
@@ -24,12 +27,11 @@ const GEMINI_KEY_STORAGE = "github-review-gemini-key";
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
   allPRs?: PullRequestItem[];
-  // showOnlyImportantPRs?: boolean; // Removed prop
 }
 
 /**
- * CodeQualityInsights component provides AI-based analysis of PRs
- * to identify code quality patterns, strengths, and weaknesses.
+ * CodeQualityInsights component provides meta-analysis of analyzed PRs
+ * as an AI assistant that identifies patterns and provides development insights.
  */
 export function CodeQualityInsights({
   pullRequests,
@@ -559,16 +561,33 @@ export function CodeQualityInsights({
   );
 
   return (
-    <div className="bg-white dark:bg-gray-900 p-5 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
+    <div className="sticky top-4 z-10 bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-md space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
       {/* Header with settings toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">AI Code Quality Insights</h3>
+      <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="flex items-center">
+          <svg 
+            className="h-5 w-5 text-purple-500 mr-2" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
+          <h3 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">Code Quality Assistant</h3>
+        </div>
         {/* Always show the toggle button */}
         <button
           onClick={() => setIsConfigVisible(!isConfigVisible)}
-          className="text-sm text-blue-600 hover:text-blue-800"
+          className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
         >
-          {isConfigVisible ? "Hide Settings" : "Show Settings"}
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
         </button>
       </div>
 
@@ -597,51 +616,55 @@ export function CodeQualityInsights({
         />
       )}
 
-      {/* Loading Indicator (Top Level) */}
-      {isOverallLoading && !isConfigVisible && <AnalysisLoadingIndicator />}
-
-      {/* Initial State / Ready to Analyze State - Combined Logic */}
-      {/* Show NoAnalyzedPRsState if config is hidden and no PRs analyzed yet */}
-      {!isOverallLoading && allAnalyzedPRIds.size === 0 && !isConfigVisible && (
-        <NoAnalyzedPRsState
-          handleAnalyze={handleAnalyze}
-          maxPRs={maxPRs}
-          hasApiKey={!!apiKey} // Pass API key status
-          setIsConfigVisible={setIsConfigVisible} // Pass function to open config
-        />
+      {/* --- Main Results Area --- */}
+      {!isConfigVisible && (
+        <>
+          {isOverallLoading ? (
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
+              <div className="flex items-center mb-3">
+                <div className="w-8 h-8 mr-3 flex items-center justify-center">
+                  <svg 
+                    className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
+                  Analyzing PRs...
+                </h3>
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
+                Generating insights from your pull requests. This may take a few moments.
+              </div>
+            </div>
+          ) : allAnalyzedPRIds.size === 0 ? (
+            <EmptyState handleAnalyze={handleAnalyze} maxPRs={maxPRs} hasApiKey={!!apiKey} setIsConfigVisible={setIsConfigVisible} />
+          ) : (
+            <div className="space-y-4">
+              
+              {/* Metrics Summary */}
+              <MetricsSummary
+                analyzedPRCount={allAnalyzedPRIds.size}
+                averageScore={averageScore}
+              />
+              
+              {/* Insights Summary */}
+              <InsightsSummary
+                isGeneratingSummary={isGeneratingSummary}
+                careerDevelopmentSummary={careerDevelopmentSummary}
+                onGenerateSummary={handleGenerateSummary}
+                commonStrengths={commonStrengths.slice(0, 3)} 
+                commonWeaknesses={commonWeaknesses.slice(0, 3)}
+                commonSuggestions={commonSuggestions.slice(0, 3)}
+              />
+            </div>
+          )}
+        </>
       )}
-
-      {/* --- Main Results Area (Render if PRs have been analyzed) --- */}
-      {!isOverallLoading &&
-        allAnalyzedPRIds.size > 0 &&
-        !isConfigVisible && ( // Hide results when config is visible
-          <>
-            {/* PR Selection Panel (Always show if PRs analyzed) */}
-            <PRSelectionPanel
-              prsToAnalyze={prsToAnalyze}
-              allAnalyzedPRIds={allAnalyzedPRIdsArray}
-              selectedPRIds={selectedPRIdsArray}
-              loadingPRIds={Array.from(analyzingPRIds)}
-              onTogglePR={toggleSelectedPR}
-            />
-
-            {/* Analysis Results Container - Renders structure always */}
-            {/* It handles showing button or details internally */}
-            <AnalysisResults
-              // Pass individual state pieces
-              commonStrengths={commonStrengths}
-              commonWeaknesses={commonWeaknesses}
-              commonSuggestions={commonSuggestions}
-              averageScore={averageScore}
-              careerDevelopmentSummary={careerDevelopmentSummary} // Pass summary (can be null)
-              isGeneratingSummary={isGeneratingSummary}
-              selectedPRIds={selectedPRIdsArray} // ADDED selected PRs
-              allAnalyzedPRIds={allAnalyzedPRIdsArray}
-              onGenerateSummary={handleGenerateSummary}
-              canGenerateSummary={!!apiKey && !isConfigVisible}
-            />
-          </>
-        )}
     </div>
   );
 }
