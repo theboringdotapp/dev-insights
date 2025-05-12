@@ -13,9 +13,9 @@ export function MetricsSummary({
   analyzedPRCount,
   averageScore
 }: MetricsSummaryProps) {
-  // Format average score as percentage with 1 decimal place (0-1 scale converted to 0-100%)
+  // Format average score as percentage (assuming 0-10 scale, converting to 0-100%)
   const formattedScore = averageScore !== undefined 
-    ? `${(averageScore * 100).toFixed(0)}%` 
+    ? `${Math.min(100, Math.round((averageScore / 10) * 100))}%` 
     : '--'
 
   return (
@@ -44,8 +44,8 @@ export function MetricsSummary({
           <div className="flex items-baseline justify-start">
             <span className={`text-xl font-semibold ${
               !averageScore ? 'text-zinc-400 dark:text-zinc-500' :
-              averageScore >= 0.8 ? 'text-green-600 dark:text-green-400' :
-              averageScore >= 0.6 ? 'text-amber-600 dark:text-amber-400' :
+              (averageScore / 10) >= 0.8 ? 'text-green-600 dark:text-green-400' :
+              (averageScore / 10) >= 0.6 ? 'text-amber-600 dark:text-amber-400' :
               'text-red-600 dark:text-red-400'
             }`}>
               {formattedScore}

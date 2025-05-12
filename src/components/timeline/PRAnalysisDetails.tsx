@@ -109,9 +109,9 @@ export function PRAnalysisDetails({
   const limitItems = (items: FeedbackItem[]) => items.slice(0, 2);
 
   return (
-    <div className="">
+    <div className="mt-2 pt-1">
       <Collapsible defaultOpen={defaultOpen} className="group">
-        <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700/50 cursor-pointer">
+        <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="mr-1.5 h-4 w-4"
@@ -125,10 +125,10 @@ export function PRAnalysisDetails({
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
           </svg>
-          <span>Analysis Details</span>
+          <span>View Analysis Details</span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="ml-auto h-3 w-3 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 group-data-[state=open]:rotate-180"
+            className="ml-auto h-3 w-3 text-purple-500 dark:text-purple-400 transition-transform duration-200 group-data-[state=open]:rotate-180"
             width="24"
             height="24"
             viewBox="0 0 24 24"
@@ -142,7 +142,7 @@ export function PRAnalysisDetails({
           </svg>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="pt-3">
+        <CollapsibleContent className="pt-4 pb-1">
           <div className="space-y-4 px-1">
             {/* Strengths Section - Limited to top items */}
             <FeedbackSection
@@ -161,8 +161,10 @@ export function PRAnalysisDetails({
             />
 
             {/* Link to full analysis */}
-            <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-3 italic text-right">
-              <span>See Code Quality Assistant for full analysis</span>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 text-right">
+              <span className="hover:text-purple-500 dark:hover:text-purple-400 transition-colors hover:underline cursor-pointer">
+                See Code Quality Assistant for full analysis →
+              </span>
             </div>
           </div>
         </CollapsibleContent>

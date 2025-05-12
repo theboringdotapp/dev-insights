@@ -1,6 +1,10 @@
 import React from "react";
 import { CommitItem } from "../../lib/types";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "../ui/Collapsible";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "../ui/Collapsible";
 
 interface CommitsListProps {
   commits: CommitItem[];
@@ -23,7 +27,7 @@ export function CommitsList({ commits, isLoaded }: CommitsListProps) {
   };
 
   return (
-    <div className="mt-2 pt-2">
+    <div className="mt-2 pt-1">
       <Collapsible className="group">
         <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-700/50 cursor-pointer">
           <svg
@@ -41,28 +45,28 @@ export function CommitsList({ commits, isLoaded }: CommitsListProps) {
           <span>
             {commits.length} {commits.length === 1 ? "commit" : "commits"}
           </span>
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="ml-auto h-3 w-3 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 group-data-[state=open]:rotate-180" 
-            width="24" 
-            height="24" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="ml-auto h-3 w-3 text-zinc-400 dark:text-zinc-500 transition-transform duration-200 group-data-[state=open]:rotate-180"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           >
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </CollapsibleTrigger>
-        
-        <CollapsibleContent className="pt-2 px-1">
-          <ul className="space-y-1">
+
+        <CollapsibleContent className="px-1">
+          <ul className="space-y-1.5">
             {commits.map((commit) => (
               <li
                 key={commit.sha}
-                className="hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 p-1 rounded"
+                className="hover:bg-zinc-100 dark:hover:bg-zinc-800/70 p-1 rounded transition-colors"
               >
                 <a
                   href={commit.html_url || commit.url}

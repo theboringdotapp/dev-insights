@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { PullRequestItem, PullRequestMetrics, PRAnalysisResult } from "../../lib/types";
+import {
+  PullRequestItem,
+  PullRequestMetrics,
+  PRAnalysisResult,
+} from "../../lib/types";
 import { PRMetricsBadge } from "../ui/PRMetricsBadge";
 import { CommitsList } from "../ui/CommitsList";
 import AnalysisButton from "./AnalysisButton";
@@ -32,53 +36,66 @@ export default function PullRequestCard({
   onReanalyzePR,
 }: PullRequestCardProps) {
   // States for tracking analysis information
-  const [analysisResult, setAnalysisResult] = useState<PRAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<PRAnalysisResult | null>(
+    null,
+  );
   const [justAnalyzed, setJustAnalyzed] = useState(false);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
-  
+
   // Get necessary hooks and functions
   const { getAnalysisFromMemoryCache, getAnalysisForPR } = usePRMetrics();
-  
+
   // Effect to load analysis when PR is analyzed
   useEffect(() => {
     if (isAnalyzed && !analysisResult && !isLoadingAnalysis) {
       const fetchAnalysis = async () => {
         setIsLoadingAnalysis(true);
-        
+
         // First try memory cache
         let result = getAnalysisFromMemoryCache(pr.id);
-        
+
         // If not in memory, try persistent storage
         if (!result) {
           try {
             result = await getAnalysisForPR(pr.id);
           } catch (error) {
-            console.error(`Error fetching analysis for PR #${pr.number}:`, error);
+            console.error(
+              `Error fetching analysis for PR #${pr.number}:`,
+              error,
+            );
           }
         }
-        
+
         setAnalysisResult(result);
         setIsLoadingAnalysis(false);
       };
-      
+
       fetchAnalysis();
     }
-  }, [isAnalyzed, pr.id, analysisResult, isLoadingAnalysis, getAnalysisFromMemoryCache, getAnalysisForPR, pr.number]);
-  
+  }, [
+    isAnalyzed,
+    pr.id,
+    analysisResult,
+    isLoadingAnalysis,
+    getAnalysisFromMemoryCache,
+    getAnalysisForPR,
+    pr.number,
+  ]);
+
   // When isCurrentlyAnalyzing changes from true to false, set justAnalyzed to true
   useEffect(() => {
     if (!isCurrentlyAnalyzing && !justAnalyzed && isAnalyzed) {
       setJustAnalyzed(true);
-      
+
       // Auto-reset justAnalyzed after 5 seconds to avoid keeping expansion state indefinitely
       const timer = setTimeout(() => {
         setJustAnalyzed(false);
       }, 5000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [isCurrentlyAnalyzing, isAnalyzed, justAnalyzed]);
-  
+
   // When PR changes, reset the analysis state
   useEffect(() => {
     return () => {
@@ -87,21 +104,21 @@ export default function PullRequestCard({
       setIsLoadingAnalysis(false);
     };
   }, [pr.id]);
-  
+
   // Simplified border class extraction for repo badge
   const repoBorderClass = colorClass.includes("bg-")
     ? colorClass.replace("bg-", "border-")
     : "border-gray-300";
 
   console.log(
-    `[PullRequestCard] Rendering PR #${pr.number}. hasApiKeys prop: ${hasApiKeys}`
+    `[PullRequestCard] Rendering PR #${pr.number}. hasApiKeys prop: ${hasApiKeys}`,
   );
 
   return (
     <div
       key={pr.id}
       // Added relative, adjusted padding for top-left button space on mobile
-      className="relative pt-12 pb-3 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30 shadow-sm"
+      className="relative pt-12 pb-4 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30 shadow-sm"
     >
       {/* Stack vertically on mobile, row on sm+ */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
@@ -123,14 +140,14 @@ export default function PullRequestCard({
           <div className="flex flex-wrap items-center mt-1 gap-2">
             {/* Repository badge - styled as pill */}
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-transparent dark:bg-transparent text-zinc-600 dark:text-zinc-400 ${repoBorderClass} dark:border-opacity-70`}
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 ${repoBorderClass} dark:border-opacity-70`}
             >
               {repoName}
             </span>
 
             {/* PR state badge - styled as pill */}
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 ${
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/50 ${
                 pr.state === "open"
                   ? "text-green-600 dark:text-green-400"
                   : "text-zinc-600 dark:text-zinc-400"
@@ -197,29 +214,58 @@ export default function PullRequestCard({
 
       {/* Commits list (only shown if metrics are loaded) */}
       {metrics && metrics.isLoaded && !metrics.error && metrics.commits && (
-        <CommitsList commits={metrics.commits} isLoaded={metrics.isLoaded} />
+        <div className="mt-3">
+          <CommitsList commits={metrics.commits} isLoaded={metrics.isLoaded} />
+        </div>
       )}
 
       {/* PR Analysis Details (only shown if PR has been analyzed) */}
       {isAnalyzed && (
-        <div className="mt-1 pt-1">
+        <div>
           {isLoadingAnalysis ? (
-            <div className="py-2 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs text-zinc-600 dark:text-zinc-400 flex items-center">
-              <svg className="animate-spin mr-2 h-3 w-3 text-purple-600 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <div className="py-2.5 px-3 border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 rounded-md text-xs text-purple-600 dark:text-purple-400 flex items-center">
+              <svg
+                className="animate-spin mr-2 h-3 w-3 text-purple-600 dark:text-purple-400"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               Loading analysis results... This may take a moment.
             </div>
           ) : analysisResult && !analysisResult.error ? (
-            <PRAnalysisDetails 
+            <PRAnalysisDetails
               analysisResult={analysisResult}
               defaultOpen={isCurrentlyAnalyzing || justAnalyzed} // Auto-expand if just analyzed
             />
           ) : (
-            <div className="py-2 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs text-zinc-500 dark:text-zinc-400 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="py-2.5 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs text-zinc-600 dark:text-zinc-400 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3 mr-1.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Analysis complete. Click "Re-analyze" to refresh results.
             </div>

@@ -71,3 +71,59 @@ Testing
     - Implement unit tests for utility functions and hooks.
     - Use integration tests for complex components and pages.
     - Implement end-to-end tests for critical user flows.
+
+
+GitHub Review Project Overview
+
+## Project Purpose
+This is a developer productivity and efficiency analysis tool that helps developers and managers analyze their GitHub contributions. The application provides insights into code quality and patterns across pull requests.
+
+## Key Components
+
+### Main Features
+1. **Timeline** - Shows a chronological view of PRs grouped by month
+2. **PR Analysis** - Provides AI-powered code quality analysis for individual PRs
+3. **Code Quality Assistant** - A meta-analysis component showing patterns across all analyzed PRs
+
+### Core Technologies
+- React with TypeScript
+- Next.js App Router
+- Tailwind CSS for styling
+- Zustand for state management
+
+### Architecture
+
+#### Component Structure
+- `DeveloperDashboard` - Main container with a two-column layout (Timeline and Assistant)
+- `Timeline` - Shows PRs grouped by month
+- `PullRequestCard` - Individual PR display with metrics, commits, and analysis
+- `CodeQualityInsights` - AI assistant with meta-analysis (right sidebar)
+
+#### Key UI Components
+- `CommitsList` - Collapsible list of commits in a PR
+- `PRAnalysisDetails` - Collapsible analysis results for a PR
+- `MetricsSummary` - Overview stats in the Assistant
+- `InsightsSummary` - Common patterns across analyzed PRs
+
+#### Data Flow
+- PRs are fetched from GitHub API
+- PR analysis is performed using OpenAI/Anthropic/Gemini (user can configure)
+- Analysis results are stored in memory and persistent cache
+- Meta-analysis patterns are generated from all analyzed PRs
+
+### Recent Updates
+We recently improved the UX by:
+1. Moving individual PR analysis directly into the PR cards in the Timeline
+2. Transforming CodeQualityInsights into a sticky sidebar assistant
+3. Creating a more minimalistic, consistent design with a purple theme for interactive elements
+4. Making analysis components more discoverable with better visual design
+5. Fixing calculation logic for percentage display (assuming 0-10 scale for scores)
+
+### Design Guidelines
+- Clean, minimalistic UI with moderate use of color
+- Purple theme for interactive elements
+- Consistent spacing and typography
+- Collapsible sections with clear visual cues
+- Responsive design that works on mobile and desktop
+
+The project aims to provide excellent UX with intuitive navigation between individual PR analysis and meta-analysis patterns across all PRs.
