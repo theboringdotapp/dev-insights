@@ -1,0 +1,73 @@
+This project goal is to assist developers and their managers to analyse their productivity and efficiency.
+
+It must always:
+    - Prioritize excellent UX. Think about what was asked and propose questions and ideas to improve the idea. Never code your ideas without approval first.
+    - Have a consistent UI;
+    - Build code that is easy to understand and maintain;
+    - Avoid creating long files and components. If possible, break-down into smaller components. Be reasonable with this rule;
+    - Use clean code and function programming whenever possible;
+    - Use zustand State Manager to handle state changes;
+    - Use conventional commits;
+    - Maintain a clean and direct README, that is always up to date and easy to read. Consider that this is an open source project;
+    - Think about security and user privacy;
+    - Raise awareness about possible edge-cases, when possible;
+    - Consider that you (AI) have a limited context. So whenever you detailed a plan for the future, write it in a way that it can be easily understood by you in the future, even with reduced context;
+    - Raise awareness whenever you see that a new rule was asked and could be added to the .rules file.
+
+As for the UI:
+    - The project should have a clean, modern UI, based on Github, ShadCN, Linear UI components.
+    - It can standout using Motion UI;
+    - It must be responsive and mobile-friendly;
+
+Code Principles:
+    - Prefer iteration and modularization over duplication.
+    - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
+    - Use lowercase with dashes for directories (e.g., components/auth-wizard).
+    - Favor named exports for components.
+
+JavaScript/TypeScript
+    - Use "function" keyword for pure functions. Omit semicolons.
+    - Use TypeScript for all code. Prefer interfaces over types.
+    - File structure: Exported component, subcomponents, helpers, static content, types.
+
+Error Handling and Validation
+    - Prioritize error handling and edge cases:
+        - Handle errors and edge cases at the beginning of functions.
+        - Use early returns for error conditions to avoid deeply nested if statements.
+        - Place the happy path last in the function for improved readability.
+        - Avoid unnecessary else statements; use if-return pattern instead.
+        - Use guard clauses to handle preconditions and invalid states early.
+        - Implement proper error logging and user-friendly error messages.
+
+AI SDK
+    - Implement proper error handling for AI responses and model switching.
+    - Implement fallback mechanisms for when an AI model is unavailable.
+    - Handle rate limiting and quota exceeded scenarios gracefully.
+    - Provide clear error messages to users when AI interactions fail.
+    - Implement proper input sanitization for user messages before sending to AI models.
+    - Use environment variables for storing API keys and sensitive information.
+
+ Key Conventions
+    1. Rely on Next.js App Router for state changes and routing.
+    2. Prioritize Web Vitals (LCP, CLS, FID).
+    3. Minimize 'use client' usage:
+      - Prefer server components and Next.js SSR features.
+      - Use 'use client' only for Web API access in small components.
+      - Avoid using 'use client' for data fetching or state management.
+    5. Use Taskfile commands for development and deployment tasks.
+    6. Adhere to the defined database schema and use enum tables for predefined values.
+
+ Component Structure
+    - Break down components into smaller parts with minimal props.
+    - Suggest micro folder structure for components.
+    - Use composition to build complex components.
+    - Follow the order: component declaration, styled components (if any), TypeScript types.
+
+Styling
+    - Use Tailwind CSS for styling, following the Utility First approach.
+    - Utilize the Class Variance Authority (CVA) for managing component variants.
+
+Testing
+    - Implement unit tests for utility functions and hooks.
+    - Use integration tests for complex components and pages.
+    - Implement end-to-end tests for critical user flows.

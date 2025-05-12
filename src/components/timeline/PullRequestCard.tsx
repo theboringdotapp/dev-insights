@@ -101,7 +101,7 @@ export default function PullRequestCard({
     <div
       key={pr.id}
       // Added relative, adjusted padding for top-left button space on mobile
-      className="relative pt-12 pb-3 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30 shadow-sm hover:shadow transition-all duration-200"
+      className="relative pt-12 pb-3 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30 shadow-sm"
     >
       {/* Stack vertically on mobile, row on sm+ */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
@@ -123,17 +123,17 @@ export default function PullRequestCard({
           <div className="flex flex-wrap items-center mt-1 gap-2">
             {/* Repository badge - styled as pill */}
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border-0 bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 shadow-sm ${repoBorderClass} dark:border-opacity-70`}
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-transparent dark:bg-transparent text-zinc-600 dark:text-zinc-400 ${repoBorderClass} dark:border-opacity-70`}
             >
               {repoName}
             </span>
 
             {/* PR state badge - styled as pill */}
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm ${
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-zinc-200 dark:border-zinc-700 ${
                 pr.state === "open"
-                  ? "bg-green-100/80 dark:bg-green-900/30 text-green-800 dark:text-green-200"
-                  : "bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-zinc-600 dark:text-zinc-400"
               }`}
             >
               {pr.state}
@@ -197,16 +197,14 @@ export default function PullRequestCard({
 
       {/* Commits list (only shown if metrics are loaded) */}
       {metrics && metrics.isLoaded && !metrics.error && metrics.commits && (
-        <div className="mt-2">
-          <CommitsList commits={metrics.commits} isLoaded={metrics.isLoaded} />
-        </div>
+        <CommitsList commits={metrics.commits} isLoaded={metrics.isLoaded} />
       )}
 
       {/* PR Analysis Details (only shown if PR has been analyzed) */}
       {isAnalyzed && (
-        <div className="mt-4 pt-3 border-t border-zinc-200/70 dark:border-zinc-700/30">
+        <div className="mt-1 pt-1">
           {isLoadingAnalysis ? (
-            <div className="py-2 px-3 bg-purple-50/70 dark:bg-purple-900/20 rounded-md text-xs text-purple-600 dark:text-purple-400 flex items-center backdrop-blur-sm">
+            <div className="py-2 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs text-zinc-600 dark:text-zinc-400 flex items-center">
               <svg className="animate-spin mr-2 h-3 w-3 text-purple-600 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -219,7 +217,7 @@ export default function PullRequestCard({
               defaultOpen={isCurrentlyAnalyzing || justAnalyzed} // Auto-expand if just analyzed
             />
           ) : (
-            <div className="py-2 px-3 bg-amber-50/70 dark:bg-amber-900/20 rounded-md text-xs text-amber-600 dark:text-amber-400 flex items-center backdrop-blur-sm">
+            <div className="py-2 px-3 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs text-zinc-500 dark:text-zinc-400 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

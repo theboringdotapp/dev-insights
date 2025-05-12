@@ -30,14 +30,14 @@ export default function MonthGroup({
   handleReanalyzePR,
 }: MonthGroupProps) {
   return (
-    <div className="mb-6 relative">
+    <div className="mb-4 relative">
       {/* Month header - Reduce horizontal padding on mobile */}
-      <h4 className="sticky top-0 z-10 font-semibold text-zinc-700 dark:text-zinc-300 text-base text-left border-b border-zinc-200 dark:border-zinc-700/50 pb-2 pt-4 px-2 sm:px-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur supports-[backdrop-filter]:bg-opacity-80">
+      <h4 className="sticky top-0 z-10 font-semibold text-zinc-700 dark:text-zinc-300 text-sm text-left border-b border-zinc-200 dark:border-zinc-700/50 pb-2 pt-3 px-2 sm:px-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur supports-[backdrop-filter]:bg-opacity-80">
         {month}
       </h4>
 
       {/* PR items - Adjust margin/padding */}
-      <div className="pt-4 pl-2 sm:pl-4 space-y-5">
+      <div className="pt-3 pl-2 sm:pl-4 space-y-3">
         {pullRequests.map((pr) => {
           const repoName = getRepoName(pr.html_url);
           const colorClass =
