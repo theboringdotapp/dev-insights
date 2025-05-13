@@ -209,8 +209,8 @@ export function CodeQualityInsights({
       return;
     }
 
-    if (selectedPRIds.size < 2) {
-      alert("Please select at least 2 analyzed PRs for meta-analysis.");
+    if (selectedPRIds.size < 3) {
+      alert("Please select at least 3 analyzed PRs for meta-analysis.");
       return;
     }
 
@@ -1155,28 +1155,19 @@ export function CodeQualityInsights({
                 <div className="group relative overflow-hidden p-6 mt-4 bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-100 dark:from-purple-800/30 dark:via-indigo-900/30 dark:to-purple-800/40 rounded-xl shadow-xl text-left animate-subtle-gradient">
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none opacity-50 group-hover:opacity-100"></div>
                   <div className="relative z-10">
-                    <div className="flex items-center mb-4">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="h-8 w-8 text-purple-600 dark:text-purple-400 mr-3 shrink-0"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M9.536 2.476a.75.75 0 01.68.036l4.5 3.375a.75.75 0 01.036.68l-1.087 3.899a.75.75 0 01-1.09.574l-3.899-1.087a.75.75 0 01-.574-1.09l3.899-5.487a.75.75 0 01.536-.43Zm4.995 6.257a.75.75 0 01.37.03l4.5 2.25a.75.75 0 01.03.37l-1.187 4.153a.75.75 0 01-1.084.567l-4.153-1.187a.75.75 0 01-.567-1.084l3.087-4.102a.75.75 0 01.997-.39Zm-7.841 1.622a.75.75 0 01.535-.431L12 7.737a.75.75 0 01.679.036l4.5 3.375a.75.75 0 01.036.68l-1.087 3.899a.75.75 0 01-1.09.573l-3.899-1.087a.75.75 0 01-.574-1.09l3.899-5.487ZM9.19 14.03a.75.75 0 01.37.03l4.5 2.25a.75.75 0 01.03.37l-1.187 4.153a.75.75 0 01-1.084.567L7.16 20.213a.75.75 0 01-.567-1.084l3.087-4.102a.75.75 0 01.51-.366Z"
-                          clipRule="evenodd"
-                        />
-                        <path d="M11.913 7.057a.75.75 0 01.536.43l3.899 5.488a.75.75 0 01-.574 1.09l-3.899-1.087a.75.75 0 01-.536-.43L7.43 7.057a.75.75 0 01.483-.366Z" />
-                      </svg>
-                      <h4 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100">
-                        Unlock Deeper Insights with Deep Analysis!
+                    <div className="mb-4">
+                      <h4 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100 mb-1">
+                        Perform Deep Analysis for Enhanced Insights
                       </h4>
+                      <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                        Analyze patterns across your selected PRs to understand
+                        your code quality, identify growth areas, and receive
+                        actionable feedback.
+                      </p>
                     </div>
 
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
-                      Go beyond individual PR feedback. Our Deep Analysis
-                      feature helps you:
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-1 font-medium">
+                      This feature helps you:
                     </p>
                     <ul className="space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300 mb-4 list-disc list-inside pl-2">
                       <li>
