@@ -51,7 +51,7 @@ export function EmptyState({
       </div>
       
       <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3">
-        Analyze PRs to get insights about your code quality.
+        Analyze last {maxPRs} PRs
       </p>
       
       {/* How many PRs selector */}

@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import MetricsSummary from "./insights/MetricsSummary";
-import InsightsSummary from "./insights/InsightsSummary";
+// InsightsSummary component removed as per requirements
 import EmptyState from "./insights/EmptyState";
 import { PullRequestItem, PRAnalysisResult, MetaAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
   calculateCommonThemes,
-  generateAICareerSummary,
   generateMetaAnalysis,
-  AIAnalysisConfig,
 } from "../lib/aiAnalysisService";
 
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
@@ -58,14 +56,11 @@ export function CodeQualityInsights({
     addAnalyzedPRIds,
     toggleSelectedPR,
     setSelectedModel, // Restore action
-    setCareerDevelopmentSummary, // Use new action
-    isGeneratingSummary, // Destructure new state
-    setIsGeneratingSummary, // Destructure new action
+    // Career Development features removed as per requirements
     commonStrengths, // Get themes from store
     commonWeaknesses,
     commonSuggestions,
     averageScore,
-    careerDevelopmentSummary,
     setSelectedPRIds,
     clearAnalysisData, // Need this for clear cache
   } = useAnalysisStore();
@@ -84,9 +79,10 @@ export function CodeQualityInsights({
   console.log(`[CodeQualityInsights] Rendering. apiKey state: '${apiKey}'`);
 
   // Local component state (remains local)
-  const [maxPRs /*, setMaxPRs*/] = useState(5); // Removed unused setter
+  const [maxPRs, setMaxPRs] = useState(5);
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
+  const [isPatternsOutdated, setIsPatternsOutdated] = useState(false);
 
   // Convert Sets to arrays for components that need arrays
   const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
@@ -132,8 +128,8 @@ export function CodeQualityInsights({
 
   // Removed wrapped handleProviderChange - use store action directly
 
-  // Combine loading states
-  const isOverallLoading = isLoading || isGeneratingSummary;
+  // Loading state
+  const isOverallLoading = isLoading;
 
   // Function to generate meta-analysis across selected PRs
   const handleGenerateMetaAnalysis = useCallback(async () => {
@@ -175,6 +171,8 @@ export function CodeQualityInsights({
       });
       
       setMetaAnalysisResult(metaAnalysis);
+      // Reset the outdated flag when new patterns are generated
+      setIsPatternsOutdated(false);
     } catch (error) {
       console.error("Failed to generate meta-analysis:", error);
       alert(`Failed to generate meta-analysis: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -184,82 +182,7 @@ export function CodeQualityInsights({
     }
   }, [apiKey, apiProvider, selectedModel, selectedPRIds, setIsGeneratingMetaAnalysis, setMetaAnalysisResult]);
 
-  // Function to *manually* generate ONLY the AI summary
-  const handleGenerateSummary = useCallback(async () => {
-    if (!apiKey || !apiProvider || !selectedModel) {
-      console.warn(
-        "[handleGenerateSummary] Cannot generate summary: API config incomplete."
-      );
-      alert("Please ensure API provider, model, and key are configured.");
-      return;
-    }
-    // Check if themes are already calculated (they should be if this button is visible)
-    if (
-      commonStrengths.length === 0 &&
-      commonWeaknesses.length === 0 &&
-      commonSuggestions.length === 0 &&
-      averageScore === 0
-    ) {
-      console.warn(
-        "[handleGenerateSummary] Cannot generate summary: No theme data available."
-      );
-      alert(
-        "No analysis data found to generate summary from. Analyze some PRs first."
-      );
-      return;
-    }
-
-    console.log(`[handleGenerateSummary] Generating AI career summary...`);
-    setIsGeneratingSummary(true);
-    try {
-      // Prepare data for the summary generator
-      const calculatedThemes = {
-        commonStrengths,
-        commonWeaknesses,
-        commonSuggestions,
-        averageScore,
-      };
-      const config: AIAnalysisConfig = {
-        apiKey,
-        provider: apiProvider,
-        model: selectedModel,
-      };
-
-      // Call the function that ONLY generates the summary string
-      const summaryText = await generateAICareerSummary(
-        calculatedThemes,
-        config
-      );
-      console.log(
-        `[handleGenerateSummary] Summary text received:`,
-        summaryText
-      );
-
-      // Update ONLY the career summary state in the store
-      setCareerDevelopmentSummary(summaryText); // This action also sets isGeneratingSummary false
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      alert(
-        `An error occurred while generating the summary: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-      // Don't clear themes, just ensure loading is off
-      setIsGeneratingSummary(false);
-      setCareerDevelopmentSummary("(Error generating summary)"); // Set error state
-    }
-  }, [
-    apiKey,
-    apiProvider,
-    selectedModel,
-    commonStrengths, // Depend on existing theme data
-    commonWeaknesses,
-    commonSuggestions,
-    averageScore,
-    setIsGeneratingSummary,
-    setCareerDevelopmentSummary,
-    // generateAICareerSummary, // Stable function
-  ]);
+  // Removed handleGenerateSummary function since we're no longer including Career Development
 
   // Effect for discovering analyzed IDs and setting initial selection on mount
   useEffect(() => {
@@ -375,7 +298,7 @@ export function CodeQualityInsights({
           commonSuggestions: [],
           averageScore: 0,
         });
-        setCareerDevelopmentSummary(null);
+        // Career Development summary removed as per requirements
         return;
       }
 
@@ -417,11 +340,7 @@ export function CodeQualityInsights({
           });
         }
 
-        // Always clear summary when selection changes
-        setCareerDevelopmentSummary(null);
-        console.log(
-          "[Selection Change Effect] Summary cleared due to selection change."
-        );
+        // Career Development summary removed as per requirements
       } catch (error) {
         console.error(
           "[Selection Change Effect] Error fetching or processing selected PR data:",
@@ -434,14 +353,19 @@ export function CodeQualityInsights({
           commonSuggestions: [],
           averageScore: 0,
         });
-        setCareerDevelopmentSummary(null);
+        // Career Development summary removed
       }
     };
 
     updateThemesForSelection();
 
     // This effect should run when selectedPRIds changes
-  }, [selectedPRIds, setCalculatedThemes, setCareerDevelopmentSummary]); // Add necessary dependencies
+      
+    // Mark patterns as outdated if we have an existing meta analysis
+    if (metaAnalysisResult && !isGeneratingMetaAnalysis) {
+      setIsPatternsOutdated(true);
+    }
+}, [selectedPRIds, setCalculatedThemes, metaAnalysisResult, isGeneratingMetaAnalysis]); // Add necessary dependencies
 
   // Function to trigger the *manual* analysis of PRs (handleAnalyze)
   const handleAnalyze = useCallback(async () => {
@@ -521,18 +445,20 @@ export function CodeQualityInsights({
 
         // Replace existing themes
         setCalculatedThemes(newThemes);
-
-        setCareerDevelopmentSummary(null); // Clear summary when new analysis runs
         console.log(
-          "[handleAnalyze] Store updated with new themes. Summary cleared."
+          "[handleAnalyze] Store updated with new themes."
         );
+          
+        // Mark patterns as outdated if we have meta-analysis results
+        if (metaAnalysisResult) {
+          setIsPatternsOutdated(true);
+        }
       } else {
         console.warn(
           "Manual analysis completed, but no successful results to aggregate."
         );
         // Decide if we should clear existing themes here or leave them
         // setCalculatedThemes({ ... }); // Optional clear
-        setCareerDevelopmentSummary(null);
       }
     } catch (error: unknown) {
       console.error("Error during manual analysis orchestration:", error);
@@ -549,7 +475,6 @@ export function CodeQualityInsights({
     // Removed allAnalyzedPRIds, analyzingPRIds from deps - use getState inside
     analyzeMultiplePRs,
     setCalculatedThemes,
-    setCareerDevelopmentSummary,
     saveApiKey,
     maxPRs,
     addAnalyzedPRIds,
@@ -560,6 +485,11 @@ export function CodeQualityInsights({
     setUseAllPRs(!useAllPRs);
     // Reset selection when toggling? Optional.
     // setSelectedPRIds([]);
+  };
+
+  // Handle maxPRs change
+  const handleMaxPRsChange = (value: number) => {
+    setMaxPRs(value);
   };
 
   // Update clear cache function to work without the hook
@@ -589,17 +519,9 @@ export function CodeQualityInsights({
     `[CodeQualityInsights Render] isLoading (analyzingPRIds.size > 0): ${isLoading} (size: ${analyzingPRIds.size})`
   );
   console.log(
-    `[CodeQualityInsights Render] isGeneratingSummary: ${isGeneratingSummary}`
-  );
-  console.log(
     `[CodeQualityInsights Render] isOverallLoading: ${isOverallLoading}`
   );
   console.log(`[CodeQualityInsights Render] hasApiKey: ${!!apiKey}`);
-  console.log(
-    `[CodeQualityInsights Render] careerDevelopmentSummary: ${
-      careerDevelopmentSummary ? "Exists" : "Null"
-    }`
-  );
   console.log(
     `[CodeQualityInsights Render] allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}`
   );
@@ -672,44 +594,89 @@ export function CodeQualityInsights({
         />
       )}
 
-      {/* Tabs for switching between pattern analysis and regular analysis */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            !metaAnalysisResult
-              ? "text-purple-600 border-b-2 border-purple-500"
-              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          }`}
-          onClick={() => metaAnalysisResult && setMetaAnalysisResult(null)}
-        >
-          Regular Analysis
-        </button>
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            metaAnalysisResult
-              ? "text-purple-600 border-b-2 border-purple-500"
-              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          }`}
-          onClick={handleGenerateMetaAnalysis}
-          disabled={selectedPRIds.size < 2 || isGeneratingMetaAnalysis}
-        >
-          Pattern Analysis
-          {isGeneratingMetaAnalysis && (
-            <span className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
-          )}
-        </button>
-      </div>
+      {/* Top nav action buttons placeholder - removed as requested */}
 
       {/* --- Main Results Area --- */}
-      {!isConfigVisible && metaAnalysisResult ? (
-        <MetaAnalysis 
-          metaAnalysis={metaAnalysisResult}
-          isLoading={isGeneratingMetaAnalysis}
-          error={null}
-        />
-      ) : !isConfigVisible && (
+      {!isConfigVisible && (
         <>
-          {isOverallLoading ? (
+          {/* Analysis Overview Section */}
+          {!isOverallLoading && allAnalyzedPRIds.size > 0 && (
+            <div className="space-y-3">
+              <MetricsSummary
+                analyzedPRCount={allAnalyzedPRIds.size}
+                averageScore={averageScore}
+              />
+              
+              {/* Refresh Patterns button below Analysis Overview */}
+              {selectedPRIds.size >= 2 && (
+                <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-800/30 backdrop-blur-sm rounded-md p-3">
+                  <div className="flex-1">
+                    {metaAnalysisResult ? (
+                      isPatternsOutdated ? (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="inline h-3.5 w-3.5 mr-1" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          >
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                          </svg>
+                          Patterns need to be refreshed
+                        </p>
+                      ) : (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="inline h-3.5 w-3.5 mr-1" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          >
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <poly}
+          
+          {/* Pattern Analysis Results */}
+          {metaAnalysisResult ? (
+            <div className="mt-4">
+              <MetaAnalysis 
+                metaAnalysis={metaAnalysisResult}
+                isLoading={isGeneratingMetaAnalysis}
+                error={null}
+              />
+            </div>
+          ) : isGeneratingMetaAnalysis ? (
+            <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
+              <div className="flex items-center mb-3">
+                <div className="w-8 h-8 mr-3 flex items-center justify-center">
+                  <svg 
+                    className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
+                  Finding Patterns...
+                </h3>
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
+                Analyzing patterns across your pull requests. This may take a few moments.
+              </div>
+            </div>
+          ) : isOverallLoading ? (
             <div className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
               <div className="flex items-center mb-3">
                 <div className="w-8 h-8 mr-3 flex items-center justify-center">
@@ -732,25 +699,54 @@ export function CodeQualityInsights({
               </div>
             </div>
           ) : allAnalyzedPRIds.size === 0 ? (
-            <EmptyState handleAnalyze={handleAnalyze} maxPRs={maxPRs} hasApiKey={!!apiKey} setIsConfigVisible={setIsConfigVisible} />
+            <EmptyState handleAnalyze={handleAnalyze} maxPRs={maxPRs} hasApiKey={!!apiKey} setIsConfigVisible={setIsConfigVisible} handleMaxPRsChange={handleMaxPRsChange} />
+          ) : selectedPRIds.size < 2 ? (
+            <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                Select at least 2 analyzed PRs to find patterns
+              </p>
+              <button
+                onClick={() => setSelectedPRIds(Array.from(allAnalyzedPRIds))}
+                className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
+              >
+                Select All PRs
+              </button>
+            </div>
           ) : (
-            <div className="space-y-4">
-              
-              {/* Metrics Summary */}
-              <MetricsSummary
-                analyzedPRCount={allAnalyzedPRIds.size}
-                averageScore={averageScore}
-              />
-              
-              {/* Insights Summary */}
-              <InsightsSummary
-                isGeneratingSummary={isGeneratingSummary}
-                careerDevelopmentSummary={careerDevelopmentSummary}
-                onGenerateSummary={handleGenerateSummary}
-                commonStrengths={commonStrengths.slice(0, 3)} 
-                commonWeaknesses={commonWeaknesses.slice(0, 3)}
-                commonSuggestions={commonSuggestions.slice(0, 3)}
-              />
+            <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                {selectedPRIds.size} PRs selected for pattern analysis
+              </p>
+              <button
+                onClick={handleGenerateMetaAnalysis}
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+                disabled={isGeneratingMetaAnalysis}
+              >
+                {isGeneratingMetaAnalysis ? (
+                  <>
+                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
+                    Finding Patterns...
+                  </>
+                ) : (
+                  <>
+                    <svg 
+                      className="mr-2 h-4 w-4" 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="m19 19-3.3-3.3"></path>
+                      <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                    </svg>
+                    Find Patterns Across PRs
+                  </>
+                )}
+              </button>
             </div>
           )}
         </>
