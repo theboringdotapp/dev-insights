@@ -1001,88 +1001,17 @@ export function CodeQualityInsights({
                     analyzedPRCount={allAnalyzedPRIds.size}
                     averageScore={averageScore}
                   />
-
-                  {/* Analysis status indicator */}
-                  {selectedPRIds.size >= 2 && !metaAnalysisResult && (
-                    <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-800/30 backdrop-blur-sm rounded-md p-3">
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="inline h-3.5 w-3.5 mr-1"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        {selectedPRIds.size} PRs selected for analysis
-                      </p>
-                      <button
-                        className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
-                        onClick={handleGenerateMetaAnalysis}
-                        disabled={
-                          selectedPRIds.size < 2 || isGeneratingMetaAnalysis
-                        }
-                      >
-                        {isGeneratingMetaAnalysis ? (
-                          <>
-                            <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
-                            Analyzing...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="mr-1.5 h-3.5 w-3.5"
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <circle cx="12" cy="12" r="3"></circle>
-                              <path d="m19 19-3.3-3.3"></path>
-                              <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
-                            </svg>
-                            Find Patterns
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
               {/* Pattern Analysis Results */}
               {metaAnalysisResult ? (
-                <div className="mt-4">
+                <div className="mt-0">
                   {isFromCache && !isPatternsOutdated && (
-                    <div className="mb-4 p-3 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/40 rounded-md">
-                      <div className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mr-2 text-blue-500"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M2 12V2h10" />
-                          <path d="M2 7l8.75 8.75" />
-                          <path d="M22 22H12" />
-                          <path d="M22 17h-5a1 1 0 0 1-1-1v-5" />
-                          <path d="M14 13.5v-3a1 1 0 0 1 1-1h3" />
-                          <path d="M14 9.5V6a1 1 0 0 0-1-1H6" />
-                        </svg>
-                        <p className="text-xs text-blue-700 dark:text-blue-400">
-                          Using cached pattern analysis from{" "}
+                    <div className="text-right mb-1 p-1 rounded-md">
+                      <div className="flex items-center justify-end">
+                        <p className="text-xs text-zinc-400 ">
+                          Analysis from{" "}
                           {metaAnalysisResult.timestamp
                             ? new Date(
                                 metaAnalysisResult.timestamp,

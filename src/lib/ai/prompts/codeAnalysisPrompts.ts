@@ -152,43 +152,61 @@ export const getPRAnalysisBasePrompt = (prContent: string): string => `
 
 // Template for meta-analysis across multiple PRs
 export const getMetaAnalysisPrompt = (allAnalysisData: string): string => `
-You are analyzing patterns across multiple code reviews to identify recurring themes in a developer's work.
+  You are an experienced software development manager tasked with analyzing a developer's performance across multiple code reviews. Your goal is to identify patterns, provide actionable insights, and offer guidance for career development.
 
-Review the following analysis data from multiple pull requests:
+  First, review the following analysis data from multiple pull requests:
 
-${allAnalysisData}
+  <code_review_data>
+  ${allAnalysisData}
+  </code_review_data>
 
-Identify patterns and provide meta-analysis in the following JSON structure:
-{
-  "recurring_patterns": [
-    {
-      "category": "strength" | "refinement" | "learning",
-      "pattern_name": "Short descriptive name of the pattern",
-      "description": "Detailed description of the recurring pattern",
-      "frequency": "Qualitative assessment (e.g., 'very common', 'occasional')",
-      "impact": "Assessment of the pattern's impact on code quality and developer growth"
+  1. List key metrics and observations from each pull request.
+  2. Identify recurring themes across pull requests.
+  3. Compare the developer's performance to industry standards.
+  4. Consider the developer's strengths and areas for improvement.
+  5. Brainstorm potential focus areas and career development opportunities.
+
+  In your breakdown, consider the following:
+
+  1. Current trends in software development and market demands
+  2. Gaps in the current job market that could be relevant to the developer's growth
+  3. Fundamental skills that are crucial but often overlooked by developers
+  4. The relevance and usefulness of each identified pattern or insight
+
+  For each insight, justify why it is extremely useful and relevant. Only include patterns and insights that meet this criteria. It's better to provide fewer, high-quality insights than to include less impactful ones.
+
+  Provide your findings in the following JSON structure:
+
+  {
+    "recurring_patterns": [
+      {
+        "category": "strength" | "refinement" | "learning",
+        "pattern_name": "Short descriptive name of the pattern",
+        "description": "Detailed description of the recurring pattern",
+        "frequency": "Qualitative assessment (e.g., 'very common', 'occasional')",
+        "impact": "Assessment of the pattern's impact on code quality and developer growth"
+      }
+    ],
+    "recommended_focus_areas": [
+      {
+        "area": "Name of focus area",
+        "why": "Why this area should be prioritized",
+        "resources": "Suggested resources or approaches for improvement"
+      }
+    ],
+    "development_trajectory": {
+      "current_level": "Assessment of current development level",
+      "next_milestone": "Description of next career milestone",
+      "key_actions": ["Action 1", "Action 2", "Action 3"]
+    },
+    "managerial_insights": {
+      "strengths_to_leverage": "How the developer's strengths could be leveraged by the team",
+      "growth_support": "How management can support growth in identified areas",
+      "project_recommendations": "Types of projects that would benefit development"
     }
-  ],
-  "recommended_focus_areas": [
-    {
-      "area": "Name of focus area",
-      "why": "Why this area should be prioritized",
-      "resources": "Suggested resources or approaches for improvement"
-    }
-  ],
-  "development_trajectory": {
-    "current_level": "Assessment of current development level",
-    "next_milestone": "Description of next career milestone",
-    "key_actions": ["Action 1", "Action 2", "Action 3"]
-  },
-  "managerial_insights": {
-    "strengths_to_leverage": "How the developer's strengths could be leveraged by the team",
-    "growth_support": "How management can support growth in identified areas",
-    "project_recommendations": "Types of projects that would benefit development"
   }
-}
 
-Focus on providing actionable insights that both the developer and their manager can use for career development planning.
+  Ensure that your insights are actionable and relevant for both the developer and their manager in planning career development.
 `;
 
 // Provider-specific system messages
