@@ -1,14 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   MetaAnalysisResult, 
-  RecurringPattern, 
   FocusArea 
 } from "../../lib/types";
 import { 
   ChevronDownIcon, 
-  ChevronUpIcon,
   TrendingUpIcon,
-  BrainCircuitIcon,
   GanttChartIcon,
   Users2Icon
 } from "lucide-react";
@@ -17,6 +14,8 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "../../components/ui/Collapsible";
+import RecurringPatterns from "./RecurringPatterns";
+import PatternsSummary from "./PatternsSummary";
 
 // Simple UI components using Tailwind
 const Skeleton = ({ className }: { className?: string }) => (
@@ -46,20 +45,7 @@ const CardContent = ({ children, className = "" }: { children: React.ReactNode, 
   <div className={`p-4 pt-0 ${className}`}>{children}</div>
 );
 
-const Badge = ({ children, className = "", variant = "default" }: { 
-  children: React.ReactNode, 
-  className?: string,
-  variant?: "default" | "outline" 
-}) => {
-  const baseStyles = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
-  const variantStyles = variant === "outline" 
-    ? "border" 
-    : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200";
-  
-  return (
-    <span className={`${baseStyles} ${variantStyles} ${className}`}>{children}</span>
-  );
-};
+// Badge component removed as it's now handled by PatternBadge
 
 interface MetaAnalysisProps {
   metaAnalysis: MetaAnalysisResult | null;
@@ -67,94 +53,9 @@ interface MetaAnalysisProps {
   error?: string | null;
 }
 
-const getCategoryColor = (category: string): string => {
-  switch (category) {
-    case 'strength':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
-    case 'refinement':
-      return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-    case 'learning':
-      return 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
-    default:
-      return 'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700';
-  }
-};
+// Pattern styling is now handled by PatternBadge and PatternItem components
 
-const PatternFrequencyBadge = ({ frequency }: { frequency: string }) => {
-  // Determine color based on frequency keywords
-  const getColor = () => {
-    const lowerFreq = frequency.toLowerCase();
-    if (lowerFreq.includes('very common') || lowerFreq.includes('frequent') || lowerFreq.includes('high')) {
-      return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800';
-    } else if (lowerFreq.includes('occasional') || lowerFreq.includes('moderate')) {
-      return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-    } else {
-      return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
-    }
-  };
-
-  return (
-    <Badge variant="outline" className={`text-xs px-2 py-0.5 ${getColor()}`}>
-      {frequency}
-    </Badge>
-  );
-};
-
-// Recurring Patterns Section
-const RecurringPatterns = ({ patterns }: { patterns: RecurringPattern[] }) => {
-  const [expandedPattern, setExpandedPattern] = React.useState<string | null>(null);
-
-  if (!patterns || patterns.length === 0) {
-    return (
-      <div className="text-sm text-zinc-500 italic">
-        No recurring patterns detected yet. Analyze more PRs to generate patterns.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {patterns.map((pattern, index) => (
-        <div 
-          key={index}
-          className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden"
-        >
-          <div 
-            className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer"
-            onClick={() => setExpandedPattern(expandedPattern === pattern.pattern_name ? null : pattern.pattern_name)}
-          >
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`${getCategoryColor(pattern.category)}`}>
-                {pattern.category.charAt(0).toUpperCase() + pattern.category.slice(1)}
-              </Badge>
-              <h4 className="font-medium text-sm">{pattern.pattern_name}</h4>
-              <PatternFrequencyBadge frequency={pattern.frequency} />
-            </div>
-            <div>
-              {expandedPattern === pattern.pattern_name ? 
-                <ChevronUpIcon className="h-4 w-4 text-zinc-500" /> : 
-                <ChevronDownIcon className="h-4 w-4 text-zinc-500" />}
-            </div>
-          </div>
-          
-          {expandedPattern === pattern.pattern_name && (
-            <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-              <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-2">
-                {pattern.description}
-              </p>
-              <div className="mt-2">
-                <h5 className="text-xs font-medium text-zinc-500 mb-1">Impact:</h5>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {pattern.impact}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
+// Note: We're now using the external RecurringPatterns component
 
 // Focus Areas Section
 const FocusAreas = ({ areas }: { areas: FocusArea[] }) => {
@@ -194,6 +95,13 @@ const FocusAreas = ({ areas }: { areas: FocusArea[] }) => {
 };
 
 export default function MetaAnalysis({ metaAnalysis, isLoading, error }: MetaAnalysisProps) {
+  const [isPatternsSectionExpanded, setIsPatternsSectionExpanded] = useState(false);
+
+  // Toggle patterns section expansion
+  const togglePatternsExpansion = () => {
+    setIsPatternsSectionExpanded(!isPatternsSectionExpanded);
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -230,21 +138,19 @@ export default function MetaAnalysis({ metaAnalysis, isLoading, error }: MetaAna
 
   return (
     <div className="space-y-6">
+      {/* Patterns Summary Section */}
+      <PatternsSummary 
+        patterns={recurring_patterns}
+        onTogglePatterns={togglePatternsExpansion}
+        isExpanded={isPatternsSectionExpanded}
+      />
+
       {/* Recurring Patterns Section */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center">
-            <BrainCircuitIcon className="h-4 w-4 text-purple-500 mr-2" />
-            <CardTitle className="text-base">Recurring Patterns</CardTitle>
-          </div>
-          <CardDescription>
-            Patterns detected across multiple pull requests
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RecurringPatterns patterns={recurring_patterns} />
-        </CardContent>
-      </Card>
+      <RecurringPatterns 
+        patterns={recurring_patterns} 
+        isLoading={isLoading} 
+        defaultOpen={isPatternsSectionExpanded} 
+      />
 
       {/* Development Trajectory */}
       <Card>
@@ -286,8 +192,8 @@ export default function MetaAnalysis({ metaAnalysis, isLoading, error }: MetaAna
       </Card>
 
       {/* Recommended Focus Areas - Expandable */}
-      <Collapsible className="w-full">
-        <Card>
+      <Collapsible>
+        <Card className="w-full">
           <CardHeader className="pb-2">
             <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
               <div className="flex items-center">
@@ -309,8 +215,8 @@ export default function MetaAnalysis({ metaAnalysis, isLoading, error }: MetaAna
       </Collapsible>
 
       {/* Managerial Insights - Expandable */}
-      <Collapsible className="w-full">
-        <Card>
+      <Collapsible>
+        <Card className="w-full">
           <CardHeader className="pb-2">
             <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
               <div className="flex items-center">
