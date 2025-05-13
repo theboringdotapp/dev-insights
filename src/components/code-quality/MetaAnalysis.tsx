@@ -12,6 +12,7 @@ import {
   CollapsibleContent,
 } from "../../components/ui/Collapsible";
 import RecurringPatterns from "./RecurringPatterns";
+import FocusAreas from "./FocusAreas";
 
 // Simple UI components using Tailwind
 const Skeleton = ({ className }: { className?: string }) => (
@@ -89,49 +90,7 @@ interface MetaAnalysisProps {
 
 // Note: We're now using the external RecurringPatterns component
 
-// Focus Areas Section
-const FocusAreas = ({ areas }: { areas: FocusArea[] }) => {
-  if (!areas || areas.length === 0) {
-    return (
-      <div className="text-sm text-zinc-500 italic">
-        No focus areas identified yet. Add more PR analysis data.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {areas.map((area, index) => (
-        <div
-          key={index}
-          className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3"
-        >
-          <h3 className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
-            {area.area}
-          </h3>
-          <div className="space-y-2">
-            <div>
-              <h4 className="text-xs font-medium text-zinc-500 mb-1">
-                Why focus here:
-              </h4>
-              <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                {area.why}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-zinc-500 mb-1">
-                Resources:
-              </h4>
-              <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                {area.resources}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
+// Using imported FocusAreas component
 
 export default function MetaAnalysis({
   metaAnalysis,
@@ -188,79 +147,91 @@ export default function MetaAnalysis({
       />
 
       {/* Recommended Focus Areas - Expandable */}
-      <Collapsible>
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
-              <div className="flex items-center">
-                <GanttChartIcon className="h-4 w-4 text-purple-500 mr-2" />
-                <CardTitle className="text-base">
-                  Recommended Focus Areas
-                </CardTitle>
-              </div>
-              <ChevronDownIcon className="h-4 w-4 text-zinc-500" />
-            </CollapsibleTrigger>
-            <CardDescription>
-              Prioritized areas to focus on for growth
-            </CardDescription>
-          </CardHeader>
+      <div className="mt-2 pt-1">
+        <Collapsible defaultOpen={true}>
+          <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2.5 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
+            <GanttChartIcon className="mr-1.5 h-4 w-4" />
+            <span className="ml-1.5">Recommended Focus Areas</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="ml-auto h-4 w-4 text-purple-500 dark:text-purple-400 transition-transform duration-300 group-data-[state=open]:rotate-180"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </CollapsibleTrigger>
+
           <CollapsibleContent>
-            <CardContent>
+            <div className="pt-4 pb-1 px-1">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                Prioritized areas to focus on for growth
+              </div>
               <FocusAreas areas={recommended_focus_areas} />
-            </CardContent>
+            </div>
           </CollapsibleContent>
-        </Card>
-      </Collapsible>
+        </Collapsible>
+      </div>
 
       {/* Managerial Insights - Expandable */}
-      <Collapsible>
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
-              <div className="flex items-center">
-                <Users2Icon className="h-4 w-4 text-purple-500 mr-2" />
-                <CardTitle className="text-base">Managerial Insights</CardTitle>
-              </div>
-              <ChevronDownIcon className="h-4 w-4 text-zinc-500" />
-            </CollapsibleTrigger>
-            <CardDescription>
-              Suggestions for managers to support growth
-            </CardDescription>
-          </CardHeader>
+      <div className="mt-2 pt-1">
+        <Collapsible defaultOpen={true}>
+          <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2.5 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
+            <Users2Icon className="mr-1.5 h-4 w-4" />
+            <span className="ml-1.5">Managerial Insights</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="ml-auto h-4 w-4 text-purple-500 dark:text-purple-400 transition-transform duration-300 group-data-[state=open]:rotate-180"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </CollapsibleTrigger>
+
           <CollapsibleContent>
-            <CardContent>
-              <div className="space-y-3">
+            <div className="pt-4 pb-1 px-1 text-left">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-4 text-left">
+                Suggestions for managers to support growth
+              </div>
+              <div className="space-y-3 text-left">
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1">
-                    Strengths to Leverage:
-                  </h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Strengths to Leverage:</h4>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
                     {managerial_insights.strengths_to_leverage}
                   </p>
                 </div>
-
+                
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1">
-                    Growth Support:
-                  </h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Growth Support:</h4>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
                     {managerial_insights.growth_support}
                   </p>
                 </div>
-
+                
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1">
-                    Project Recommendations:
-                  </h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Project Recommendations:</h4>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
                     {managerial_insights.project_recommendations}
                   </p>
                 </div>
               </div>
-            </CardContent>
+            </div>
           </CollapsibleContent>
-        </Card>
-      </Collapsible>
+        </Collapsible>
+      </div>
     </div>
   );
 }
