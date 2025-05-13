@@ -1,10 +1,18 @@
 import React from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface EmptyStateProps {
   handleAnalyze: () => void;
   maxPRs: number;
   hasApiKey: boolean;
   setIsConfigVisible: (visible: boolean) => void;
+  handleMaxPRsChange: (value: number) => void;
 }
 
 /**
@@ -14,7 +22,8 @@ export function EmptyState({
   handleAnalyze,
   maxPRs,
   hasApiKey,
-  setIsConfigVisible
+  setIsConfigVisible,
+  handleMaxPRsChange
 }: EmptyStateProps) {
   return (
     <div className="bg-gradient-to-br from-purple-50/50 to-white dark:from-purple-900/10 dark:to-zinc-800/30 rounded-lg p-4 text-left">
@@ -50,15 +59,19 @@ export function EmptyState({
         <p className="mr-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
           How many PRs to analyze?
         </p>
-        <select
-          className="px-2 py-1 text-xs rounded-md bg-white/70 dark:bg-zinc-800/50 backdrop-blur-sm"
-          value={maxPRs}
-          disabled
+        <Select
+          value={maxPRs.toString()}
+          onValueChange={(value) => handleMaxPRsChange(Number(value))}
         >
-          <option value={5}>5 PRs</option>
-          <option value={10}>10 PRs</option>
-          <option value={15}>15 PRs</option>
-        </select>
+          <SelectTrigger className="h-8 w-24 text-xs bg-white/70 dark:bg-zinc-800/50 backdrop-blur-sm border-zinc-200 dark:border-zinc-700">
+            <SelectValue placeholder="Select" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="5">5 PRs</SelectItem>
+            <SelectItem value="10">10 PRs</SelectItem>
+            <SelectItem value="15">15 PRs</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Analyze button */}
