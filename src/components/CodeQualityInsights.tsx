@@ -1,7 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import MetricsSummary from "./insights/MetricsSummary";
 // InsightsSummary component removed as per requirements
 import EmptyState from "./insights/EmptyState";
+
+// Constants for localStorage keys - Defined as constants outside component
+const DEVELOPER_ID_KEY = "github-review-developer-id";
+const LAST_PATTERN_RESULT_KEY = "github-review-pattern-result";
 import {
   PullRequestItem,
   PRAnalysisResult,
@@ -32,6 +37,7 @@ const GEMINI_KEY_STORAGE = "github-review-gemini-key";
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
   allPRs?: PullRequestItem[];
+  developerId: string;
 }
 
 /**
@@ -41,7 +47,62 @@ interface CodeQualityInsightsProps {
 export function CodeQualityInsights({
   pullRequests,
   allPRs,
+  developerId: propDeveloperId = "unknown", // Renamed to clarify it's from props
 }: CodeQualityInsightsProps) {
+  // Get developer ID from URL search params (this takes precedence)
+  const [searchParams] = useSearchParams();
+  const urlDeveloperId = searchParams.get("username");
+
+  // Try to get developer ID from localStorage as a fallback
+  const loadDeveloperIdFromLocalStorage = useCallback(() => {
+    try {
+      return localStorage.getItem(DEVELOPER_ID_KEY) || null;
+    } catch (e) {
+      console.error(
+        "[CodeQualityInsights] Error loading developer ID from localStorage:",
+        e,
+      );
+      return null;
+    }
+  }, []);
+
+  // Use URL developer ID if available, fallback to localStorage, then to prop
+  const [developerId, setDeveloperId] = useState(
+    urlDeveloperId || propDeveloperId,
+  );
+
+  // Effect to initialize developerId from localStorage if needed
+  useEffect(() => {
+    if ((!developerId || developerId === "unknown") && !urlDeveloperId) {
+      const storedDeveloperId = loadDeveloperIdFromLocalStorage();
+      if (storedDeveloperId) {
+        console.log(
+          `[CodeQualityInsights] Recovered developer ID from localStorage: ${storedDeveloperId}`,
+        );
+        setDeveloperId(storedDeveloperId);
+
+        // If needed, update the URL with the recovered developer ID
+        if (window.location.search === "") {
+          try {
+            // Create a new URL with the recovered developer ID
+            const url = new URL(window.location.href);
+            url.searchParams.set("username", storedDeveloperId);
+            // Use replace state to avoid adding to browser history
+            window.history.replaceState({}, "", url.toString());
+            console.log(
+              `[CodeQualityInsights] Updated URL with recovered developer ID: ${storedDeveloperId}`,
+            );
+          } catch (e) {
+            console.error("[CodeQualityInsights] Failed to update URL:", e);
+          }
+        }
+      }
+    } else if (urlDeveloperId && urlDeveloperId !== developerId) {
+      // URL parameter takes precedence over state
+      setDeveloperId(urlDeveloperId);
+    }
+  }, [urlDeveloperId, developerId, loadDeveloperIdFromLocalStorage]);
+
   // Core metrics hook
   const { analyzeMultiplePRs } = usePRMetrics();
 
@@ -182,6 +243,36 @@ export function CodeQualityInsights({
       setIsPatternsOutdated(false);
       // Store which PRs were included in this pattern analysis
       setAnalyzedPRsInLastPattern(new Set(selectedPRIds));
+      // Mark as not from cache since we just generated fresh patterns
+      setIsFromCache(false);
+      // Store the analyzed PR IDs and timestamp in the meta analysis for future reference
+      const metaAnalysisWithMetadata = {
+        ...metaAnalysis,
+        analyzedPRIds: Array.from(selectedPRIds),
+        timestamp: Date.now(),
+        developerId: developerId,
+      };
+
+      // Cache the pattern analysis result for this developer
+      try {
+        console.log(
+          `[handleGenerateMetaAnalysis] Caching pattern analysis for developer: ${developerId}`,
+          metaAnalysisWithMetadata,
+        );
+        await cacheService.cachePatternAnalysis(
+          developerId,
+          metaAnalysisWithMetadata,
+        );
+        // Also save to localStorage as a fallback
+        saveLastPatternResultToLocalStorage(metaAnalysisWithMetadata);
+        console.log(
+          `[handleGenerateMetaAnalysis] Pattern analysis successfully cached for developer: ${developerId}`,
+        );
+      } catch (cacheError) {
+        console.error("Failed to cache pattern analysis:", cacheError);
+        // Try to save to localStorage as fallback if IndexedDB fails
+        saveLastPatternResultToLocalStorage(metaAnalysisWithMetadata);
+      }
     } catch (error) {
       console.error("Failed to generate meta-analysis:", error);
       alert(
@@ -201,6 +292,228 @@ export function CodeQualityInsights({
   ]);
 
   // Removed handleGenerateSummary function since we're no longer including Career Development
+
+  // Track the current developer ID for detecting changes and cache status
+  const prevDeveloperIdRef = useRef<string | null>(null);
+  const [isFromCache, setIsFromCache] = useState<boolean>(false);
+
+  // Constants for localStorage keys - Defined outside component to avoid recreation
+
+  // Functions to save/load pattern data from localStorage (as backup for IndexedDB)
+  const saveCurrentDeveloperToLocalStorage = useCallback((devId: string) => {
+    try {
+      // Only save valid developer IDs
+      if (devId && devId !== "unknown") {
+        localStorage.setItem(DEVELOPER_ID_KEY, devId);
+        console.log(
+          `[LocalStorageBackup] Saved current developer ID: ${devId}`,
+        );
+      }
+    } catch (e) {
+      console.error("[LocalStorageBackup] Error saving developer ID:", e);
+    }
+  }, []);
+
+  const saveLastPatternResultToLocalStorage = useCallback((pattern: any) => {
+    try {
+      localStorage.setItem(LAST_PATTERN_RESULT_KEY, JSON.stringify(pattern));
+      console.log(
+        "[LocalStorageBackup] Saved last pattern result to localStorage",
+      );
+    } catch (e) {
+      console.error("[LocalStorageBackup] Error saving pattern result:", e);
+    }
+  }, []);
+
+  const loadLastPatternResultFromLocalStorage = useCallback(() => {
+    try {
+      const savedPattern = localStorage.getItem(LAST_PATTERN_RESULT_KEY);
+      if (savedPattern) {
+        return JSON.parse(savedPattern);
+      }
+      return null;
+    } catch (e) {
+      console.error("[LocalStorageBackup] Error loading pattern result:", e);
+      return null;
+    }
+  }, []);
+
+  // Log the developer ID on mount and changes
+  useEffect(() => {
+    console.log(
+      `[CodeQualityInsights] Component mounted/updated with developerId: ${developerId} (from URL: ${!!urlDeveloperId})`,
+    );
+
+    // Save current developer ID for persistence across refreshes
+    if (developerId && developerId !== "unknown") {
+      saveCurrentDeveloperToLocalStorage(developerId);
+    }
+
+    // Check if LocalStorage/IndexedDB are available
+    try {
+      const testKey = "github-review-storage-test";
+      localStorage.setItem(testKey, "test");
+      localStorage.removeItem(testKey);
+      console.log("[CodeQualityInsights] LocalStorage is available");
+
+      if (window.indexedDB) {
+        console.log("[CodeQualityInsights] IndexedDB is available");
+      } else {
+        console.warn("[CodeQualityInsights] IndexedDB is NOT available");
+      }
+    } catch (e) {
+      console.error("[CodeQualityInsights] Storage access error:", e);
+    }
+
+    return () => {
+      console.log(
+        `[CodeQualityInsights] Component unmounting with developerId: ${developerId}`,
+      );
+    };
+  }, [developerId, saveCurrentDeveloperToLocalStorage]);
+
+  // Effect to load cached pattern analysis for the current developer
+  useEffect(() => {
+    const loadCachedPatternAnalysis = async () => {
+      if (!developerId || developerId === "unknown") {
+        console.log(
+          "[Pattern Cache] No valid developer ID provided, skipping cache load",
+        );
+        return;
+      }
+
+      console.log(
+        `[Pattern Cache] Attempting to load cached patterns for developer: ${developerId}`,
+      );
+
+      console.log(
+        `[Pattern Cache] Starting cache load for developer: ${developerId}`,
+      );
+
+      // Check if developer changed
+      const developerChanged =
+        prevDeveloperIdRef.current !== null &&
+        prevDeveloperIdRef.current !== developerId;
+
+      console.log(
+        `[Pattern Cache] Developer changed: ${developerChanged}, previous: ${prevDeveloperIdRef.current}, current: ${developerId}`,
+      );
+
+      // Update the reference
+      prevDeveloperIdRef.current = developerId;
+
+      try {
+        console.log(
+          `[Pattern Cache] Checking for cached patterns for developer: ${developerId}`,
+        );
+        let cachedPattern = await cacheService.getPatternAnalysis(developerId);
+
+        // If IndexedDB cache failed, try localStorage fallback
+        if (!cachedPattern) {
+          console.log(
+            `[Pattern Cache] No IndexedDB cache found for ${developerId}, trying localStorage fallback`,
+          );
+          const localStoragePattern = loadLastPatternResultFromLocalStorage();
+
+          // Only use localStorage pattern if it matches the current developer
+          if (
+            localStoragePattern &&
+            localStoragePattern.developerId === developerId
+          ) {
+            console.log(
+              `[Pattern Cache] Found pattern in localStorage fallback for ${developerId}`,
+            );
+            cachedPattern = localStoragePattern;
+          } else if (localStoragePattern) {
+            console.log(
+              `[Pattern Cache] Found pattern in localStorage but developer ID mismatch: ${localStoragePattern.developerId} vs ${developerId}`,
+            );
+          }
+        }
+
+        console.log(
+          `[Pattern Cache] Cache lookup result:`,
+          cachedPattern ? "Found cache" : "No cache found",
+        );
+
+        if (cachedPattern) {
+          console.log(
+            `[Pattern Cache] Found cached pattern analysis for developer: ${developerId}`,
+            cachedPattern,
+          );
+          setMetaAnalysisResult(cachedPattern);
+          setIsFromCache(true);
+
+          // If the developer changed, we need to verify if selected PRs match what was in the pattern
+          if (developerChanged) {
+            console.log(
+              `[Pattern Cache] Developer changed, checking if PRs match`,
+            );
+            // We will check if the PRs match in the next render via the selection effect
+            setAnalyzedPRsInLastPattern(
+              new Set(cachedPattern.analyzedPRIds || []),
+            );
+            setIsPatternsOutdated(true);
+          } else {
+            // Same developer, pattern from cache is initially considered up-to-date
+            console.log(
+              `[Pattern Cache] Same developer, setting patterns as up-to-date`,
+            );
+            setIsPatternsOutdated(false);
+            setAnalyzedPRsInLastPattern(
+              new Set(cachedPattern.analyzedPRIds || []),
+            );
+          }
+        } else {
+          console.log(
+            `[Pattern Cache] No cached pattern analysis found for developer: ${developerId}`,
+          );
+          // Clear any existing pattern analysis when switching to a developer with no cache
+          if (metaAnalysisResult) {
+            console.log(`[Pattern Cache] Clearing existing pattern analysis`);
+            setMetaAnalysisResult(null);
+            setAnalyzedPRsInLastPattern(new Set());
+            setIsFromCache(false);
+          }
+        }
+      } catch (error) {
+        console.error(
+          `[Pattern Cache] Error loading cached patterns for developer ${developerId}:`,
+          error,
+        );
+
+        // Try localStorage fallback if primary cache mechanism fails
+        try {
+          const localStoragePattern = loadLastPatternResultFromLocalStorage();
+          if (
+            localStoragePattern &&
+            localStoragePattern.developerId === developerId
+          ) {
+            console.log(
+              "[Pattern Cache] Using localStorage fallback after cache error",
+            );
+            setMetaAnalysisResult(localStoragePattern);
+            setIsFromCache(true);
+            setAnalyzedPRsInLastPattern(
+              new Set(localStoragePattern.analyzedPRIds || []),
+            );
+          }
+        } catch (fallbackError) {
+          console.error("[Pattern Cache] Fallback also failed:", fallbackError);
+        }
+      }
+    };
+
+    // Run on initial mount and when developer changes
+    loadCachedPatternAnalysis();
+  }, [
+    developerId,
+    setMetaAnalysisResult,
+    metaAnalysisResult,
+    setAnalyzedPRsInLastPattern,
+    setIsPatternsOutdated,
+    loadLastPatternResultFromLocalStorage,
+  ]);
 
   // Effect for discovering analyzed IDs and setting initial selection on mount
   useEffect(() => {
@@ -544,11 +857,29 @@ export function CodeQualityInsights({
   const handleClearCacheAndStore = useCallback(async () => {
     try {
       console.log("[handleClearCacheAndStore] Clearing cache and store...");
-      await cacheService.clearAllPRAnalysis(); // Clear IndexedDB
+      await cacheService.clearAllPRAnalysis(); // Clear PR analysis from IndexedDB
+      await cacheService.clearAllPatternAnalysis(); // Clear pattern analysis from IndexedDB
       clearAnalysisData(); // Clear Zustand store
       console.log("[handleClearCacheAndStore] Cache and store cleared.");
-      // Reset local component state related to analysis if needed
-      // e.g., setUseAllPRs(false)?
+      // Reset local component state
+      setAnalyzedPRsInLastPattern(new Set());
+      setIsFromCache(false);
+      prevDeveloperIdRef.current = null;
+
+      // Clear localStorage backups
+      try {
+        localStorage.removeItem(LAST_PATTERN_RESULT_KEY);
+        // Don't clear the developer ID, it should persist between clearing cache
+        console.log(
+          "[handleClearCacheAndStore] Cleared localStorage pattern backup",
+        );
+      } catch (e) {
+        console.error(
+          "[handleClearCacheAndStore] Error clearing localStorage:",
+          e,
+        );
+      }
+
       setIsConfigVisible(true); // Show config after clearing
     } catch (error) {
       console.error(
@@ -557,7 +888,7 @@ export function CodeQualityInsights({
       );
       alert("Failed to clear cache."); // Inform user
     }
-  }, [clearAnalysisData]); // Dependency on store action
+  }, [clearAnalysisData]); // Dependency on store action only
 
   // Log state just before rendering conditional UI
   console.log(
@@ -720,36 +1051,43 @@ export function CodeQualityInsights({
                   </button>
                 </div>
               )}
-
-              {/* Status indicator when patterns exist and are up to date */}
-              {metaAnalysisResult &&
-                !isPatternsOutdated &&
-                !isGeneratingMetaAnalysis && (
-                  <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-800/30 backdrop-blur-sm rounded-md p-3">
-                    <p className="text-xs text-green-600 dark:text-green-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="inline h-3.5 w-3.5 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                      Patterns are up to date
-                    </p>
-                  </div>
-                )}
             </div>
           )}
 
           {/* Pattern Analysis Results */}
           {metaAnalysisResult ? (
             <div className="mt-4">
+              {isFromCache && !isPatternsOutdated && (
+                <div className="mb-4 p-3 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/40 rounded-md">
+                  <div className="flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2 text-blue-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2 12V2h10" />
+                      <path d="M2 7l8.75 8.75" />
+                      <path d="M22 22H12" />
+                      <path d="M22 17h-5a1 1 0 0 1-1-1v-5" />
+                      <path d="M14 13.5v-3a1 1 0 0 1 1-1h3" />
+                      <path d="M14 9.5V6a1 1 0 0 0-1-1H6" />
+                    </svg>
+                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                      Using cached pattern analysis from{" "}
+                      {metaAnalysisResult.timestamp
+                        ? new Date(
+                            metaAnalysisResult.timestamp,
+                          ).toLocaleDateString()
+                        : "a previous session"}
+                    </p>
+                  </div>
+                </div>
+              )}
               {isPatternsOutdated && (
                 <div className="mb-4 p-3 border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/40 rounded-md">
                   <div className="flex items-start">
