@@ -229,7 +229,7 @@ export default function MetaAnalysis({
                   <h4 className="text-xs font-medium text-zinc-900 mb-1 text-left">
                     Project Recommendations:
                   </h4>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-300 text-left">
+                  <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-300 text-left">
                     {managerial_insights.project_recommendations}
                   </p>
                 </div>

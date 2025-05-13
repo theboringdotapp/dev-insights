@@ -918,9 +918,9 @@ export function CodeQualityInsights({
   );
 
   return (
-    <div className="sticky top-4 z-10 bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-md space-y-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
-      {/* Header with settings toggle */}
-      <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-3">
+    <div className="sticky top-4 z-10 bg-white dark:bg-gray-900 p-0 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-md space-y-0 max-h-[calc(100vh-2rem)] overflow-hidden">
+      {/* Header with settings toggle - sticky at top */}
+      <div className="sticky top-0 z-20 flex items-center justify-between bg-white dark:bg-gray-900 px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center">
           <svg
             className="h-5 w-5 text-purple-500 mr-2"
@@ -935,7 +935,7 @@ export function CodeQualityInsights({
             <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
           </svg>
           <h3 className="text-lg font-medium text-zinc-800 dark:text-zinc-200">
-            Code Quality Assistant
+            AI Analysis
           </h3>
         </div>
         {/* Always show the toggle button */}
@@ -960,80 +960,55 @@ export function CodeQualityInsights({
         </button>
       </div>
 
-      {/* --- Configuration Panel (Render when visible) --- */}
-      {isConfigVisible && (
-        <ConfigurationPanel
-          apiKey={apiKey}
-          apiProvider={apiProvider}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          saveToken={saveToken}
-          setSaveToken={setSaveToken}
-          handleProviderChange={handleProviderChange}
-          useAllPRs={useAllPRs}
-          handleToggleAllPRs={handleToggleAllPRs}
-          allPRs={allPRs}
-          pullRequests={pullRequests}
-          // Pass setIsConfigVisible to allow the panel to close itself
-          setIsConfigVisible={setIsConfigVisible}
-          // handleAnalyze is no longer needed for the primary button
-          // isAnalyzing is no longer needed for the primary button
-          setApiKey={setApiKey}
-          handleResetApiKey={handleResetApiKey}
-          handleClearCache={handleClearCacheAndStore}
-          allAnalyzedPRIdsSize={allAnalyzedPRIds.size}
-        />
-      )}
+      {/* Content container with scrolling */}
+      <div className="p-1 space-y-4 overflow-y-auto max-h-[calc(100vh-4rem)]">
+        {/* Scrollable content area */}
+        <div className="overflow-y-auto p-4 space-y-4">
+          {/* --- Configuration Panel (Render when visible) --- */}
+          {isConfigVisible && (
+            <ConfigurationPanel
+              apiKey={apiKey}
+              apiProvider={apiProvider}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              saveToken={saveToken}
+              setSaveToken={setSaveToken}
+              handleProviderChange={handleProviderChange}
+              useAllPRs={useAllPRs}
+              handleToggleAllPRs={handleToggleAllPRs}
+              allPRs={allPRs}
+              pullRequests={pullRequests}
+              // Pass setIsConfigVisible to allow the panel to close itself
+              setIsConfigVisible={setIsConfigVisible}
+              // handleAnalyze is no longer needed for the primary button
+              // isAnalyzing is no longer needed for the primary button
+              setApiKey={setApiKey}
+              handleResetApiKey={handleResetApiKey}
+              handleClearCache={handleClearCacheAndStore}
+              allAnalyzedPRIdsSize={allAnalyzedPRIds.size}
+            />
+          )}
 
-      {/* Top nav action buttons placeholder - removed as requested */}
+          {/* Top nav action buttons placeholder - removed as requested */}
 
-      {/* --- Main Results Area --- */}
-      {!isConfigVisible && (
-        <>
-          {/* Analysis Overview Section */}
-          {!isOverallLoading && allAnalyzedPRIds.size > 0 && (
-            <div className="space-y-3">
-              <MetricsSummary
-                analyzedPRCount={allAnalyzedPRIds.size}
-                averageScore={averageScore}
-              />
+          {/* --- Main Results Area --- */}
+          {!isConfigVisible && (
+            <>
+              {/* Analysis Overview Section */}
+              {!isOverallLoading && allAnalyzedPRIds.size > 0 && (
+                <div className="space-y-3">
+                  <MetricsSummary
+                    analyzedPRCount={allAnalyzedPRIds.size}
+                    averageScore={averageScore}
+                  />
 
-              {/* Analysis status indicator */}
-              {selectedPRIds.size >= 2 && !metaAnalysisResult && (
-                <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-800/30 backdrop-blur-sm rounded-md p-3">
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="inline h-3.5 w-3.5 mr-1"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    {selectedPRIds.size} PRs selected for analysis
-                  </p>
-                  <button
-                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
-                    onClick={handleGenerateMetaAnalysis}
-                    disabled={
-                      selectedPRIds.size < 2 || isGeneratingMetaAnalysis
-                    }
-                  >
-                    {isGeneratingMetaAnalysis ? (
-                      <>
-                        <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
+                  {/* Analysis status indicator */}
+                  {selectedPRIds.size >= 2 && !metaAnalysisResult && (
+                    <div className="flex items-center justify-between bg-white/50 dark:bg-zinc-800/30 backdrop-blur-sm rounded-md p-3">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
                         <svg
-                          className="mr-1.5 h-3.5 w-3.5"
                           xmlns="http://www.w3.org/2000/svg"
+                          className="inline h-3.5 w-3.5 mr-1"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -1041,68 +1016,17 @@ export function CodeQualityInsights({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="m19 19-3.3-3.3"></path>
-                          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        Find Patterns
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Pattern Analysis Results */}
-          {metaAnalysisResult ? (
-            <div className="mt-4">
-              {isFromCache && !isPatternsOutdated && (
-                <div className="mb-4 p-3 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/40 rounded-md">
-                  <div className="flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 mr-2 text-blue-500"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M2 12V2h10" />
-                      <path d="M2 7l8.75 8.75" />
-                      <path d="M22 22H12" />
-                      <path d="M22 17h-5a1 1 0 0 1-1-1v-5" />
-                      <path d="M14 13.5v-3a1 1 0 0 1 1-1h3" />
-                      <path d="M14 9.5V6a1 1 0 0 0-1-1H6" />
-                    </svg>
-                    <p className="text-xs text-blue-700 dark:text-blue-400">
-                      Using cached pattern analysis from{" "}
-                      {metaAnalysisResult.timestamp
-                        ? new Date(
-                            metaAnalysisResult.timestamp,
-                          ).toLocaleDateString()
-                        : "a previous session"}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {isPatternsOutdated && (
-                <div className="mb-4 p-3 border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/40 rounded-md">
-                  <div className="flex items-start">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                        Patterns may be outdated
-                      </p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 mb-3">
-                        Your selection has changed since the last pattern
-                        analysis. Refresh to include all selected PRs.
+                        {selectedPRIds.size} PRs selected for analysis
                       </p>
                       <button
-                        className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-800/60 transition-colors"
+                        className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
                         onClick={handleGenerateMetaAnalysis}
-                        disabled={isGeneratingMetaAnalysis}
+                        disabled={
+                          selectedPRIds.size < 2 || isGeneratingMetaAnalysis
+                        }
                       >
                         {isGeneratingMetaAnalysis ? (
                           <>
@@ -1121,152 +1045,236 @@ export function CodeQualityInsights({
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             >
-                              <path d="M21 2v6h-6"></path>
-                              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-                              <path d="M3 22v-6h6"></path>
-                              <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                              <path d="m19 19-3.3-3.3"></path>
+                              <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
                             </svg>
-                            Refresh Patterns
+                            Find Patterns
                           </>
                         )}
                       </button>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
-              <MetaAnalysis
-                metaAnalysis={metaAnalysisResult}
-                isLoading={isGeneratingMetaAnalysis}
-                error={null}
-              />
-            </div>
-          ) : isGeneratingMetaAnalysis ? (
-            <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
-              <div className="flex items-center mb-3">
-                <div className="w-8 h-8 mr-3 flex items-center justify-center">
-                  <svg
-                    className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+
+              {/* Pattern Analysis Results */}
+              {metaAnalysisResult ? (
+                <div className="mt-4">
+                  {isFromCache && !isPatternsOutdated && (
+                    <div className="mb-4 p-3 border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/40 rounded-md">
+                      <div className="flex items-center">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 mr-2 text-blue-500"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M2 12V2h10" />
+                          <path d="M2 7l8.75 8.75" />
+                          <path d="M22 22H12" />
+                          <path d="M22 17h-5a1 1 0 0 1-1-1v-5" />
+                          <path d="M14 13.5v-3a1 1 0 0 1 1-1h3" />
+                          <path d="M14 9.5V6a1 1 0 0 0-1-1H6" />
+                        </svg>
+                        <p className="text-xs text-blue-700 dark:text-blue-400">
+                          Using cached pattern analysis from{" "}
+                          {metaAnalysisResult.timestamp
+                            ? new Date(
+                                metaAnalysisResult.timestamp,
+                              ).toLocaleDateString()
+                            : "a previous session"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {isPatternsOutdated && (
+                    <div className="mb-4 p-3 border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/40 rounded-md">
+                      <div className="flex items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                            Patterns may be outdated
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 mb-3">
+                            Your selection has changed since the last pattern
+                            analysis. Refresh to include all selected PRs.
+                          </p>
+                          <button
+                            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-800/60 transition-colors"
+                            onClick={handleGenerateMetaAnalysis}
+                            disabled={isGeneratingMetaAnalysis}
+                          >
+                            {isGeneratingMetaAnalysis ? (
+                              <>
+                                <span className="mr-1.5 inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
+                                Analyzing...
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  className="mr-1.5 h-3.5 w-3.5"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M21 2v6h-6"></path>
+                                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                                  <path d="M3 22v-6h6"></path>
+                                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                                </svg>
+                                Refresh Patterns
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <MetaAnalysis
+                    metaAnalysis={metaAnalysisResult}
+                    isLoading={isGeneratingMetaAnalysis}
+                    error={null}
+                  />
                 </div>
-                <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
-                  Finding Patterns...
-                </h3>
-              </div>
-              <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
-                Analyzing patterns across your pull requests. This may take a
-                few moments.
-              </div>
-            </div>
-          ) : isOverallLoading ? (
-            <div className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
-              <div className="flex items-center mb-3">
-                <div className="w-8 h-8 mr-3 flex items-center justify-center">
-                  <svg
-                    className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+              ) : isGeneratingMetaAnalysis ? (
+                <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 mr-3 flex items-center justify-center">
+                      <svg
+                        className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    </div>
+                    <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
+                      Finding Patterns...
+                    </h3>
+                  </div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
+                    Analyzing patterns across your pull requests. This may take
+                    a few moments.
+                  </div>
                 </div>
-                <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
-                  Analyzing PRs...
-                </h3>
-              </div>
-              <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
-                Generating insights from your pull requests. This may take a few
-                moments.
-              </div>
-            </div>
-          ) : allAnalyzedPRIds.size === 0 ? (
-            <EmptyState
-              handleAnalyze={handleAnalyze}
-              maxPRs={maxPRs}
-              hasApiKey={!!apiKey}
-              setIsConfigVisible={setIsConfigVisible}
-              handleMaxPRsChange={handleMaxPRsChange}
-            />
-          ) : selectedPRIds.size < 2 ? (
-            <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                Select at least 2 analyzed PRs to find patterns
-              </p>
-              <button
-                onClick={() => setSelectedPRIds(Array.from(allAnalyzedPRIds))}
-                className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
-              >
-                Select All PRs
-              </button>
-            </div>
-          ) : (
-            <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-                {selectedPRIds.size} PRs selected for pattern analysis
-              </p>
-              <button
-                onClick={handleGenerateMetaAnalysis}
-                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
-                disabled={isGeneratingMetaAnalysis}
-              >
-                {isGeneratingMetaAnalysis ? (
-                  <>
-                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
-                    Finding Patterns...
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="3"></circle>
-                      <path d="m19 19-3.3-3.3"></path>
-                      <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
-                    </svg>
-                    Find Patterns Across PRs
-                  </>
-                )}
-              </button>
-            </div>
+              ) : isOverallLoading ? (
+                <div className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">
+                  <div className="flex items-center mb-3">
+                    <div className="w-8 h-8 mr-3 flex items-center justify-center">
+                      <svg
+                        className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    </div>
+                    <h3 className="text-base font-medium text-zinc-800 dark:text-zinc-200">
+                      Analyzing PRs...
+                    </h3>
+                  </div>
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-11">
+                    Generating insights from your pull requests. This may take a
+                    few moments.
+                  </div>
+                </div>
+              ) : allAnalyzedPRIds.size === 0 ? (
+                <EmptyState
+                  handleAnalyze={handleAnalyze}
+                  maxPRs={maxPRs}
+                  hasApiKey={!!apiKey}
+                  setIsConfigVisible={setIsConfigVisible}
+                  handleMaxPRsChange={handleMaxPRsChange}
+                />
+              ) : selectedPRIds.size < 2 ? (
+                <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                    Select at least 2 analyzed PRs to find patterns
+                  </p>
+                  <button
+                    onClick={() =>
+                      setSelectedPRIds(Array.from(allAnalyzedPRIds))
+                    }
+                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
+                  >
+                    Select All PRs
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+                    {selectedPRIds.size} PRs selected for pattern analysis
+                  </p>
+                  <button
+                    onClick={handleGenerateMetaAnalysis}
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+                    disabled={isGeneratingMetaAnalysis}
+                  >
+                    {isGeneratingMetaAnalysis ? (
+                      <>
+                        <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
+                        Finding Patterns...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="mr-2 h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <path d="m19 19-3.3-3.3"></path>
+                          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                        </svg>
+                        Find Patterns Across PRs
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
