@@ -69,10 +69,10 @@ export default function ConfigurationPanel({
   const currentModelOptions = MODEL_OPTIONS[apiProvider] || [];
 
   return (
-    <div className="bg-gray-50 p-6 rounded-lg shadow-sm mb-6 border border-gray-200">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="bg-gray-50 p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+      <div className="flex flex-col space-y-4">
         {/* Provider Selection */}
-        <div>
+        <div className="w-full">
           <Label
             htmlFor="apiProviderSelect"
             className="block text-sm font-medium text-gray-700 mb-1"
@@ -99,7 +99,7 @@ export default function ConfigurationPanel({
         </div>
 
         {/* Model Selection - Conditional */}
-        <div>
+        <div className="w-full">
           <Label
             htmlFor="modelSelect"
             className="block text-sm font-medium text-gray-700 mb-1"
@@ -131,7 +131,7 @@ export default function ConfigurationPanel({
       </div>
 
       {/* API Key Input */}
-      <div className="mt-4">
+      <div className="mt-3">
         <Label
           htmlFor="apiKeyInput"
           className="block text-sm font-medium text-gray-700 mb-1"
@@ -142,7 +142,7 @@ export default function ConfigurationPanel({
           <Input
             id="apiKeyInput"
             type="password"
-            className="flex-1"
+            className="flex-1 text-sm"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={`Enter your ${
@@ -155,11 +155,10 @@ export default function ConfigurationPanel({
               variant="ghost"
               size="sm"
               onClick={handleResetApiKey}
-              className="ml-2 text-gray-500 hover:text-gray-700"
+              className="ml-1 text-gray-500 hover:text-gray-700 px-2"
               title="Clear API key"
             >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Reset
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -171,26 +170,26 @@ export default function ConfigurationPanel({
           />
           <Label
             htmlFor="saveToken"
-            className="ml-2 text-xs text-gray-500 cursor-pointer"
+            className="ml-2 text-xs text-gray-500 cursor-pointer leading-tight"
           >
-            Save API key in browser for future sessions
+            Save API key locally
           </Label>
         </div>
       </div>
 
       {/* Cache Management */}
-      <div className="mt-4 border-t pt-4">
+      <div className="mt-3 border-t pt-3">
         <Label className="block text-sm font-medium text-gray-700 mb-1">
           Cache Management
         </Label>
 
-        <div className="flex items-center">
+        <div className="flex flex-col space-y-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleClearCache}
             disabled={allAnalyzedPRIdsSize === 0}
-            className={`text-xs ${
+            className={`text-xs w-full ${
               allAnalyzedPRIdsSize === 0
                 ? "text-gray-400 cursor-not-allowed"
                 : "text-red-600 border-red-200 hover:bg-red-50"
@@ -198,16 +197,16 @@ export default function ConfigurationPanel({
             title="Remove all cached PR analysis data"
           >
             <Trash2 className="h-3.5 w-3.5 mr-1" />
-            Clear All Cached Analysis
+            Clear Cached Analysis ({allAnalyzedPRIdsSize})
           </Button>
-          <p className="ml-3 text-xs text-gray-500">
-            Removes all cached analysis data to start fresh.
+          <p className="text-xs text-gray-500">
+            Removes all cached analysis data
           </p>
         </div>
       </div>
 
-      {/* Analyze Button -> Save Button */}
-      <div className="mt-6 flex justify-end border-t pt-4">
+      {/* Save Button */}
+      <div className="mt-4 flex justify-center border-t pt-3">
         <Button
           onClick={() => {
             saveApiKey(); // Explicitly save settings
@@ -215,9 +214,9 @@ export default function ConfigurationPanel({
           }}
           // Disable only if no key or no model selected
           disabled={!apiKey || !selectedModel}
-          size="lg"
+          className="w-full"
         >
-          Save
+          Save Configuration
         </Button>
       </div>
     </div>
