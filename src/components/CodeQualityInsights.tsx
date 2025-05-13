@@ -2,19 +2,22 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import MetricsSummary from "./insights/MetricsSummary";
 import InsightsSummary from "./insights/InsightsSummary";
 import EmptyState from "./insights/EmptyState";
-import { PullRequestItem, PRAnalysisResult } from "../lib/types";
+import { PullRequestItem, PRAnalysisResult, MetaAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
   calculateCommonThemes,
   generateAICareerSummary,
+  generateMetaAnalysis,
   AIAnalysisConfig,
 } from "../lib/aiAnalysisService";
+
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 import AnalysisResults from "./code-quality/AnalysisResults";
 import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
+import MetaAnalysis from "./code-quality/MetaAnalysis";
 
 import { MODEL_OPTIONS } from "../lib/models";
 import cacheService from "../lib/cacheService";
@@ -48,6 +51,10 @@ export function CodeQualityInsights({
     apiProvider, // Get provider from store
     selectedModel, // Get model from store
     setCalculatedThemes, // Use new action
+    metaAnalysisResult,
+    isGeneratingMetaAnalysis,
+    setIsGeneratingMetaAnalysis,
+    setMetaAnalysisResult,
     addAnalyzedPRIds,
     toggleSelectedPR,
     setSelectedModel, // Restore action
@@ -127,6 +134,55 @@ export function CodeQualityInsights({
 
   // Combine loading states
   const isOverallLoading = isLoading || isGeneratingSummary;
+
+  // Function to generate meta-analysis across selected PRs
+  const handleGenerateMetaAnalysis = useCallback(async () => {
+    if (!apiKey || !apiProvider || !selectedModel) {
+      console.warn(
+        "[handleGenerateMetaAnalysis] Cannot generate meta-analysis: API config incomplete."
+      );
+      alert("Please ensure API provider, model, and key are configured.");
+      return;
+    }
+
+    if (selectedPRIds.size < 2) {
+      alert("Please select at least 2 analyzed PRs for meta-analysis.");
+      return;
+    }
+    
+    try {
+      setIsGeneratingMetaAnalysis(true);
+      
+      // Fetch PR analysis data for selected PRs
+      const prAnalysisPromises = Array.from(selectedPRIds).map(prId => 
+        cacheService.getPRAnalysis(prId)
+      );
+      
+      const prAnalysisResults = await Promise.all(prAnalysisPromises);
+      const validResults = prAnalysisResults.filter(result => 
+        result && result.feedback
+      ) as PRAnalysisResult[];
+      
+      if (validResults.length < 2) {
+        throw new Error("Not enough valid PR analysis data available");
+      }
+      
+      // Generate meta-analysis
+      const metaAnalysis = await generateMetaAnalysis(validResults, {
+        apiKey,
+        provider: apiProvider,
+        model: selectedModel
+      });
+      
+      setMetaAnalysisResult(metaAnalysis);
+    } catch (error) {
+      console.error("Failed to generate meta-analysis:", error);
+      alert(`Failed to generate meta-analysis: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setMetaAnalysisResult(null);
+    } finally {
+      setIsGeneratingMetaAnalysis(false);
+    }
+  }, [apiKey, apiProvider, selectedModel, selectedPRIds, setIsGeneratingMetaAnalysis, setMetaAnalysisResult]);
 
   // Function to *manually* generate ONLY the AI summary
   const handleGenerateSummary = useCallback(async () => {
@@ -616,8 +672,42 @@ export function CodeQualityInsights({
         />
       )}
 
+      {/* Tabs for switching between pattern analysis and regular analysis */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+        <button
+          className={`py-2 px-4 text-sm font-medium ${
+            !metaAnalysisResult
+              ? "text-purple-600 border-b-2 border-purple-500"
+              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+          onClick={() => metaAnalysisResult && setMetaAnalysisResult(null)}
+        >
+          Regular Analysis
+        </button>
+        <button
+          className={`py-2 px-4 text-sm font-medium ${
+            metaAnalysisResult
+              ? "text-purple-600 border-b-2 border-purple-500"
+              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+          onClick={handleGenerateMetaAnalysis}
+          disabled={selectedPRIds.size < 2 || isGeneratingMetaAnalysis}
+        >
+          Pattern Analysis
+          {isGeneratingMetaAnalysis && (
+            <span className="ml-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
+          )}
+        </button>
+      </div>
+
       {/* --- Main Results Area --- */}
-      {!isConfigVisible && (
+      {!isConfigVisible && metaAnalysisResult ? (
+        <MetaAnalysis 
+          metaAnalysis={metaAnalysisResult}
+          isLoading={isGeneratingMetaAnalysis}
+          error={null}
+        />
+      ) : !isConfigVisible && (
         <>
           {isOverallLoading ? (
             <div className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg">

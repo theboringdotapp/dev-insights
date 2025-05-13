@@ -74,10 +74,14 @@ export interface FeedbackItem {
 // AI Code Analysis types
 export interface AICodeFeedback {
   strengths: FeedbackItem[];
-  areas_for_improvement: FeedbackItem[];
-  growth_opportunities: FeedbackItem[];
+  refinement_needs: FeedbackItem[];
+  learning_pathways: FeedbackItem[];
   career_impact_summary: string;
   overall_quality?: number;
+  
+  // Legacy field names for backward compatibility
+  areas_for_improvement?: FeedbackItem[];
+  growth_opportunities?: FeedbackItem[];
 }
 
 export interface PRAnalysisResult {
@@ -109,4 +113,38 @@ export interface AggregatedFeedback {
   commonSuggestions: FeedbackFrequency[];
   careerDevelopmentSummary: string;
   averageScore: number;
+}
+
+// Meta Analysis Types
+export interface RecurringPattern {
+  category: 'strength' | 'refinement' | 'learning';
+  pattern_name: string;
+  description: string;
+  frequency: string;
+  impact: string;
+}
+
+export interface FocusArea {
+  area: string;
+  why: string;
+  resources: string;
+}
+
+export interface DevelopmentTrajectory {
+  current_level: string;
+  next_milestone: string;
+  key_actions: string[];
+}
+
+export interface ManagerialInsights {
+  strengths_to_leverage: string;
+  growth_support: string;
+  project_recommendations: string;
+}
+
+export interface MetaAnalysisResult {
+  recurring_patterns: RecurringPattern[];
+  recommended_focus_areas: FocusArea[];
+  development_trajectory: DevelopmentTrajectory;
+  managerial_insights: ManagerialInsights;
 }

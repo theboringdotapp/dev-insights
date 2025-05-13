@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { AggregatedFeedback, FeedbackFrequency } from "../lib/types";
+import { AggregatedFeedback, FeedbackFrequency, MetaAnalysisResult } from "../lib/types";
 import { AIProvider } from "../hooks/useAPIConfiguration";
 
 // Define the state structure
@@ -12,11 +12,13 @@ interface AnalysisState {
   commonSuggestions: FeedbackFrequency[];
   averageScore: number;
   careerDevelopmentSummary: string | null;
+  metaAnalysisResult: MetaAnalysisResult | null;
   allAnalyzedPRIds: Set<number>;
   selectedPRIds: Set<number>;
   apiProvider: AIProvider;
   selectedModel: string | undefined;
   isGeneratingSummary: boolean;
+  isGeneratingMetaAnalysis: boolean;
   // --- Actions ---
   startAnalysis: (prId: number) => void;
   completeAnalysis: (prId: number, newlyAnalyzed: boolean) => void;
@@ -25,6 +27,7 @@ interface AnalysisState {
     themes: Omit<AggregatedFeedback, "careerDevelopmentSummary">
   ) => void;
   setCareerDevelopmentSummary: (summary: string | null) => void;
+  setMetaAnalysisResult: (result: MetaAnalysisResult | null) => void;
   addAnalyzedPRIds: (ids: number[]) => void;
   setSelectedPRIds: (ids: number[]) => void;
   toggleSelectedPR: (prId: number) => void;
@@ -33,6 +36,7 @@ interface AnalysisState {
   setApiProvider: (provider: AIProvider) => void;
   setSelectedModel: (modelId: string | undefined) => void;
   setIsGeneratingSummary: (isLoading: boolean) => void;
+  setIsGeneratingMetaAnalysis: (isLoading: boolean) => void;
   setApiKey: (key: string) => void;
 }
 
@@ -76,11 +80,13 @@ export const useAnalysisStore = create<AnalysisState>()(
       commonSuggestions: [],
       averageScore: 0,
       careerDevelopmentSummary: null,
+      metaAnalysisResult: null,
       allAnalyzedPRIds: new Set(),
       selectedPRIds: new Set(),
       apiProvider: "openai",
       selectedModel: undefined,
       isGeneratingSummary: false,
+      isGeneratingMetaAnalysis: false,
 
       // --- Actions Implementation ---
       startAnalysis: (prId) =>
@@ -121,6 +127,12 @@ export const useAnalysisStore = create<AnalysisState>()(
           careerDevelopmentSummary: summary,
           isGeneratingSummary: false,
         }),
+        
+      setMetaAnalysisResult: (result) =>
+        set({
+          metaAnalysisResult: result,
+          isGeneratingMetaAnalysis: false,
+        }),
 
       addAnalyzedPRIds: (ids) =>
         set((state) => ({
@@ -155,16 +167,20 @@ export const useAnalysisStore = create<AnalysisState>()(
           commonSuggestions: [],
           averageScore: 0,
           careerDevelopmentSummary: null,
+          metaAnalysisResult: null,
           allAnalyzedPRIds: new Set(),
           selectedPRIds: new Set(),
           analyzingPRIds: new Set(),
           isGeneratingSummary: false,
+          isGeneratingMetaAnalysis: false,
         }),
 
       setApiProvider: (provider) => set({ apiProvider: provider }),
       setSelectedModel: (modelId) => set({ selectedModel: modelId }),
       setIsGeneratingSummary: (isLoading) =>
         set({ isGeneratingSummary: isLoading }),
+      setIsGeneratingMetaAnalysis: (isLoading) =>
+        set({ isGeneratingMetaAnalysis: isLoading }),
       setApiKey: (key) => set({ apiKey: key }),
     }),
     {

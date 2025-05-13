@@ -105,9 +105,6 @@ export function PRAnalysisDetails({
     return null;
   }
 
-  // Only show top items in each category for a concise view
-  const limitItems = (items: FeedbackItem[]) => items.slice(0, 2);
-
   return (
     <div className="mt-2 pt-1">
       <Collapsible defaultOpen={defaultOpen} className="group">
@@ -144,28 +141,33 @@ export function PRAnalysisDetails({
 
         <CollapsibleContent className="pt-4 pb-1">
           <div className="space-y-4 px-1">
-            {/* Strengths Section - Limited to top items */}
+            {/* Strengths Section - Show all items */}
             <FeedbackSection
               title="Key Strengths"
-              items={limitItems(feedback.strengths)}
+              items={feedback.strengths}
               badgeColor="text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700"
               iconComponent={<StrengthIcon />}
             />
 
-            {/* Improvement Areas Section - Limited to top items */}
+            {/* Refinement Needs Section - Show all items */}
             <FeedbackSection
-              title="Main Improvement Areas"
-              items={limitItems(feedback.areas_for_improvement)}
+              title="Refinement Needs"
+              items={
+                feedback.refinement_needs || feedback.areas_for_improvement
+              }
               badgeColor="text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700"
               iconComponent={<ImprovementIcon />}
             />
 
-            {/* Link to full analysis */}
-            <div className="text-xs text-zinc-500 dark:text-zinc-400 text-right">
-              <span className="hover:text-purple-500 dark:hover:text-purple-400 transition-colors hover:underline cursor-pointer">
-                See Code Quality Assistant for full analysis →
-              </span>
-            </div>
+            {/* Learning Pathways Section */}
+            <FeedbackSection
+              title="Learning Pathways"
+              items={
+                feedback.learning_pathways || feedback.growth_opportunities
+              }
+              badgeColor="text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700"
+              iconComponent={<OpportunityIcon />}
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>

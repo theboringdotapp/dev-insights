@@ -104,6 +104,8 @@ export async function analyzePRWithAI(
   }
 }
 
+import { getPRAnalysisBasePrompt, getSystemMessage, getCareerDevelopmentPrompt, getMetaAnalysisPrompt } from "./ai/prompts/codeAnalysisPrompts";
+
 /**
  * Analyze code with OpenAI
  */
@@ -117,68 +119,7 @@ async function analyzeWithOpenAI(
     throw new Error("OpenAI model not specified in config.");
   }
 
-  const prompt = `
-You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
-
-Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
-
-The PR details:
-${prContent}
-
-IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
-{
-  "strengths": [
-    {
-      "text": "Clear variable naming in function X.",
-      "codeContext": {
-        "filePath": "src/utils/helpers.ts",
-        "startLine": 25,
-        "endLine": 28,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Good use of async/await." }
-  ],
-  "areas_for_improvement": [
-    {
-      "text": "Consider adding error handling for API call.",
-      "codeContext": {
-        "filePath": "src/services/api.ts",
-        "startLine": 102,
-        "endLine": 105,
-        "codeSnippet": "..."
-      }
-    }
-  ],
-  "growth_opportunities": [
-    {
-      "text": "Explore using dependency injection for better testability.",
-      "codeContext": {
-        "filePath": "src/controllers/mainController.ts",
-        "startLine": 15,
-        "endLine": 20,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Learn about SOLID principles." }
-  ],
-  "career_impact_summary": "Summary of how addressing these points will help career progression",
-  "overall_quality": 7
-}
-
-Follow these important guidelines:
-1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
-    *   Provide the feedback in the "text" field.
-    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
-    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
-    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
-2.  Focus on substantial issues/points that impact the developer's growth.
-3.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
-4.  Connect each point to career development and professional growth.
-5.  Provide actionable insights.
-
-Do not include any explanations or text outside of this JSON structure.
-`;
+  const prompt = getPRAnalysisBasePrompt(prContent);
 
   try {
     const response = await fetch("/api/openai/v1/chat/completions", {
@@ -192,8 +133,7 @@ Do not include any explanations or text outside of this JSON structure.
         messages: [
           {
             role: "system",
-            content:
-              "You are an expert code reviewer. Respond ONLY with valid JSON in the exact format requested.",
+            content: getSystemMessage("openai"),
           },
           { role: "user", content: prompt },
         ],
@@ -249,8 +189,8 @@ Do not include any explanations or text outside of this JSON structure.
     // Validate and structure the final response, providing defaults for the new structure
     return {
       strengths: parsedResponse.strengths || [],
-      areas_for_improvement: parsedResponse.areas_for_improvement || [],
-      growth_opportunities: parsedResponse.growth_opportunities || [],
+      refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
+      learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
       career_impact_summary:
         parsedResponse.career_impact_summary || "No summary provided",
       overall_quality: parsedResponse.overall_quality,
@@ -261,8 +201,8 @@ Do not include any explanations or text outside of this JSON structure.
     // Fallback for API errors, providing empty arrays for the new structure
     return {
       strengths: [],
-      areas_for_improvement: [],
-      growth_opportunities: [],
+      refinement_needs: [],
+      learning_pathways: [],
       career_impact_summary:
         "The code analysis could not be completed due to technical issues.",
       overall_quality: 5,
@@ -283,68 +223,7 @@ async function analyzeWithClaude(
     throw new Error("Claude model not specified in config.");
   }
 
-  const prompt = `
-You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
-
-Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
-
-The PR details:
-${prContent}
-
-IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
-{
-  "strengths": [
-    {
-      "text": "Clear variable naming in function X.",
-      "codeContext": {
-        "filePath": "src/utils/helpers.ts",
-        "startLine": 25,
-        "endLine": 28,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Good use of async/await." }
-  ],
-  "areas_for_improvement": [
-    {
-      "text": "Consider adding error handling for API call.",
-      "codeContext": {
-        "filePath": "src/services/api.ts",
-        "startLine": 102,
-        "endLine": 105,
-        "codeSnippet": "..."
-      }
-    }
-  ],
-  "growth_opportunities": [
-    {
-      "text": "Explore using dependency injection for better testability.",
-      "codeContext": {
-        "filePath": "src/controllers/mainController.ts",
-        "startLine": 15,
-        "endLine": 20,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Learn about SOLID principles." }
-  ],
-  "career_impact_summary": "Summary of how addressing these points will help career progression",
-  "overall_quality": 7
-}
-
-Follow these important guidelines:
-1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
-    *   Provide the feedback in the "text" field.
-    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
-    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
-    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
-2.  Focus on substantial issues/points that impact the developer's growth.
-3.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
-4.  Connect each point to career development and professional growth.
-5.  Provide actionable insights.
-
-Do not include any explanations or text outside of this JSON structure. Respond ONLY with the JSON object.
-`;
+  const prompt = getPRAnalysisBasePrompt(prContent);
 
   try {
     const response = await fetch("/api/anthropic/v1/messages", {
@@ -359,7 +238,10 @@ Do not include any explanations or text outside of this JSON structure. Respond 
         model,
         // Increase max_tokens as 1000 seemed too low, causing truncation
         max_tokens: 2000, // Increased from 1000
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: getSystemMessage("anthropic") },
+          { role: "user", content: prompt }
+        ],
         temperature: 0.7,
       }),
     });
@@ -421,8 +303,8 @@ Do not include any explanations or text outside of this JSON structure. Respond 
       // Validate and structure the final response (add null checks)
       return {
         strengths: parsedResponse.strengths || [],
-        areas_for_improvement: parsedResponse.areas_for_improvement || [],
-        growth_opportunities: parsedResponse.growth_opportunities || [],
+        refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
+        learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
         career_impact_summary:
           parsedResponse.career_impact_summary || "No summary provided",
         overall_quality: parsedResponse.overall_quality,
@@ -448,8 +330,8 @@ Do not include any explanations or text outside of this JSON structure. Respond 
     // Fallback for API errors, providing empty arrays for the new structure
     return {
       strengths: [],
-      areas_for_improvement: [],
-      growth_opportunities: [],
+      refinement_needs: [],
+      learning_pathways: [],
       career_impact_summary:
         "The code analysis could not be completed due to technical issues with the Claude API.",
       overall_quality: 5,
@@ -510,6 +392,9 @@ async function generateClaudeText(
 }
 
 // Placeholder for the Gemini analysis function
+/**
+ * Analyze code with Gemini
+ */
 async function analyzeWithGemini(
   prContent: string,
   config: AIAnalysisConfig
@@ -522,71 +407,8 @@ async function analyzeWithGemini(
   // Default temperature (can be configured later if needed)
   const temperature = 0.7;
 
-  // Construct the prompt for Gemini, asking for JSON output.
-  // This prompt structure mirrors the ones used for OpenAI and Claude.
-  const prompt = `
-You are reviewing a GitHub pull request diff to provide constructive feedback for a developer's career growth.
-
-Analyze this code diff and provide insights to help the developer progress from Junior to Regular level.
-
-The PR details:
-${prContent}
-
-IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
-{
-  "strengths": [
-    {
-      "text": "Clear variable naming in function X.",
-      "codeContext": {
-        "filePath": "src/utils/helpers.ts",
-        "startLine": 25,
-        "endLine": 28,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Good use of async/await." }
-  ],
-  "areas_for_improvement": [
-    {
-      "text": "Consider adding error handling for API call.",
-      "codeContext": {
-        "filePath": "src/services/api.ts",
-        "startLine": 102,
-        "endLine": 105,
-        "codeSnippet": "..."
-      }
-    }
-  ],
-  "growth_opportunities": [
-    {
-      "text": "Explore using dependency injection for better testability.",
-      "codeContext": {
-        "filePath": "src/controllers/mainController.ts",
-        "startLine": 15,
-        "endLine": 20,
-        "codeSnippet": "..."
-      }
-    },
-    { "text": "Learn about SOLID principles." }
-  ],
-  "career_impact_summary": "Summary of how addressing these points will help career progression",
-  "overall_quality": 7 // An integer score from 1 (poor) to 10 (excellent)
-}
-
-Follow these important guidelines:
-1.  For each item in "strengths", "areas_for_improvement", and "growth_opportunities":
-    *   Provide the feedback in the "text" field.
-    *   If the feedback refers to a specific block of code within the provided diff, include a "codeContext" object.
-    *   In "codeContext", provide the "filePath", the "startLine" and "endLine" numbers *from the diff* where the relevant code appears, and a brief "codeSnippet" (max 10 lines) of the referenced code. Use the line numbers indicated by '@@ ... @@' or the +/- prefixes in the diff.
-    *   If a feedback item is general (e.g., "Learn about SOLID principles.") and doesn't refer to specific code in the diff, omit the "codeContext" field entirely for that item.
-2.  Provide an "overall_quality" score as an integer between 1 and 10.
-3.  Focus on substantial issues/points that impact the developer's growth.
-4.  Be specific in your feedback - identify exactly what the developer is doing well or could improve, linking to code where possible.
-5.  Connect each point to career development and professional growth.
-6.  Provide actionable insights.
-
-Respond ONLY with the JSON object.
-`;
+  // Get the prompt from our centralized prompts
+  const prompt = getPRAnalysisBasePrompt(prContent);
 
   try {
     // Initialize the Gemini client
@@ -620,7 +442,7 @@ Respond ONLY with the JSON object.
     });
 
     // Make the API call
-    const result = await geminiModel.generateContent(prompt);
+    const result = await geminiModel.generateContent(fullPrompt);
     const response = await result.response;
     const responseText = response.text();
 
@@ -631,8 +453,8 @@ Respond ONLY with the JSON object.
       if (
         !parsedResponse ||
         !Array.isArray(parsedResponse.strengths) ||
-        !Array.isArray(parsedResponse.areas_for_improvement) ||
-        !Array.isArray(parsedResponse.growth_opportunities) ||
+        !Array.isArray(parsedResponse.refinement_needs || parsedResponse.areas_for_improvement) ||
+        !Array.isArray(parsedResponse.learning_pathways || parsedResponse.growth_opportunities) ||
         typeof parsedResponse.career_impact_summary !== "string"
         // typeof parsedResponse.overall_quality !== 'number' // Allow optional quality
       ) {
@@ -640,8 +462,8 @@ Respond ONLY with the JSON object.
       }
       return {
         strengths: parsedResponse.strengths || [],
-        areas_for_improvement: parsedResponse.areas_for_improvement || [],
-        growth_opportunities: parsedResponse.growth_opportunities || [],
+        refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
+        learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
         career_impact_summary:
           parsedResponse.career_impact_summary || "No summary provided.",
         overall_quality: parsedResponse.overall_quality, // Pass through if present
@@ -712,7 +534,15 @@ Respond ONLY with the JSON object.
     if (message.includes("API key not valid")) {
       throw new Error("Invalid Gemini API Key provided.");
     }
-    throw new Error(`Gemini API Error: ${message}`);
+    
+    // Provide fallback with new field names
+    return {
+      strengths: [],
+      refinement_needs: [],
+      learning_pathways: [],
+      career_impact_summary: "The code analysis could not be completed due to a Gemini API error.",
+      overall_quality: 5,
+    };
   }
 }
 
@@ -773,13 +603,13 @@ function calculateCommonThemes(
     prUrl: string;
     prTitle: string;
   }> = [];
-  const allAreasForImprovement: Array<{
+  const allRefinementNeeds: Array<{
     item: FeedbackItem;
     prId: number;
     prUrl: string;
     prTitle: string;
   }> = [];
-  const allGrowthOpportunities: Array<{
+  const allLearningPathways: Array<{
     item: FeedbackItem;
     prId: number;
     prUrl: string;
@@ -795,16 +625,20 @@ function calculateCommonThemes(
         prTitle: result.prTitle,
       })
     );
-    result.feedback.areas_for_improvement.forEach((item) =>
-      allAreasForImprovement.push({
+    // Support both new field names and legacy field names
+    const refinementItems = result.feedback.refinement_needs || result.feedback.areas_for_improvement || [];
+    refinementItems.forEach((item) =>
+      allRefinementNeeds.push({
         item,
         prId: result.prId,
         prUrl: result.prUrl,
         prTitle: result.prTitle,
       })
     );
-    result.feedback.growth_opportunities.forEach((item) =>
-      allGrowthOpportunities.push({
+    
+    const learningItems = result.feedback.learning_pathways || result.feedback.growth_opportunities || [];
+    learningItems.forEach((item) =>
+      allLearningPathways.push({
         item,
         prId: result.prId,
         prUrl: result.prUrl,
@@ -820,8 +654,8 @@ function calculateCommonThemes(
   const averageScore =
     prAnalysisResults.length > 0 ? totalScore / prAnalysisResults.length : 0;
   const commonStrengths = countFrequency(allStrengths);
-  const commonWeaknesses = countFrequency(allAreasForImprovement);
-  const commonSuggestions = countFrequency(allGrowthOpportunities);
+  const commonWeaknesses = countFrequency(allRefinementNeeds);
+  const commonSuggestions = countFrequency(allLearningPathways);
 
   return {
     commonStrengths,
@@ -866,8 +700,8 @@ async function generateOverallCareerSummary(
     items.map((item) => `- ${item.text} (Count: ${item.count})`).join("\n") ||
     "None notable.";
   const strengthsText = formatItems(commonStrengths);
-  const weaknessesText = formatItems(commonWeaknesses);
-  const suggestionsText = formatItems(commonSuggestions);
+  const refinementNeedsText = formatItems(commonWeaknesses);
+  const learningPathwaysText = formatItems(commonSuggestions);
   const responsibilities = `
 - Compreende um codebase de forma ampla, tendo a percepção de como alterações podem afetar o todo;
 - Implementa sem supervisão funcionalidades pequenas e médias;
@@ -906,11 +740,11 @@ You are assessing a developer's progress towards a 'Regular Developer' level bas
 *Common Strengths Found:*
 ${strengthsText}
 
-*Common Areas for Improvement Found:*
-${weaknessesText}
+*Common Refinement Needs Found:*
+${refinementNeedsText}
 
-*Common Growth Opportunities Suggested:*
-${suggestionsText}
+*Common Learning Pathways Suggested:*
+${learningPathwaysText}
 
 **Responsibilities of a Regular Developer (for context):**
 ${responsibilities}
@@ -948,8 +782,7 @@ Write a concise summary (around 100-150 words) in English evaluating the develop
           messages: [
             {
               role: "system",
-              content:
-                "You are providing a career development summary based on aggregated code review feedback.",
+              content: getSystemMessage(config.provider),
             },
             { role: "user", content: prompt }, // Use the constructed prompt
           ],
@@ -985,11 +818,99 @@ Write a concise summary (around 100-150 words) in English evaluating the develop
       );
     }
     return summaryText.trim();
-  } catch (error) {
-    console.error("Error generating overall career summary:", error);
-    return "(Could not generate AI career development summary due to an error.)";
+    } catch (error) {
+      console.error("Error generating overall career summary:", error);
+      return "(Could not generate AI career development summary due to an error.)";
+    }
   }
-}
 
-// Export the new theme calculation function if needed elsewhere, or keep it internal
-export { calculateCommonThemes };
+  /**
+   * Generate meta-analysis from multiple PR analyses
+   * This function takes analyzed PR data and identifies patterns and insights across all PRs
+   */
+  export async function generateMetaAnalysis(
+    prAnalysisResults: PRAnalysisResult[],
+    config: AIAnalysisConfig
+  ): Promise<MetaAnalysisResult> {
+    try {
+      if (!prAnalysisResults || prAnalysisResults.length === 0) {
+        throw new Error("No PR analysis data provided for meta-analysis");
+      }
+
+      // Format the PR analysis data for the AI prompt
+      const analysisData = prAnalysisResults.map(result => {
+        const { prTitle, prId, feedback } = result;
+        return `
+  PR #${prId} - "${prTitle}":
+  - Strengths: ${feedback.strengths.map(s => s.text).join("; ")}
+  - Refinement Needs: ${(feedback.refinement_needs || feedback.areas_for_improvement || []).map(r => r.text).join("; ")}
+  - Learning Pathways: ${(feedback.learning_pathways || feedback.growth_opportunities || []).map(o => o.text).join("; ")}
+  - Quality Score: ${feedback.overall_quality || 'N/A'}
+        `;
+      }).join("\n\n");
+
+      // Get the meta-analysis prompt with the formatted data
+      const prompt = getMetaAnalysisPrompt(analysisData);
+
+      let metaAnalysisText = "";
+    
+      // Choose API provider based on config
+      if (config.provider === "openai") {
+        // OpenAI implementation
+        const response = await fetch("/api/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: config.model || "gpt-4",
+            messages: [
+              {
+                role: "system",
+                content: getSystemMessage("openai"),
+              },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.6,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        metaAnalysisText = data.choices[0].message.content;
+      } else if (config.provider === "anthropic") {
+        // Anthropic implementation
+        metaAnalysisText = await generateClaudeText(prompt, config, 3000);
+      } else if (config.provider === "gemini") {
+        // Gemini implementation
+        const genAI = new GoogleGenerativeAI(config.apiKey);
+        const model = genAI.getGenerativeModel({
+          model: config.model || "gemini-1.5-flash-latest",
+        });
+        const result = await model.generateContent(prompt);
+        metaAnalysisText = result.response.text();
+      } else {
+        throw new Error(`Unsupported provider for meta-analysis: ${config.provider}`);
+      }
+
+      // Parse the JSON response
+      try {
+        // Clean up the response to handle potential markdown or text formatting
+        const cleanedText = metaAnalysisText.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.error("Error parsing meta-analysis response:", parseError);
+        throw new Error("Failed to parse meta-analysis result");
+      }
+    } catch (error) {
+      console.error("Error generating meta-analysis:", error);
+      throw error;
+    }
+  }
+
+  // Export the new theme calculation function if needed elsewhere, or keep it internal
+  export { calculateCommonThemes };
