@@ -35,14 +35,14 @@ interface RecurringPatternsProps {
   defaultOpen?: boolean;
 }
 
-export function RecurringPatterns({ 
-  patterns, 
+export function RecurringPatterns({
+  patterns,
   isLoading = false,
-  defaultOpen = true 
+  defaultOpen = true,
 }: RecurringPatternsProps) {
   // Always start with patterns section open
   const [isOpen, setIsOpen] = React.useState(true);
-  
+
   // Update internal state when defaultOpen prop changes
   React.useEffect(() => {
     setIsOpen(defaultOpen);
@@ -52,7 +52,7 @@ export function RecurringPatterns({
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
   };
-  
+
   // Loading state
   if (isLoading) {
     return (
@@ -111,56 +111,59 @@ export function RecurringPatterns({
   return (
     <div className="mt-2 pt-1">
       <div className="group">
-      <div>
-        <Collapsible 
-          open={isOpen} 
-          onOpenChange={handleOpenChange}
-        >
-        <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2.5 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
-          <PatternIcon />
-          <span className="ml-1.5">View Recurring Patterns</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="ml-auto h-4 w-4 text-purple-500 dark:text-purple-400 transition-transform duration-300 group-data-[state=open]:rotate-180"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </CollapsibleTrigger>
+        <div>
+          <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+            <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2.5 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
+              <PatternIcon />
+              <span className="ml-1.5">View Recurring Patterns</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="ml-auto h-4 w-4 text-purple-500 dark:text-purple-400 transition-transform duration-300 group-data-[state=open]:rotate-180"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </CollapsibleTrigger>
 
-        <CollapsibleContent>
-          <div className="pt-4 pb-1 px-1">
-            <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-              Patterns detected across multiple pull requests
-            </div>
-            <ul className="space-y-4">
-              {[...patterns]
-                .sort((a, b) => {
-                  // Sort by frequency: trending first, case specific last
-                  const getFrequencyWeight = (pattern: RecurringPattern) => {
-                    const frequency = pattern.frequency.toLowerCase();
-                    if (frequency.includes("very common")) return 0; // trending (very common) first
-                    if (frequency.includes("common")) return 1; // common second
-                    if (frequency.includes("occasional")) return 2; // case specific (occasional) last
-                    return 1; // default weight
-                  };
-                  return getFrequencyWeight(a) - getFrequencyWeight(b);
-                })
-                .map((pattern, index) => (
-                  <PatternItem key={index} pattern={pattern} index={index + 1} />
-                ))}
-            </ul>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      </div>
+            <CollapsibleContent>
+              <div className="pt-4 pb-1 px-1">
+                <div className="text-sm text-left text-zinc-500 dark:text-zinc-400 mb-4">
+                  Patterns detected across multiple pull requests
+                </div>
+                <ul className="space-y-4">
+                  {[...patterns]
+                    .sort((a, b) => {
+                      // Sort by frequency: trending first, case specific last
+                      const getFrequencyWeight = (
+                        pattern: RecurringPattern,
+                      ) => {
+                        const frequency = pattern.frequency.toLowerCase();
+                        if (frequency.includes("very common")) return 0; // trending (very common) first
+                        if (frequency.includes("common")) return 1; // common second
+                        if (frequency.includes("occasional")) return 2; // case specific (occasional) last
+                        return 1; // default weight
+                      };
+                      return getFrequencyWeight(a) - getFrequencyWeight(b);
+                    })
+                    .map((pattern, index) => (
+                      <PatternItem
+                        key={index}
+                        pattern={pattern}
+                        index={index + 1}
+                      />
+                    ))}
+                </ul>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </div>
     </div>
   );

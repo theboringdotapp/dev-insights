@@ -170,7 +170,7 @@ export default function MetaAnalysis({
 
           <CollapsibleContent>
             <div className="pt-4 pb-1 px-1">
-              <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+              <div className="text-sm text-left text-zinc-500 dark:text-zinc-400 mb-4">
                 Prioritized areas to focus on for growth
               </div>
               <FocusAreas areas={recommended_focus_areas} />
@@ -208,22 +208,28 @@ export default function MetaAnalysis({
               </div>
               <div className="space-y-3 text-left">
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Strengths to Leverage:</h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
+                  <h4 className="text-xs font-medium text-zinc-900 mb-1 text-left">
+                    Strengths to Leverage:
+                  </h4>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 text-left">
                     {managerial_insights.strengths_to_leverage}
                   </p>
                 </div>
-                
+
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Growth Support:</h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
+                  <h4 className="text-xs font-medium text-zinc-900 mb-1 text-left">
+                    Growth Support:
+                  </h4>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 text-left">
                     {managerial_insights.growth_support}
                   </p>
                 </div>
-                
+
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-500 mb-1 text-left">Project Recommendations:</h4>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 text-left">
+                  <h4 className="text-xs font-medium text-zinc-900 mb-1 text-left">
+                    Project Recommendations:
+                  </h4>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300 text-left">
                     {managerial_insights.project_recommendations}
                   </p>
                 </div>
