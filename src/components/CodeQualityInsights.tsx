@@ -60,7 +60,7 @@ export function CodeQualityInsights({
     } catch (e) {
       console.error(
         "[CodeQualityInsights] Error loading developer ID from localStorage:",
-        e,
+        e
       );
       return null;
     }
@@ -68,7 +68,7 @@ export function CodeQualityInsights({
 
   // Use URL developer ID if available, fallback to localStorage, then to prop
   const [developerId, setDeveloperId] = useState(
-    urlDeveloperId || propDeveloperId,
+    urlDeveloperId || propDeveloperId
   );
 
   // Effect to initialize developerId from localStorage if needed
@@ -77,7 +77,7 @@ export function CodeQualityInsights({
       const storedDeveloperId = loadDeveloperIdFromLocalStorage();
       if (storedDeveloperId) {
         console.log(
-          `[CodeQualityInsights] Recovered developer ID from localStorage: ${storedDeveloperId}`,
+          `[CodeQualityInsights] Recovered developer ID from localStorage: ${storedDeveloperId}`
         );
         setDeveloperId(storedDeveloperId);
 
@@ -90,7 +90,7 @@ export function CodeQualityInsights({
             // Use replace state to avoid adding to browser history
             window.history.replaceState({}, "", url.toString());
             console.log(
-              `[CodeQualityInsights] Updated URL with recovered developer ID: ${storedDeveloperId}`,
+              `[CodeQualityInsights] Updated URL with recovered developer ID: ${storedDeveloperId}`
             );
           } catch (e) {
             console.error("[CodeQualityInsights] Failed to update URL:", e);
@@ -186,7 +186,7 @@ export function CodeQualityInsights({
         // Clear the selection ONLY if the currently selected model is incompatible
         setSelectedModel(undefined);
         console.log(
-          `Cleared incompatible model selection (${selectedModel}) for provider ${apiProvider}.`,
+          `Cleared incompatible model selection (${selectedModel}) for provider ${apiProvider}.`
         );
       }
       // If a model is selected AND it *is* valid, do nothing - keep the user's/persisted choice.
@@ -203,7 +203,7 @@ export function CodeQualityInsights({
   const handleGenerateMetaAnalysis = useCallback(async () => {
     if (!apiKey || !apiProvider || !selectedModel) {
       console.warn(
-        "[handleGenerateMetaAnalysis] Cannot generate meta-analysis: API config incomplete.",
+        "[handleGenerateMetaAnalysis] Cannot generate meta-analysis: API config incomplete."
       );
       alert("Please ensure API provider, model, and key are configured.");
       return;
@@ -219,12 +219,12 @@ export function CodeQualityInsights({
 
       // Fetch PR analysis data for selected PRs
       const prAnalysisPromises = Array.from(selectedPRIds).map((prId) =>
-        cacheService.getPRAnalysis(prId),
+        cacheService.getPRAnalysis(prId)
       );
 
       const prAnalysisResults = await Promise.all(prAnalysisPromises);
       const validResults = prAnalysisResults.filter(
-        (result) => result && result.feedback,
+        (result) => result && result.feedback
       ) as PRAnalysisResult[];
 
       if (validResults.length < 2) {
@@ -257,16 +257,16 @@ export function CodeQualityInsights({
       try {
         console.log(
           `[handleGenerateMetaAnalysis] Caching pattern analysis for developer: ${developerId}`,
-          metaAnalysisWithMetadata,
+          metaAnalysisWithMetadata
         );
         await cacheService.cachePatternAnalysis(
           developerId,
-          metaAnalysisWithMetadata,
+          metaAnalysisWithMetadata
         );
         // Also save to localStorage as a fallback
         saveLastPatternResultToLocalStorage(metaAnalysisWithMetadata);
         console.log(
-          `[handleGenerateMetaAnalysis] Pattern analysis successfully cached for developer: ${developerId}`,
+          `[handleGenerateMetaAnalysis] Pattern analysis successfully cached for developer: ${developerId}`
         );
       } catch (cacheError) {
         console.error("Failed to cache pattern analysis:", cacheError);
@@ -276,7 +276,9 @@ export function CodeQualityInsights({
     } catch (error) {
       console.error("Failed to generate meta-analysis:", error);
       alert(
-        `Failed to generate meta-analysis: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to generate meta-analysis: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
       setMetaAnalysisResult(null);
     } finally {
@@ -306,7 +308,7 @@ export function CodeQualityInsights({
       if (devId && devId !== "unknown") {
         localStorage.setItem(DEVELOPER_ID_KEY, devId);
         console.log(
-          `[LocalStorageBackup] Saved current developer ID: ${devId}`,
+          `[LocalStorageBackup] Saved current developer ID: ${devId}`
         );
       }
     } catch (e) {
@@ -318,7 +320,7 @@ export function CodeQualityInsights({
     try {
       localStorage.setItem(LAST_PATTERN_RESULT_KEY, JSON.stringify(pattern));
       console.log(
-        "[LocalStorageBackup] Saved last pattern result to localStorage",
+        "[LocalStorageBackup] Saved last pattern result to localStorage"
       );
     } catch (e) {
       console.error("[LocalStorageBackup] Error saving pattern result:", e);
@@ -341,7 +343,7 @@ export function CodeQualityInsights({
   // Log the developer ID on mount and changes
   useEffect(() => {
     console.log(
-      `[CodeQualityInsights] Component mounted/updated with developerId: ${developerId} (from URL: ${!!urlDeveloperId})`,
+      `[CodeQualityInsights] Component mounted/updated with developerId: ${developerId} (from URL: ${!!urlDeveloperId})`
     );
 
     // Save current developer ID for persistence across refreshes
@@ -367,7 +369,7 @@ export function CodeQualityInsights({
 
     return () => {
       console.log(
-        `[CodeQualityInsights] Component unmounting with developerId: ${developerId}`,
+        `[CodeQualityInsights] Component unmounting with developerId: ${developerId}`
       );
     };
   }, [developerId, saveCurrentDeveloperToLocalStorage]);
@@ -377,17 +379,17 @@ export function CodeQualityInsights({
     const loadCachedPatternAnalysis = async () => {
       if (!developerId || developerId === "unknown") {
         console.log(
-          "[Pattern Cache] No valid developer ID provided, skipping cache load",
+          "[Pattern Cache] No valid developer ID provided, skipping cache load"
         );
         return;
       }
 
       console.log(
-        `[Pattern Cache] Attempting to load cached patterns for developer: ${developerId}`,
+        `[Pattern Cache] Attempting to load cached patterns for developer: ${developerId}`
       );
 
       console.log(
-        `[Pattern Cache] Starting cache load for developer: ${developerId}`,
+        `[Pattern Cache] Starting cache load for developer: ${developerId}`
       );
 
       // Check if developer changed
@@ -396,7 +398,7 @@ export function CodeQualityInsights({
         prevDeveloperIdRef.current !== developerId;
 
       console.log(
-        `[Pattern Cache] Developer changed: ${developerChanged}, previous: ${prevDeveloperIdRef.current}, current: ${developerId}`,
+        `[Pattern Cache] Developer changed: ${developerChanged}, previous: ${prevDeveloperIdRef.current}, current: ${developerId}`
       );
 
       // Update the reference
@@ -404,14 +406,14 @@ export function CodeQualityInsights({
 
       try {
         console.log(
-          `[Pattern Cache] Checking for cached patterns for developer: ${developerId}`,
+          `[Pattern Cache] Checking for cached patterns for developer: ${developerId}`
         );
         let cachedPattern = await cacheService.getPatternAnalysis(developerId);
 
         // If IndexedDB cache failed, try localStorage fallback
         if (!cachedPattern) {
           console.log(
-            `[Pattern Cache] No IndexedDB cache found for ${developerId}, trying localStorage fallback`,
+            `[Pattern Cache] No IndexedDB cache found for ${developerId}, trying localStorage fallback`
           );
           const localStoragePattern = loadLastPatternResultFromLocalStorage();
 
@@ -421,25 +423,25 @@ export function CodeQualityInsights({
             localStoragePattern.developerId === developerId
           ) {
             console.log(
-              `[Pattern Cache] Found pattern in localStorage fallback for ${developerId}`,
+              `[Pattern Cache] Found pattern in localStorage fallback for ${developerId}`
             );
             cachedPattern = localStoragePattern;
           } else if (localStoragePattern) {
             console.log(
-              `[Pattern Cache] Found pattern in localStorage but developer ID mismatch: ${localStoragePattern.developerId} vs ${developerId}`,
+              `[Pattern Cache] Found pattern in localStorage but developer ID mismatch: ${localStoragePattern.developerId} vs ${developerId}`
             );
           }
         }
 
         console.log(
           `[Pattern Cache] Cache lookup result:`,
-          cachedPattern ? "Found cache" : "No cache found",
+          cachedPattern ? "Found cache" : "No cache found"
         );
 
         if (cachedPattern) {
           console.log(
             `[Pattern Cache] Found cached pattern analysis for developer: ${developerId}`,
-            cachedPattern,
+            cachedPattern
           );
           setMetaAnalysisResult(cachedPattern);
           setIsFromCache(true);
@@ -447,26 +449,26 @@ export function CodeQualityInsights({
           // If the developer changed, we need to verify if selected PRs match what was in the pattern
           if (developerChanged) {
             console.log(
-              `[Pattern Cache] Developer changed, checking if PRs match`,
+              `[Pattern Cache] Developer changed, checking if PRs match`
             );
             // We will check if the PRs match in the next render via the selection effect
             setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || []),
+              new Set(cachedPattern.analyzedPRIds || [])
             );
             setIsPatternsOutdated(true);
           } else {
             // Same developer, pattern from cache is initially considered up-to-date
             console.log(
-              `[Pattern Cache] Same developer, setting patterns as up-to-date`,
+              `[Pattern Cache] Same developer, setting patterns as up-to-date`
             );
             setIsPatternsOutdated(false);
             setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || []),
+              new Set(cachedPattern.analyzedPRIds || [])
             );
           }
         } else {
           console.log(
-            `[Pattern Cache] No cached pattern analysis found for developer: ${developerId}`,
+            `[Pattern Cache] No cached pattern analysis found for developer: ${developerId}`
           );
           // Clear any existing pattern analysis when switching to a developer with no cache
           if (metaAnalysisResult) {
@@ -479,7 +481,7 @@ export function CodeQualityInsights({
       } catch (error) {
         console.error(
           `[Pattern Cache] Error loading cached patterns for developer ${developerId}:`,
-          error,
+          error
         );
 
         // Try localStorage fallback if primary cache mechanism fails
@@ -490,12 +492,12 @@ export function CodeQualityInsights({
             localStoragePattern.developerId === developerId
           ) {
             console.log(
-              "[Pattern Cache] Using localStorage fallback after cache error",
+              "[Pattern Cache] Using localStorage fallback after cache error"
             );
             setMetaAnalysisResult(localStoragePattern);
             setIsFromCache(true);
             setAnalyzedPRsInLastPattern(
-              new Set(localStoragePattern.analyzedPRIds || []),
+              new Set(localStoragePattern.analyzedPRIds || [])
             );
           }
         } catch (fallbackError) {
@@ -522,17 +524,17 @@ export function CodeQualityInsights({
     isMountedRef.current = true;
 
     console.log(
-      "[Initial ID Discovery Effect] RUNNING - Checking cache for new PRs...",
+      "[Initial ID Discovery Effect] RUNNING - Checking cache for new PRs..."
     );
 
     const discoverAndSetInitialSelection = async () => {
       let currentKnownIds = Array.from(
-        useAnalysisStore.getState().allAnalyzedPRIds,
+        useAnalysisStore.getState().allAnalyzedPRIds
       );
       console.log(
         `[Initial ID Discovery Effect] Known analyzed IDs before check: ${
           currentKnownIds.join(", ") || "None"
-        }`,
+        }`
       );
 
       // Determine PRs to check in cache (those not already known)
@@ -546,11 +548,11 @@ export function CodeQualityInsights({
         console.log(
           `[Initial ID Discovery Effect] Checking cache for ${
             prIdsToCheckInCache.length
-          } potential new PR IDs: ${prIdsToCheckInCache.join(", ")}`,
+          } potential new PR IDs: ${prIdsToCheckInCache.join(", ")}`
         );
         try {
           const cacheResults = await Promise.all(
-            prIdsToCheckInCache.map((id) => cacheService.getPRAnalysis(id)),
+            prIdsToCheckInCache.map((id) => cacheService.getPRAnalysis(id))
           );
           newlyFoundCachedIds = cacheResults
             .filter((result) => result !== null)
@@ -561,26 +563,26 @@ export function CodeQualityInsights({
               `[Initial ID Discovery Effect] Found ${
                 newlyFoundCachedIds.length
               } new analyzed PRs in cache. Adding IDs to store: ${newlyFoundCachedIds.join(
-                ", ",
-              )}`,
+                ", "
+              )}`
             );
             addAnalyzedPRIds(newlyFoundCachedIds); // Add new IDs to store
             // Update our local list of known IDs for the next step
             currentKnownIds = [...currentKnownIds, ...newlyFoundCachedIds];
           } else {
             console.log(
-              "[Initial ID Discovery Effect] No new analyzed PRs found in cache.",
+              "[Initial ID Discovery Effect] No new analyzed PRs found in cache."
             );
           }
         } catch (error) {
           console.error(
             "[Initial ID Discovery Effect] Error checking cache for new PRs:",
-            error,
+            error
           );
         }
       } else {
         console.log(
-          "[Initial ID Discovery Effect] No new PRs to check in cache.",
+          "[Initial ID Discovery Effect] No new PRs to check in cache."
         );
       }
 
@@ -589,13 +591,13 @@ export function CodeQualityInsights({
       if (currentKnownIds.length > 0) {
         console.log(
           `[Initial ID Discovery Effect] Setting initial selected PRs to ALL known analyzed IDs: ${currentKnownIds.join(
-            ", ",
-          )}`,
+            ", "
+          )}`
         );
         setSelectedPRIds(currentKnownIds);
       } else {
         console.log(
-          `[Initial ID Discovery Effect] No known analyzed PRs found, initial selection is empty.`,
+          `[Initial ID Discovery Effect] No known analyzed PRs found, initial selection is empty.`
         );
         setSelectedPRIds([]); // Ensure it's empty if no PRs found
       }
@@ -615,13 +617,13 @@ export function CodeQualityInsights({
     console.log(
       `[Selection Change Effect] Running. Selected IDs: ${
         currentSelectedIds.join(", ") || "None"
-      }`,
+      }`
     );
 
     const updateThemesForSelection = async () => {
       if (currentSelectedIds.length === 0) {
         console.log(
-          "[Selection Change Effect] No PRs selected. Clearing themes.",
+          "[Selection Change Effect] No PRs selected. Clearing themes."
         );
         setCalculatedThemes({
           commonStrengths: [],
@@ -634,7 +636,7 @@ export function CodeQualityInsights({
       }
 
       console.log(
-        `[Selection Change Effect] Fetching data for ${currentSelectedIds.length} selected PRs...`,
+        `[Selection Change Effect] Fetching data for ${currentSelectedIds.length} selected PRs...`
       );
       try {
         const results: PRAnalysisResult[] = [];
@@ -644,24 +646,24 @@ export function CodeQualityInsights({
             results.push(result);
           } else {
             console.warn(
-              `[Selection Change Effect] Could not find cached data for selected PR #${id}`,
+              `[Selection Change Effect] Could not find cached data for selected PR #${id}`
             );
           }
         }
 
         if (results.length > 0) {
           console.log(
-            `[Selection Change Effect] Calculating themes for ${results.length} results...`,
+            `[Selection Change Effect] Calculating themes for ${results.length} results...`
           );
           const themes = calculateCommonThemes(results);
           console.log(
             "[Selection Change Effect] Calculated themes:",
-            JSON.stringify(themes),
+            JSON.stringify(themes)
           );
           setCalculatedThemes(themes); // Update store
         } else {
           console.warn(
-            "[Selection Change Effect] No valid results found for selected PRs. Clearing themes.",
+            "[Selection Change Effect] No valid results found for selected PRs. Clearing themes."
           );
           setCalculatedThemes({
             commonStrengths: [],
@@ -675,7 +677,7 @@ export function CodeQualityInsights({
       } catch (error) {
         console.error(
           "[Selection Change Effect] Error fetching or processing selected PR data:",
-          error,
+          error
         );
         // Clear themes on error
         setCalculatedThemes({
@@ -704,10 +706,10 @@ export function CodeQualityInsights({
         // Check if any PRs are different between current selection and last analysis
         const anyDifferent =
           Array.from(currentSelection).some(
-            (id) => !analyzedPRsInLastPattern.has(id),
+            (id) => !analyzedPRsInLastPattern.has(id)
           ) ||
           Array.from(analyzedPRsInLastPattern).some(
-            (id) => !currentSelection.has(id),
+            (id) => !currentSelection.has(id)
           );
         if (anyDifferent) {
           setIsPatternsOutdated(true);
@@ -739,7 +741,7 @@ export function CodeQualityInsights({
     saveApiKey();
 
     console.log(
-      `Starting manual analysis with Provider: ${apiProvider}, Model: ${selectedModel}`,
+      `Starting manual analysis with Provider: ${apiProvider}, Model: ${selectedModel}`
     );
 
     try {
@@ -751,7 +753,7 @@ export function CodeQualityInsights({
       const prsToAnalyzeNow = prsToConsider
         .filter(
           (pr) =>
-            !currentAnalyzedIds.has(pr.id) && !currentAnalyzingIds.has(pr.id),
+            !currentAnalyzedIds.has(pr.id) && !currentAnalyzingIds.has(pr.id)
         )
         .slice(0, maxPRs);
 
@@ -762,7 +764,7 @@ export function CodeQualityInsights({
       }
 
       console.log(
-        `Attempting to manually analyze ${prsToAnalyzeNow.length} PRs...`,
+        `Attempting to manually analyze ${prsToAnalyzeNow.length} PRs...`
       );
 
       const config: AIAnalysisConfig = {
@@ -774,7 +776,7 @@ export function CodeQualityInsights({
       const results: PRAnalysisResult[] = await analyzeMultiplePRs(
         prsToAnalyzeNow,
         config,
-        maxPRs,
+        maxPRs
       );
       // ... handle results, calculate themes, set state ...
       console.log(`Analysis completed for ${results.length} PRs.`);
@@ -786,8 +788,8 @@ export function CodeQualityInsights({
         const newlyAnalyzedIds = successfulResults.map((r) => r.prId);
         console.log(
           `[handleAnalyze] Adding newly analyzed IDs to store: ${newlyAnalyzedIds.join(
-            ", ",
-          )}`,
+            ", "
+          )}`
         );
         addAnalyzedPRIds(newlyAnalyzedIds); // Add IDs to store
 
@@ -795,7 +797,7 @@ export function CodeQualityInsights({
         const newThemes = calculateCommonThemes(successfulResults);
         console.log(
           `[handleAnalyze] Calculated themes for new results:`,
-          newThemes,
+          newThemes
         );
 
         // Replace existing themes
@@ -807,7 +809,7 @@ export function CodeQualityInsights({
           // When new PRs are analyzed, they weren't part of the previous pattern analysis
           const newlyAnalyzedIds = successfulResults.map((r) => r.prId);
           const anyNewPRsInSelection = newlyAnalyzedIds.some((id) =>
-            selectedPRIds.has(id),
+            selectedPRIds.has(id)
           );
 
           if (anyNewPRsInSelection) {
@@ -816,7 +818,7 @@ export function CodeQualityInsights({
         }
       } else {
         console.warn(
-          "Manual analysis completed, but no successful results to aggregate.",
+          "Manual analysis completed, but no successful results to aggregate."
         );
         // Decide if we should clear existing themes here or leave them
         // setCalculatedThemes({ ... }); // Optional clear
@@ -871,12 +873,12 @@ export function CodeQualityInsights({
         localStorage.removeItem(LAST_PATTERN_RESULT_KEY);
         // Don't clear the developer ID, it should persist between clearing cache
         console.log(
-          "[handleClearCacheAndStore] Cleared localStorage pattern backup",
+          "[handleClearCacheAndStore] Cleared localStorage pattern backup"
         );
       } catch (e) {
         console.error(
           "[handleClearCacheAndStore] Error clearing localStorage:",
-          e,
+          e
         );
       }
 
@@ -884,7 +886,7 @@ export function CodeQualityInsights({
     } catch (error) {
       console.error(
         "[handleClearCacheAndStore] Error clearing cache/store:",
-        error,
+        error
       );
       alert("Failed to clear cache."); // Inform user
     }
@@ -892,29 +894,29 @@ export function CodeQualityInsights({
 
   // Log state just before rendering conditional UI
   console.log(
-    `[CodeQualityInsights Render] =========================================`,
+    `[CodeQualityInsights Render] =========================================`
   );
   console.log(
-    `[CodeQualityInsights Render] isLoading (analyzingPRIds.size > 0): ${isLoading} (size: ${analyzingPRIds.size})`,
+    `[CodeQualityInsights Render] isLoading (analyzingPRIds.size > 0): ${isLoading} (size: ${analyzingPRIds.size})`
   );
   console.log(
-    `[CodeQualityInsights Render] isOverallLoading: ${isOverallLoading}`,
+    `[CodeQualityInsights Render] isOverallLoading: ${isOverallLoading}`
   );
   console.log(`[CodeQualityInsights Render] hasApiKey: ${!!apiKey}`);
   console.log(
-    `[CodeQualityInsights Render] allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}`,
+    `[CodeQualityInsights Render] allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}`
   );
   console.log(
-    `[CodeQualityInsights Render] selectedPRIds.size: ${selectedPRIds.size}`,
+    `[CodeQualityInsights Render] selectedPRIds.size: ${selectedPRIds.size}`
   );
   console.log(
-    `[CodeQualityInsights Render] commonStrengths.length: ${commonStrengths.length}`,
+    `[CodeQualityInsights Render] commonStrengths.length: ${commonStrengths.length}`
   );
   console.log(
-    `[CodeQualityInsights Render] isConfigVisible: ${isConfigVisible}`,
+    `[CodeQualityInsights Render] isConfigVisible: ${isConfigVisible}`
   );
   console.log(
-    `[CodeQualityInsights Render] =========================================`,
+    `[CodeQualityInsights Render] =========================================`
   );
 
   return (
@@ -1014,7 +1016,7 @@ export function CodeQualityInsights({
                           Analysis from{" "}
                           {metaAnalysisResult.timestamp
                             ? new Date(
-                                metaAnalysisResult.timestamp,
+                                metaAnalysisResult.timestamp
                               ).toLocaleDateString()
                             : "a previous session"}
                         </p>
@@ -1149,55 +1151,127 @@ export function CodeQualityInsights({
                   setIsConfigVisible={setIsConfigVisible}
                   handleMaxPRsChange={handleMaxPRsChange}
                 />
-              ) : selectedPRIds.size < 2 ? (
-                <div className="p-4 mt-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
-                    Select at least 2 analyzed PRs to find patterns
-                  </p>
-                  <button
-                    onClick={() =>
-                      setSelectedPRIds(Array.from(allAnalyzedPRIds))
-                    }
-                    className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:hover:bg-purple-800/60 transition-colors"
-                  >
-                    Select All PRs
-                  </button>
-                </div>
               ) : (
-                <div className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-zinc-900/30 rounded-lg text-center">
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-                    {selectedPRIds.size} PRs selected for pattern analysis
-                  </p>
-                  <button
-                    onClick={handleGenerateMetaAnalysis}
-                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
-                    disabled={isGeneratingMetaAnalysis}
-                  >
-                    {isGeneratingMetaAnalysis ? (
-                      <>
-                        <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
-                        Finding Patterns...
-                      </>
-                    ) : (
-                      <>
+                <div className="group relative overflow-hidden p-6 mt-4 bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-100 dark:from-purple-800/30 dark:via-indigo-900/30 dark:to-purple-800/40 rounded-xl shadow-xl text-left animate-subtle-gradient">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none opacity-50 group-hover:opacity-100"></div>
+                  <div className="relative z-10">
+                    <div className="flex items-center mb-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="h-8 w-8 text-purple-600 dark:text-purple-400 mr-3 shrink-0"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M9.536 2.476a.75.75 0 01.68.036l4.5 3.375a.75.75 0 01.036.68l-1.087 3.899a.75.75 0 01-1.09.574l-3.899-1.087a.75.75 0 01-.574-1.09l3.899-5.487a.75.75 0 01.536-.43Zm4.995 6.257a.75.75 0 01.37.03l4.5 2.25a.75.75 0 01.03.37l-1.187 4.153a.75.75 0 01-1.084.567l-4.153-1.187a.75.75 0 01-.567-1.084l3.087-4.102a.75.75 0 01.997-.39Zm-7.841 1.622a.75.75 0 01.535-.431L12 7.737a.75.75 0 01.679.036l4.5 3.375a.75.75 0 01.036.68l-1.087 3.899a.75.75 0 01-1.09.573l-3.899-1.087a.75.75 0 01-.574-1.09l3.899-5.487ZM9.19 14.03a.75.75 0 01.37.03l4.5 2.25a.75.75 0 01.03.37l-1.187 4.153a.75.75 0 01-1.084.567L7.16 20.213a.75.75 0 01-.567-1.084l3.087-4.102a.75.75 0 01.51-.366Z"
+                          clipRule="evenodd"
+                        />
+                        <path d="M11.913 7.057a.75.75 0 01.536.43l3.899 5.488a.75.75 0 01-.574 1.09l-3.899-1.087a.75.75 0 01-.536-.43L7.43 7.057a.75.75 0 01.483-.366Z" />
+                      </svg>
+                      <h4 className="text-xl font-semibold text-zinc-800 dark:text-zinc-100">
+                        Unlock Deeper Insights with Deep Analysis!
+                      </h4>
+                    </div>
+
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+                      Go beyond individual PR feedback. Our Deep Analysis
+                      feature helps you:
+                    </p>
+                    <ul className="space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300 mb-4 list-disc list-inside pl-2">
+                      <li>
+                        Identify overarching patterns & themes in your code
+                        quality.
+                      </li>
+                      <li>
+                        Receive tailored focus areas & learning resources.
+                      </li>
+                      <li>
+                        Get actionable tips for managers to support developer
+                        growth.
+                      </li>
+                    </ul>
+
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-md mb-5 border border-purple-200 dark:border-purple-700/50">
+                      <div className="flex items-start">
                         <svg
-                          className="mr-2 h-4 w-4"
                           xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2 shrink-0 mt-0.5"
                         >
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="m19 19-3.3-3.3"></path>
-                          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+                            clipRule="evenodd"
+                          />
                         </svg>
-                        Find Patterns Across PRs
-                      </>
-                    )}
-                  </button>
+                        <p className="text-xs text-purple-700 dark:text-purple-300">
+                          Note: This performs an additional AI analysis using
+                          your configured provider and may incur costs.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-center mt-2">
+                      {selectedPRIds.size < 3 ? (
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+                          {`Select at least 3 analyzed PRs for Deep Analysis (you have ${selectedPRIds.size} selected).`}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-green-600 dark:text-green-400 mb-3">
+                          {`${selectedPRIds.size} PRs selected. Ready for Deep Analysis!`}
+                        </p>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (selectedPRIds.size >= 3) {
+                            handleGenerateMetaAnalysis();
+                          }
+                        }}
+                        disabled={
+                          (selectedPRIds.size >= 3 &&
+                            isGeneratingMetaAnalysis) ||
+                          selectedPRIds.size < 3
+                        }
+                        className={`w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
+                          (selectedPRIds.size >= 3 &&
+                            isGeneratingMetaAnalysis) ||
+                          selectedPRIds.size < 3
+                            ? "bg-purple-400 text-white cursor-not-allowed dark:bg-purple-800 opacity-75 focus:ring-purple-400 dark:focus:ring-purple-700"
+                            : "bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 shadow-md hover:shadow-lg focus:ring-purple-500"
+                        }`}
+                      >
+                        {selectedPRIds.size < 3 ? (
+                          <>Deep Analysis</>
+                        ) : selectedPRIds.size >= 3 &&
+                          isGeneratingMetaAnalysis ? (
+                          <>
+                            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em]"></span>
+                            Finding Patterns...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="mr-2 h-4 w-4"
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="3"></circle>
+                              <path d="m19 19-3.3-3.3"></path>
+                              <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
+                            </svg>
+                            Deep Analysis
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </>
