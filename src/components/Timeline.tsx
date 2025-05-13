@@ -43,7 +43,7 @@ export function Timeline({
   // Use timeframe info hook
   const { maxItems, isLikelyHittingLimit } = useTimeframeInfo(
     timeframe,
-    pullRequests.length
+    pullRequests.length,
   );
 
   // Only load metrics for visible PRs
@@ -52,7 +52,7 @@ export function Timeline({
     const prsToLoad = pullRequests.filter(
       (pr) =>
         !metricsCache[pr.id] ||
-        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading)
+        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading),
     );
 
     // Load metrics for first 10 visible PRs to improve initial display
@@ -66,13 +66,13 @@ export function Timeline({
   // Wrapper function to ensure getPRMetrics output matches MonthGroup prop type
   // Simplified: Directly return the cached metrics object
   const getMetricsForTimeline = (
-    pr: PullRequestItem
+    pr: PullRequestItem,
   ): PullRequestMetrics | undefined => {
     return getPRMetrics(pr);
   };
 
   return (
-    <div className="border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30">
+    <div className="p-1 sm:p-6 bg-white dark:bg-zinc-900/30">
       {/* Header */}
       <TimelineHeader
         timeframeLabel={timeframeLabel}
@@ -83,9 +83,6 @@ export function Timeline({
       />
 
       <div className="relative pt-2">
-        {/* Timeline line - Hide on mobile */}
-        <div className="absolute left-4 top-2 bottom-0 w-0.5 bg-gray-200 dark:bg-zinc-700 hidden sm:block"></div>
-
         {/* Month groups */}
         {sortedMonths.map((month) => (
           <MonthGroup

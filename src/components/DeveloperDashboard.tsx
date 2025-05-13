@@ -23,13 +23,13 @@ export default function DeveloperDashboard() {
   // Get username from URL or default to user profile
   const usernameFromUrl = searchParams.get("username");
   const [username, setUsername] = useState(
-    usernameFromUrl || userProfile?.login || ""
+    usernameFromUrl || userProfile?.login || "",
   );
   const [timeframe, setTimeframe] = useState<Timeframe>("1month");
   const [showData, setShowData] = useState(!!usernameFromUrl);
   const [showOnlyImportantPRs, setShowOnlyImportantPRs] = useState(true);
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
-    usernameFromUrl ? 1 : undefined
+    usernameFromUrl ? 1 : undefined,
   );
 
   // State for real commit data from PR metrics
@@ -70,7 +70,7 @@ export default function DeveloperDashboard() {
     undefined, // org is no longer used
     undefined, // repo is no longer used
     timeframe,
-    searchTrigger
+    searchTrigger,
   );
 
   // Compute PR counts and filtered stats
@@ -131,7 +131,7 @@ export default function DeveloperDashboard() {
   const timeframeLabel = getTimeframeLabel(timeframe);
 
   return (
-    <div className="bg-card rounded-lg shadow p-4 sm:p-6">
+    <div className="bg-card rounded-lg p-4 sm:p-6">
       <SearchForm
         username={username}
         initialTimeframe={timeframe}
@@ -212,7 +212,7 @@ export default function DeveloperDashboard() {
                   timeframe={timeframe}
                 />
               </div>
-              
+
               {/* Side column (Code Quality Assistant) - Takes 1/3 of the space */}
               <div className="lg:col-span-1 lg:mt-0 order-1 lg:order-2">
                 {/* AI Code Quality Analysis */}

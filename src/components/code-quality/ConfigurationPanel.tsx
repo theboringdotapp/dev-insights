@@ -178,33 +178,6 @@ export default function ConfigurationPanel({
         </div>
       </div>
 
-      {/* PR Selection Option - Only show if applicable */}
-      {allPRs && allPRs.length > pullRequests.length && (
-        <div className="mt-4 border-t pt-4">
-          <Label className="block text-sm font-medium text-gray-700 mb-1">
-            PRs to Analyze
-          </Label>
-          <div className="flex items-center">
-            <Checkbox
-              id="useAllPRs"
-              checked={useAllPRs}
-              onCheckedChange={handleToggleAllPRs}
-            />
-            <Label
-              htmlFor="useAllPRs"
-              className="ml-2 text-sm text-gray-600 cursor-pointer"
-            >
-              Include all PRs ({allPRs.length} total) instead of only{" "}
-              {pullRequests.length} filtered PRs
-            </Label>
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            When enabled, analysis will include all PRs, not just the filtered
-            ones. The dashboard will update to show all PRs.
-          </p>
-        </div>
-      )}
-
       {/* Cache Management */}
       <div className="mt-4 border-t pt-4">
         <Label className="block text-sm font-medium text-gray-700 mb-1">
