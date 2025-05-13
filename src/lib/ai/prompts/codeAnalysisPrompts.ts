@@ -1,39 +1,39 @@
 /**
  * Code Analysis Prompts
- * 
- * This file contains all the prompts used for AI-powered code analysis 
+ *
+ * This file contains all the prompts used for AI-powered code analysis
  * in the GitHub Review application. Centralizing these prompts makes it
  * easier to maintain and refine the analysis over time.
- * 
+ *
  * === New Feedback Structure ===
- * 
+ *
  * The feedback structure has been improved to provide clearer, more actionable insights:
- * 
+ *
  * 1. strengths: Technical practices that demonstrate excellence (unchanged)
  *    - Focuses on positive patterns and good engineering practices
  *    - Recognizes strong code quality and implementation details
- * 
+ *
  * 2. refinement_needs: Specific areas where the current code could be improved
  *    - Replaces the previous "areas_for_improvement" category
  *    - More focused on concrete, actionable code improvements
  *    - Addresses immediate technical debt and code quality issues
- * 
+ *
  * 3. learning_pathways: Skills, concepts, or technologies for long-term growth
- *    - Replaces the previous "growth_opportunities" category 
+ *    - Replaces the previous "growth_opportunities" category
  *    - Focused on developer career progression rather than just code fixes
  *    - Suggests learning resources, patterns, and broader architectural concepts
- * 
+ *
  * === Meta-Analysis ===
- * 
+ *
  * This file also includes prompts for meta-analysis that identifies patterns across
  * multiple PR analyses. The meta-analysis provides:
- * 
+ *
  * - Recurring patterns across PRs (strengths, refinements, learning areas)
  * - Development trajectory insights
  * - Focus areas for growth with specific action items
  * - Managerial insights to help team leads support the developer
- * 
- * The design accommodates the needs of both developers (looking for specific 
+ *
+ * The design accommodates the needs of both developers (looking for specific
  * improvement areas) and managers (looking for patterns and growth trajectories).
  */
 
@@ -48,7 +48,7 @@ export interface CodeAnalysisPromptResult {
       startLine: number;
       endLine: number;
       codeSnippet: string;
-    }
+    };
   }[];
   refinement_needs: {
     text: string;
@@ -57,7 +57,7 @@ export interface CodeAnalysisPromptResult {
       startLine: number;
       endLine: number;
       codeSnippet: string;
-    }
+    };
   }[];
   learning_pathways: {
     text: string;
@@ -66,7 +66,7 @@ export interface CodeAnalysisPromptResult {
       startLine: number;
       endLine: number;
       codeSnippet: string;
-    }
+    };
   }[];
   career_impact_summary: string;
   overall_quality: number;
@@ -74,69 +74,80 @@ export interface CodeAnalysisPromptResult {
 
 // Base template for PR code analysis
 export const getPRAnalysisBasePrompt = (prContent: string): string => `
-Here is the content of the pull request:
+  You are an experienced software engineer tasked with reviewing a GitHub pull request (PR) diff to provide constructive feedback for a developer's career growth. Your goal is to analyze the code changes and offer insights that will help the developer improve their skills and advance in their career.
 
-${prContent}
+  Here is the content of the pull request:
 
-You are an experienced software engineer tasked with reviewing a GitHub pull request (PR) diff to provide constructive feedback for a developer's career growth. Your goal is to analyze the code changes and offer insights that will help the developer improve their skills and advance in their career.
+  <pr_content>
+  ${prContent}
+  </pr_content>
 
-Please analyze this PR content carefully and provide feedback in the following categories:
+  Please analyze this PR content carefully and provide feedback in the following categories:
 
-1. Strengths: Highlight code practices that demonstrate technical excellence and good software engineering principles.
-2. Refinement Needs: Identify specific areas where the current code could be improved for better quality, maintainability, or performance.
-3. Learning Pathways: Suggest skills, concepts, or technologies the developer should learn to advance their career long-term.
+  1. Strengths: Highlight code practices that demonstrate technical excellence and good software engineering principles.
+  2. Refinement Needs: Identify specific areas where the current code could be improved for better quality, maintainability, or performance.
+  3. Learning Pathways: Suggest skills, concepts, or technologies the developer should learn to advance their career long-term.
 
-Consider the following:
+  Instructions:
+  1. Read through the PR content thoroughly.
+  2. Create insights based on your learnings on the PR:
+     - For each category (strengths, refinement needs, learning pathways):
+       b. Rate each insight on a scale of 1-5 for impact on developer growth
+       c. Select the top 2-3 insights based on the ratings
+     - Consider the overall quality score based on the insights gathered
+  3. For each selected insight:
+     - If it's linked to a specific code block, include the relevant code snippet (max 10 lines)
+     - If it's a general observation, omit the code context
+  4. Evaluate the overall quality of the PR on a scale of 1-10, considering factors such as code clarity, efficiency, adherence to best practices, and potential impact on the project. Consider 10 as excellent. 1 as very poor quality.
+  5. Format your response as a JSON object with the structure provided below.
 
-- List out specific code snippets that are relevant to each category.
-- For each category, consider both positive and negative aspects before making a final judgment.
-- Only include insights that are highly valuable and impactful for the developer's growth.
-- It's acceptable to have zero insights for one or more categories if nothing significant stands out.
-- For each insight, determine if it's linked to a specific code block or if it's a general observation.
-- Evaluate the overall quality of the PR on a scale of 1-10, using the full range of scores. Consider factors such as code clarity, efficiency, adherence to best practices, and potential impact on the project.
+  Important guidelines:
+  - Consider the "importance" of the code reviewed, if the code is too simple or doesn't make meaningful changes in the code, don't try to provide insights for it.
+  - It's acceptable and it is preferable to have zero insights for one or more categories if nothing significant stands out.
+  - Only include insights that are highly valuable and impactful for the developer's growth.
+  - Use the full range of scores (1-10) for the overall quality evaluation.
+  - Always respond with the specified JSON structure, even if some sections are empty.
 
-IMPORTANT: Your response MUST be a valid JSON object with the following structure ONLY:
+  Your response MUST be a valid JSON object with the following structure:
 
-{
-  "strengths": [
-    {
-      "text": "Description of strength",
-      "codeContext": {
-        "filePath": "path/to/file",
-        "startLine": X,
-        "endLine": Y,
-        "codeSnippet": "Relevant code (max 10 lines)"
+  {
+    "strengths": [
+      {
+        "text": "Description of strength",
+        "codeContext": {
+          "filePath": "path/to/file",
+          "startLine": X,
+          "endLine": Y,
+          "codeSnippet": "Relevant code (max 10 lines)"
+        }
       }
-    }
-  ],
-  "refinement_needs": [
-    {
-      "text": "Description of needed refinement"
-    }
-  ],
-  "learning_pathways": [
-    {
-      "text": "Suggested learning pathway",
-      "codeContext": {
-        "filePath": "path/to/file",
-        "startLine": X,
-        "endLine": Y,
-        "codeSnippet": "Relevant code (max 10 lines)"
+    ],
+    "refinement_needs": [
+      {
+        "text": "Description of needed refinement"
       }
-    }
-  ],
-  "career_impact_summary": "Summary of how addressing these points will help career progression",
-  "overall_quality": N
-}
+    ],
+    "learning_pathways": [
+      {
+        "text": "Suggested learning pathway",
+        "codeContext": {
+          "filePath": "path/to/file",
+          "startLine": X,
+          "endLine": Y,
+          "codeSnippet": "Relevant code (max 10 lines)"
+        }
+      }
+    ],
+    "overall_quality": N
+  }
 
-Notes:
-- Include the "codeContext" object only when the feedback refers to a specific block of code within the provided diff.
-- The "startLine" and "endLine" numbers should refer to the line numbers in the diff, not the original file.
-- Omit the "codeContext" field entirely for general feedback items not tied to specific code.
-- Ensure that the "overall_quality" score (N) is a number between 1 and 10, reflecting a thoughtful evaluation of the PR's quality.
-- IMPORTANT: Do not include any explanations or text outside of this JSON structure.
+  Notes:
+  - Include the "codeContext" object only when the feedback refers to a specific block of code within the provided diff.
+  - The "startLine" and "endLine" numbers should refer to the line numbers in the diff, not the original file.
+  - Omit the "codeContext" field entirely for general feedback items not tied to specific code.
+  - Ensure that the "overall_quality" score (N) is a number between 1 and 10, reflecting a thoughtful evaluation of the PR's quality.
 
-Please proceed with your analysis and provide the JSON output as described. Do not provide ANY analysis outside the requested JSON structure.
+  Please proceed with your analysis and provide the JSON output as described. Do not include any explanations or text outside of this JSON structure.
 `;
 
 // Template for meta-analysis across multiple PRs
@@ -195,7 +206,9 @@ export const getSystemMessage = (provider: AIProvider): string => {
 };
 
 // Career development summary prompt
-export const getCareerDevelopmentPrompt = (aggregatedFeedback: string): string => `
+export const getCareerDevelopmentPrompt = (
+  aggregatedFeedback: string,
+): string => `
 You are assessing a developer's progress based ONLY on aggregated feedback from multiple code reviews (pull requests).
 
 Here is the aggregated feedback data:
