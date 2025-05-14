@@ -10,7 +10,7 @@ const LAST_PATTERN_RESULT_KEY = "github-review-pattern-result";
 import {
   PullRequestItem,
   PRAnalysisResult,
-  MetaAnalysisResult,
+  MetaAnalysisResult as MetaAnalysisResultType,
 } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
@@ -21,18 +21,33 @@ import {
 
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
-import AnalysisResults from "./code-quality/AnalysisResults";
-import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
-import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
+// Unused components commented out to fix linter errors
+// import AnalysisResults from "./code-quality/AnalysisResults";
+// import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
+// import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import MetaAnalysis from "./code-quality/MetaAnalysis";
 
 import { MODEL_OPTIONS } from "../lib/models";
 import cacheService from "../lib/cacheService";
 
-// Local storage keys
-const OPENAI_KEY_STORAGE = "github-review-openai-key";
-const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
-const GEMINI_KEY_STORAGE = "github-review-gemini-key";
+// Local storage keys - commented out since they're unused
+// const OPENAI_KEY_STORAGE = "github-review-openai-key";
+// const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
+// const GEMINI_KEY_STORAGE = "github-review-gemini-key";
+
+// Type definition for AIAnalysisConfig to fix TypeScript error
+interface AIAnalysisConfig {
+  apiKey: string;
+  provider: "openai" | "anthropic" | "gemini"; // Use specific string literals instead of string
+  model: string;
+}
+
+// Extend MetaAnalysisResultType with timestamp and other properties
+interface CachedMetaAnalysisResult extends MetaAnalysisResultType {
+  timestamp?: number;
+  analyzedPRIds?: number[];
+  developerId?: string;
+}
 
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
@@ -119,12 +134,12 @@ export function CodeQualityInsights({
     setIsGeneratingMetaAnalysis,
     setMetaAnalysisResult,
     addAnalyzedPRIds,
-    toggleSelectedPR,
+    // toggleSelectedPR, // Commented out as it's unused
     setSelectedModel, // Restore action
     // Career Development features removed as per requirements
     commonStrengths, // Get themes from store
-    commonWeaknesses,
-    commonSuggestions,
+    // commonWeaknesses, // Commented out as it's unused
+    // commonSuggestions, // Commented out as it's unused
     averageScore,
     setSelectedPRIds,
     clearAnalysisData, // Need this for clear cache
@@ -152,15 +167,15 @@ export function CodeQualityInsights({
     Set<number>
   >(new Set());
 
-  // Convert Sets to arrays for components that need arrays
-  const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
-  const selectedPRIdsArray = Array.from(selectedPRIds);
+  // Convert Sets to arrays for components that need arrays - Removed as unused
+  // const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
+  // const selectedPRIdsArray = Array.from(selectedPRIds);
 
   // Overall loading state combines hook flag and store set size
   const isLoading = analyzingPRIds.size > 0; // Use only store state
 
-  // Determine which PRs to potentially analyze based on filters
-  const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
+  // Determine which PRs to potentially analyze based on filters - Commented out as unused
+  // const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
 
   // Ref to track mounted state and prevent initial effect run
   const isMountedRef = useRef(false);
@@ -316,16 +331,19 @@ export function CodeQualityInsights({
     }
   }, []);
 
-  const saveLastPatternResultToLocalStorage = useCallback((pattern: any) => {
-    try {
-      localStorage.setItem(LAST_PATTERN_RESULT_KEY, JSON.stringify(pattern));
-      console.log(
-        "[LocalStorageBackup] Saved last pattern result to localStorage"
-      );
-    } catch (e) {
-      console.error("[LocalStorageBackup] Error saving pattern result:", e);
-    }
-  }, []);
+  const saveLastPatternResultToLocalStorage = useCallback(
+    (pattern: CachedMetaAnalysisResult) => {
+      try {
+        localStorage.setItem(LAST_PATTERN_RESULT_KEY, JSON.stringify(pattern));
+        console.log(
+          "[LocalStorageBackup] Saved last pattern result to localStorage"
+        );
+      } catch (e) {
+        console.error("[LocalStorageBackup] Error saving pattern result:", e);
+      }
+    },
+    []
+  );
 
   const loadLastPatternResultFromLocalStorage = useCallback(() => {
     try {
@@ -1030,9 +1048,12 @@ export function CodeQualityInsights({
                       <div className="flex items-center justify-end">
                         <p className="text-xs text-zinc-400 ">
                           Analysis from{" "}
-                          {metaAnalysisResult.timestamp
+                          {(metaAnalysisResult as CachedMetaAnalysisResult)
+                            .timestamp
                             ? new Date(
-                                metaAnalysisResult.timestamp
+                                (
+                                  metaAnalysisResult as CachedMetaAnalysisResult
+                                ).timestamp!
                               ).toLocaleDateString()
                             : "a previous session"}
                         </p>

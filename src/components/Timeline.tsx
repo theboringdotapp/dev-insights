@@ -47,12 +47,12 @@ export function Timeline({
   );
 
   // Only load metrics for visible PRs
-  /*  useEffect(() => {
+  useEffect(() => {
     // Only preload for PRs that don't already have metrics
     const prsToLoad = pullRequests.filter(
       (pr) =>
         !metricsCache[pr.id] ||
-        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading),
+        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading)
     );
 
     // Load metrics for first 10 visible PRs to improve initial display
@@ -61,7 +61,7 @@ export function Timeline({
         loadPRMetrics(pr);
       });
     }
-  }, [pullRequests, metricsCache, loadPRMetrics]); */
+  }, [pullRequests, metricsCache, loadPRMetrics]);
 
   // Wrapper function to ensure getPRMetrics output matches MonthGroup prop type
   // Simplified: Directly return the cached metrics object

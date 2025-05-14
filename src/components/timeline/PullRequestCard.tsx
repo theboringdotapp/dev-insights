@@ -72,25 +72,67 @@ export default function PullRequestCard({
 
         // Only update state if still mounted
         if (isMounted) {
+          // Log when we successfully get a result to help with debugging
+          if (result) {
+            console.log(
+              `[PullRequestCard] Analysis loaded for PR #${pr.number}`,
+              result
+            );
+          } else {
+            console.warn(
+              `[PullRequestCard] No analysis found for PR #${pr.number} even though isAnalyzed=true`
+            );
+          }
           setAnalysisResult(result);
           setIsLoadingAnalysis(false);
         }
       };
 
       fetchAnalysis();
+    } else if (isAnalyzed && isLoadingAnalysis && !analysisResult) {
+      // If we've been loading for a while without getting a result, try again
+      // (handles potential race conditions with cache updates)
+      console.log(
+        `[PullRequestCard] Still loading analysis for PR #${pr.number}, retrying...`
+      );
+      const retryTimeout = setTimeout(async () => {
+        if (!isMounted) return;
+
+        try {
+          const result = await getAnalysisForPR(pr.id);
+          if (isMounted) {
+            setAnalysisResult(result);
+            setIsLoadingAnalysis(false);
+          }
+        } catch (error) {
+          console.error(
+            `[PullRequestCard] Retry error for PR #${pr.number}:`,
+            error
+          );
+          if (isMounted) {
+            setIsLoadingAnalysis(false);
+          }
+        }
+      }, 2000); // Retry after 2 seconds
+
+      return () => {
+        clearTimeout(retryTimeout);
+      };
     }
 
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
     };
-    // Remove analysisResult and isLoadingAnalysis from dependencies
+    // Dependencies include all relevant state and props
   }, [
     isAnalyzed,
     pr.id,
+    pr.number,
     getAnalysisFromMemoryCache,
     getAnalysisForPR,
-    pr.number,
+    analysisResult,
+    isLoadingAnalysis,
   ]);
 
   // When isCurrentlyAnalyzing changes from true to false, set justAnalyzed to true
