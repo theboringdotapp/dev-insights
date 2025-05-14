@@ -800,6 +800,16 @@ export function CodeQualityInsights({
         );
         addAnalyzedPRIds(newlyAnalyzedIds); // Add IDs to store
 
+        // Also select the newly analyzed PRs
+        const currentSelection = Array.from(selectedPRIds);
+        const updatedSelection = [...currentSelection, ...newlyAnalyzedIds];
+        console.log(
+          `[handleAnalyze] Updating selected PR IDs: ${updatedSelection.join(
+            ", "
+          )}`
+        );
+        setSelectedPRIds(updatedSelection);
+
         // Calculate themes ONLY for the newly analyzed PRs
         const newThemes = calculateCommonThemes(successfulResults);
         console.log(
@@ -814,7 +824,6 @@ export function CodeQualityInsights({
         // Mark patterns as outdated if we have meta-analysis results and new PRs were analyzed
         if (metaAnalysisResult) {
           // When new PRs are analyzed, they weren't part of the previous pattern analysis
-          const newlyAnalyzedIds = successfulResults.map((r) => r.prId);
           const anyNewPRsInSelection = newlyAnalyzedIds.some((id) =>
             selectedPRIds.has(id)
           );
