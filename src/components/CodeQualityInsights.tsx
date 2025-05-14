@@ -33,20 +33,12 @@ import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 // import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import MetaAnalysis from "./code-quality/MetaAnalysis";
 
-import { MODEL_OPTIONS } from "../lib/models";
 import cacheService from "../lib/cacheService";
 
 // Local storage keys - commented out since they're unused
 // const OPENAI_KEY_STORAGE = "github-review-openai-key";
 // const ANTHROPIC_KEY_STORAGE = "github-review-anthropic-key";
 // const GEMINI_KEY_STORAGE = "github-review-gemini-key";
-
-// Type definition for AIAnalysisConfig to fix TypeScript error
-interface AIAnalysisConfig {
-  apiKey: string;
-  provider: "openai" | "anthropic" | "gemini"; // Use specific string literals instead of string
-  model: string;
-}
 
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
@@ -327,11 +319,12 @@ export function CodeQualityInsights({
   );
 
   // Use the PR analysis manager
-  const { handleAnalyze, isAnalyzing } = usePRAnalysisManager({
+  const { handleAnalyze } = usePRAnalysisManager({
     pullRequests,
     allPRs,
     useAllPRs,
     maxPRs,
+    setIsPatternsOutdated,
   });
 
   // Sync meta analysis between hook and store

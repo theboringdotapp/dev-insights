@@ -9,6 +9,7 @@ interface UsePRAnalysisManagerProps {
   allPRs?: PullRequestItem[];
   useAllPRs: boolean;
   maxPRs: number;
+  setIsPatternsOutdated?: (isOutdated: boolean) => void;
 }
 
 interface UsePRAnalysisManagerResult {
@@ -24,6 +25,7 @@ export function usePRAnalysisManager({
   allPRs,
   useAllPRs,
   maxPRs,
+  setIsPatternsOutdated,
 }: UsePRAnalysisManagerProps): UsePRAnalysisManagerResult {
   // Core metrics hook
   const { analyzeMultiplePRs } = usePRMetrics();
@@ -34,7 +36,6 @@ export function usePRAnalysisManager({
     selectedPRIds,
     setSelectedPRIds,
     metaAnalysisResult,
-    setIsPatternsOutdated,
   } = useAnalysisStore();
 
   // Ref to prevent duplicate analysis calls
@@ -101,13 +102,16 @@ export function usePRAnalysisManager({
           setSelectedPRIds(updatedSelection);
 
           // Mark patterns as outdated if we have meta-analysis results and new PRs were analyzed
-          if (metaAnalysisResult) {
+          if (metaAnalysisResult && setIsPatternsOutdated) {
             // When new PRs are analyzed, they weren't part of the previous pattern analysis
             const anyNewPRsInSelection = newlyAnalyzedIds.some((id) =>
               selectedPRIds.has(id)
             );
 
             if (anyNewPRsInSelection) {
+              console.log(
+                "[usePRAnalysisManager] Marking patterns as outdated due to new PR analysis"
+              );
               setIsPatternsOutdated(true);
             }
           }
