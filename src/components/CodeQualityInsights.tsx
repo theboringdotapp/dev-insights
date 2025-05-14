@@ -4,14 +4,17 @@ import MetricsSummary from "./insights/MetricsSummary";
 // InsightsSummary component removed as per requirements
 import EmptyState from "./insights/EmptyState";
 
-// Constants for localStorage keys - Defined as constants outside component
-const DEVELOPER_ID_KEY = "github-review-developer-id";
-const LAST_PATTERN_RESULT_KEY = "github-review-pattern-result";
+// Import the extracted localStorage utility functions
 import {
-  PullRequestItem,
-  PRAnalysisResult,
-  MetaAnalysisResult as MetaAnalysisResultType,
-} from "../lib/types";
+  CachedMetaAnalysisResult,
+  saveCurrentDeveloperToLocalStorage,
+  loadDeveloperIdFromLocalStorage,
+  savePatternResultToLocalStorage,
+  loadPatternResultFromLocalStorage,
+  LAST_PATTERN_RESULT_KEY,
+} from "../lib/localStorageUtils";
+
+import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
@@ -42,13 +45,6 @@ interface AIAnalysisConfig {
   model: string;
 }
 
-// Extend MetaAnalysisResultType with timestamp and other properties
-interface CachedMetaAnalysisResult extends MetaAnalysisResultType {
-  timestamp?: number;
-  analyzedPRIds?: number[];
-  developerId?: string;
-}
-
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
   allPRs?: PullRequestItem[];
@@ -69,9 +65,9 @@ export function CodeQualityInsights({
   const urlDeveloperId = searchParams.get("username");
 
   // Try to get developer ID from localStorage as a fallback
-  const loadDeveloperIdFromLocalStorage = useCallback(() => {
+  const loadDeveloperIdFromStorage = useCallback(() => {
     try {
-      return localStorage.getItem(DEVELOPER_ID_KEY) || null;
+      return loadDeveloperIdFromLocalStorage();
     } catch (e) {
       console.error(
         "[CodeQualityInsights] Error loading developer ID from localStorage:",
@@ -89,7 +85,7 @@ export function CodeQualityInsights({
   // Effect to initialize developerId from localStorage if needed
   useEffect(() => {
     if ((!developerId || developerId === "unknown") && !urlDeveloperId) {
-      const storedDeveloperId = loadDeveloperIdFromLocalStorage();
+      const storedDeveloperId = loadDeveloperIdFromStorage();
       if (storedDeveloperId) {
         console.log(
           `[CodeQualityInsights] Recovered developer ID from localStorage: ${storedDeveloperId}`
@@ -116,7 +112,7 @@ export function CodeQualityInsights({
       // URL parameter takes precedence over state
       setDeveloperId(urlDeveloperId);
     }
-  }, [urlDeveloperId, developerId, loadDeveloperIdFromLocalStorage]);
+  }, [urlDeveloperId, developerId, loadDeveloperIdFromStorage]);
 
   // Core metrics hook
   const { analyzeMultiplePRs } = usePRMetrics();
@@ -279,14 +275,14 @@ export function CodeQualityInsights({
           metaAnalysisWithMetadata
         );
         // Also save to localStorage as a fallback
-        saveLastPatternResultToLocalStorage(metaAnalysisWithMetadata);
+        savePatternResultToLocalStorage(metaAnalysisWithMetadata);
         console.log(
           `[handleGenerateMetaAnalysis] Pattern analysis successfully cached for developer: ${developerId}`
         );
       } catch (cacheError) {
         console.error("Failed to cache pattern analysis:", cacheError);
         // Try to save to localStorage as fallback if IndexedDB fails
-        saveLastPatternResultToLocalStorage(metaAnalysisWithMetadata);
+        savePatternResultToLocalStorage(metaAnalysisWithMetadata);
       }
     } catch (error) {
       console.error("Failed to generate meta-analysis:", error);
@@ -313,50 +309,6 @@ export function CodeQualityInsights({
   // Track the current developer ID for detecting changes and cache status
   const prevDeveloperIdRef = useRef<string | null>(null);
   const [isFromCache, setIsFromCache] = useState<boolean>(false);
-
-  // Constants for localStorage keys - Defined outside component to avoid recreation
-
-  // Functions to save/load pattern data from localStorage (as backup for IndexedDB)
-  const saveCurrentDeveloperToLocalStorage = useCallback((devId: string) => {
-    try {
-      // Only save valid developer IDs
-      if (devId && devId !== "unknown") {
-        localStorage.setItem(DEVELOPER_ID_KEY, devId);
-        console.log(
-          `[LocalStorageBackup] Saved current developer ID: ${devId}`
-        );
-      }
-    } catch (e) {
-      console.error("[LocalStorageBackup] Error saving developer ID:", e);
-    }
-  }, []);
-
-  const saveLastPatternResultToLocalStorage = useCallback(
-    (pattern: CachedMetaAnalysisResult) => {
-      try {
-        localStorage.setItem(LAST_PATTERN_RESULT_KEY, JSON.stringify(pattern));
-        console.log(
-          "[LocalStorageBackup] Saved last pattern result to localStorage"
-        );
-      } catch (e) {
-        console.error("[LocalStorageBackup] Error saving pattern result:", e);
-      }
-    },
-    []
-  );
-
-  const loadLastPatternResultFromLocalStorage = useCallback(() => {
-    try {
-      const savedPattern = localStorage.getItem(LAST_PATTERN_RESULT_KEY);
-      if (savedPattern) {
-        return JSON.parse(savedPattern);
-      }
-      return null;
-    } catch (e) {
-      console.error("[LocalStorageBackup] Error loading pattern result:", e);
-      return null;
-    }
-  }, []);
 
   // Log the developer ID on mount and changes
   useEffect(() => {
@@ -390,7 +342,7 @@ export function CodeQualityInsights({
         `[CodeQualityInsights] Component unmounting with developerId: ${developerId}`
       );
     };
-  }, [developerId, saveCurrentDeveloperToLocalStorage]);
+  }, [developerId]);
 
   // Effect to load cached pattern analysis for the current developer
   useEffect(() => {
@@ -433,7 +385,7 @@ export function CodeQualityInsights({
           console.log(
             `[Pattern Cache] No IndexedDB cache found for ${developerId}, trying localStorage fallback`
           );
-          const localStoragePattern = loadLastPatternResultFromLocalStorage();
+          const localStoragePattern = loadPatternResultFromLocalStorage();
 
           // Only use localStorage pattern if it matches the current developer
           if (
@@ -504,7 +456,7 @@ export function CodeQualityInsights({
 
         // Try localStorage fallback if primary cache mechanism fails
         try {
-          const localStoragePattern = loadLastPatternResultFromLocalStorage();
+          const localStoragePattern = loadPatternResultFromLocalStorage();
           if (
             localStoragePattern &&
             localStoragePattern.developerId === developerId
@@ -532,7 +484,7 @@ export function CodeQualityInsights({
     //metaAnalysisResult,
     setAnalyzedPRsInLastPattern,
     setIsPatternsOutdated,
-    loadLastPatternResultFromLocalStorage,
+    loadPatternResultFromLocalStorage,
   ]);
 
   // Effect for discovering analyzed IDs and setting initial selection on mount
