@@ -9,10 +9,10 @@ import {
   CachedMetaAnalysisResult,
   saveCurrentDeveloperToLocalStorage,
   loadDeveloperIdFromLocalStorage,
-  savePatternResultToLocalStorage,
-  loadPatternResultFromLocalStorage,
-  LAST_PATTERN_RESULT_KEY,
 } from "../lib/localStorageUtils";
+
+// Import the new custom hook
+import { usePatternAnalysisCache } from "../hooks/usePatternAnalysisCache";
 
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
@@ -125,10 +125,10 @@ export function CodeQualityInsights({
     apiProvider, // Get provider from store
     selectedModel, // Get model from store
     setCalculatedThemes, // Use new action
-    metaAnalysisResult,
+    metaAnalysisResult: storeMetaAnalysisResult, // Rename to avoid conflict
     isGeneratingMetaAnalysis,
     setIsGeneratingMetaAnalysis,
-    setMetaAnalysisResult,
+    setMetaAnalysisResult: setStoreMetaAnalysisResult, // Rename to avoid conflict
     addAnalyzedPRIds,
     // toggleSelectedPR, // Commented out as it's unused
     setSelectedModel, // Restore action
@@ -140,6 +140,32 @@ export function CodeQualityInsights({
     setSelectedPRIds,
     clearAnalysisData, // Need this for clear cache
   } = useAnalysisStore();
+
+  // Ref to track mounted state and prevent initial effect run
+  const isMountedRef = useRef(false);
+
+  // Ref to prevent duplicate analysis calls
+  const isAnalyzingRef = useRef(false);
+
+  // Use our new pattern analysis cache hook
+  const {
+    metaAnalysisResult,
+    isFromCache,
+    isPatternsOutdated,
+    analyzedPRsInLastPattern,
+    setMetaAnalysisResult,
+    setIsPatternsOutdated,
+    setAnalyzedPRsInLastPattern,
+    cachePatternAnalysis,
+    clearPatternCache,
+  } = usePatternAnalysisCache({ developerId });
+
+  // Sync meta analysis between hook and store
+  useEffect(() => {
+    if (metaAnalysisResult !== storeMetaAnalysisResult) {
+      setStoreMetaAnalysisResult(metaAnalysisResult);
+    }
+  }, [metaAnalysisResult, storeMetaAnalysisResult, setStoreMetaAnalysisResult]);
 
   // API configuration hook (now only manages key and saveToken preference)
   const {
@@ -158,26 +184,12 @@ export function CodeQualityInsights({
   const [maxPRs, setMaxPRs] = useState(5);
   const [isConfigVisible, setIsConfigVisible] = useState(false);
   const [useAllPRs, setUseAllPRs] = useState(false);
-  const [isPatternsOutdated, setIsPatternsOutdated] = useState(false);
-  const [analyzedPRsInLastPattern, setAnalyzedPRsInLastPattern] = useState<
-    Set<number>
-  >(new Set());
-
-  // Convert Sets to arrays for components that need arrays - Removed as unused
-  // const allAnalyzedPRIdsArray = Array.from(allAnalyzedPRIds);
-  // const selectedPRIdsArray = Array.from(selectedPRIds);
 
   // Overall loading state combines hook flag and store set size
   const isLoading = analyzingPRIds.size > 0; // Use only store state
 
   // Determine which PRs to potentially analyze based on filters - Commented out as unused
   // const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
-
-  // Ref to track mounted state and prevent initial effect run
-  const isMountedRef = useRef(false);
-
-  // Ref to prevent duplicate analysis calls
-  const isAnalyzingRef = useRef(false);
 
   // Effect to handle model auto-selection (uses store state/actions)
   useEffect(() => {
@@ -249,41 +261,14 @@ export function CodeQualityInsights({
         model: selectedModel,
       });
 
-      setMetaAnalysisResult(metaAnalysis);
-      // Reset the outdated flag when new patterns are generated
-      setIsPatternsOutdated(false);
       // Store which PRs were included in this pattern analysis
-      setAnalyzedPRsInLastPattern(new Set(selectedPRIds));
-      // Mark as not from cache since we just generated fresh patterns
-      setIsFromCache(false);
-      // Store the analyzed PR IDs and timestamp in the meta analysis for future reference
       const metaAnalysisWithMetadata = {
         ...metaAnalysis,
         analyzedPRIds: Array.from(selectedPRIds),
-        timestamp: Date.now(),
-        developerId: developerId,
       };
 
-      // Cache the pattern analysis result for this developer
-      try {
-        console.log(
-          `[handleGenerateMetaAnalysis] Caching pattern analysis for developer: ${developerId}`,
-          metaAnalysisWithMetadata
-        );
-        await cacheService.cachePatternAnalysis(
-          developerId,
-          metaAnalysisWithMetadata
-        );
-        // Also save to localStorage as a fallback
-        savePatternResultToLocalStorage(metaAnalysisWithMetadata);
-        console.log(
-          `[handleGenerateMetaAnalysis] Pattern analysis successfully cached for developer: ${developerId}`
-        );
-      } catch (cacheError) {
-        console.error("Failed to cache pattern analysis:", cacheError);
-        // Try to save to localStorage as fallback if IndexedDB fails
-        savePatternResultToLocalStorage(metaAnalysisWithMetadata);
-      }
+      // Use our new hook's function to cache the result
+      await cachePatternAnalysis(metaAnalysisWithMetadata);
     } catch (error) {
       console.error("Failed to generate meta-analysis:", error);
       alert(
@@ -302,13 +287,11 @@ export function CodeQualityInsights({
     selectedPRIds,
     setIsGeneratingMetaAnalysis,
     setMetaAnalysisResult,
+    cachePatternAnalysis,
   ]);
-
-  // Removed handleGenerateSummary function since we're no longer including Career Development
 
   // Track the current developer ID for detecting changes and cache status
   const prevDeveloperIdRef = useRef<string | null>(null);
-  const [isFromCache, setIsFromCache] = useState<boolean>(false);
 
   // Log the developer ID on mount and changes
   useEffect(() => {
@@ -343,149 +326,6 @@ export function CodeQualityInsights({
       );
     };
   }, [developerId]);
-
-  // Effect to load cached pattern analysis for the current developer
-  useEffect(() => {
-    const loadCachedPatternAnalysis = async () => {
-      if (!developerId || developerId === "unknown") {
-        console.log(
-          "[Pattern Cache] No valid developer ID provided, skipping cache load"
-        );
-        return;
-      }
-
-      console.log(
-        `[Pattern Cache] Attempting to load cached patterns for developer: ${developerId}`
-      );
-
-      console.log(
-        `[Pattern Cache] Starting cache load for developer: ${developerId}`
-      );
-
-      // Check if developer changed
-      const developerChanged =
-        prevDeveloperIdRef.current !== null &&
-        prevDeveloperIdRef.current !== developerId;
-
-      console.log(
-        `[Pattern Cache] Developer changed: ${developerChanged}, previous: ${prevDeveloperIdRef.current}, current: ${developerId}`
-      );
-
-      // Update the reference
-      prevDeveloperIdRef.current = developerId;
-
-      try {
-        console.log(
-          `[Pattern Cache] Checking for cached patterns for developer: ${developerId}`
-        );
-        let cachedPattern = await cacheService.getPatternAnalysis(developerId);
-
-        // If IndexedDB cache failed, try localStorage fallback
-        if (!cachedPattern) {
-          console.log(
-            `[Pattern Cache] No IndexedDB cache found for ${developerId}, trying localStorage fallback`
-          );
-          const localStoragePattern = loadPatternResultFromLocalStorage();
-
-          // Only use localStorage pattern if it matches the current developer
-          if (
-            localStoragePattern &&
-            localStoragePattern.developerId === developerId
-          ) {
-            console.log(
-              `[Pattern Cache] Found pattern in localStorage fallback for ${developerId}`
-            );
-            cachedPattern = localStoragePattern;
-          } else if (localStoragePattern) {
-            console.log(
-              `[Pattern Cache] Found pattern in localStorage but developer ID mismatch: ${localStoragePattern.developerId} vs ${developerId}`
-            );
-          }
-        }
-
-        console.log(
-          `[Pattern Cache] Cache lookup result:`,
-          cachedPattern ? "Found cache" : "No cache found"
-        );
-
-        if (cachedPattern) {
-          console.log(
-            `[Pattern Cache] Found cached pattern analysis for developer: ${developerId}`,
-            cachedPattern
-          );
-          setMetaAnalysisResult(cachedPattern);
-          setIsFromCache(true);
-
-          // If the developer changed, we need to verify if selected PRs match what was in the pattern
-          if (developerChanged) {
-            console.log(
-              `[Pattern Cache] Developer changed, checking if PRs match`
-            );
-            // We will check if the PRs match in the next render via the selection effect
-            setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || [])
-            );
-            setIsPatternsOutdated(true);
-          } else {
-            // Same developer, pattern from cache is initially considered up-to-date
-            console.log(
-              `[Pattern Cache] Same developer, setting patterns as up-to-date`
-            );
-            setIsPatternsOutdated(false);
-            setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || [])
-            );
-          }
-        } else {
-          console.log(
-            `[Pattern Cache] No cached pattern analysis found for developer: ${developerId}`
-          );
-          // Clear any existing pattern analysis when switching to a developer with no cache
-          if (metaAnalysisResult) {
-            console.log(`[Pattern Cache] Clearing existing pattern analysis`);
-            setMetaAnalysisResult(null);
-            setAnalyzedPRsInLastPattern(new Set());
-            setIsFromCache(false);
-          }
-        }
-      } catch (error) {
-        console.error(
-          `[Pattern Cache] Error loading cached patterns for developer ${developerId}:`,
-          error
-        );
-
-        // Try localStorage fallback if primary cache mechanism fails
-        try {
-          const localStoragePattern = loadPatternResultFromLocalStorage();
-          if (
-            localStoragePattern &&
-            localStoragePattern.developerId === developerId
-          ) {
-            console.log(
-              "[Pattern Cache] Using localStorage fallback after cache error"
-            );
-            setMetaAnalysisResult(localStoragePattern);
-            setIsFromCache(true);
-            setAnalyzedPRsInLastPattern(
-              new Set(localStoragePattern.analyzedPRIds || [])
-            );
-          }
-        } catch (fallbackError) {
-          console.error("[Pattern Cache] Fallback also failed:", fallbackError);
-        }
-      }
-    };
-
-    // Run on initial mount and when developer changes
-    loadCachedPatternAnalysis();
-  }, [
-    developerId,
-    setMetaAnalysisResult,
-    //metaAnalysisResult,
-    setAnalyzedPRsInLastPattern,
-    setIsPatternsOutdated,
-    loadPatternResultFromLocalStorage,
-  ]);
 
   // Effect for discovering analyzed IDs and setting initial selection on mount
   useEffect(() => {
@@ -588,7 +428,8 @@ export function CodeQualityInsights({
     setIsPatternsOutdated,
   ]); // Added PR list dependencies
 
-  // *** NEW Effect: Update themes based on selected PRs ***
+  // Update the *** NEW Effect: Update themes based on selected PRs ***
+  // to use setAnalyzedPRsInLastPattern to avoid the unused variable warning
   useEffect(() => {
     const currentSelectedIds = Array.from(selectedPRIds); // Get current selection
     console.log(
@@ -699,7 +540,8 @@ export function CodeQualityInsights({
     metaAnalysisResult,
     isGeneratingMetaAnalysis,
     analyzedPRsInLastPattern,
-  ]); // Add necessary dependencies
+    setIsPatternsOutdated,
+  ]); // Add dependencies
 
   // Function to trigger the *manual* analysis of PRs (handleAnalyze)
   const handleAnalyze = useCallback(async () => {
@@ -845,28 +687,18 @@ export function CodeQualityInsights({
   const handleClearCacheAndStore = useCallback(async () => {
     try {
       console.log("[handleClearCacheAndStore] Clearing cache and store...");
-      await cacheService.clearAllPRAnalysis(); // Clear PR analysis from IndexedDB
-      await cacheService.clearAllPatternAnalysis(); // Clear pattern analysis from IndexedDB
-      clearAnalysisData(); // Clear Zustand store
-      console.log("[handleClearCacheAndStore] Cache and store cleared.");
-      // Reset local component state
-      setAnalyzedPRsInLastPattern(new Set());
-      setIsFromCache(false);
-      prevDeveloperIdRef.current = null;
 
-      // Clear localStorage backups
-      try {
-        localStorage.removeItem(LAST_PATTERN_RESULT_KEY);
-        // Don't clear the developer ID, it should persist between clearing cache
-        console.log(
-          "[handleClearCacheAndStore] Cleared localStorage pattern backup"
-        );
-      } catch (e) {
-        console.error(
-          "[handleClearCacheAndStore] Error clearing localStorage:",
-          e
-        );
-      }
+      // Use our new hook's function to clear pattern cache
+      await clearPatternCache();
+
+      // Also clear PR analysis and Zustand store
+      await cacheService.clearAllPRAnalysis(); // Clear PR analysis from IndexedDB
+      clearAnalysisData(); // Clear Zustand store
+
+      console.log("[handleClearCacheAndStore] Cache and store cleared.");
+
+      // Reset any remaining local state
+      prevDeveloperIdRef.current = null;
 
       setIsConfigVisible(true); // Show config after clearing
     } catch (error) {
@@ -876,7 +708,7 @@ export function CodeQualityInsights({
       );
       alert("Failed to clear cache."); // Inform user
     }
-  }, [clearAnalysisData]); // Dependency on store action only
+  }, [clearAnalysisData, clearPatternCache]); // Add clearPatternCache to deps
 
   // Log state just before rendering conditional UI
   console.log(
