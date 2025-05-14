@@ -11,8 +11,11 @@ import {
   loadDeveloperIdFromLocalStorage,
 } from "../lib/localStorageUtils";
 
-// Import the new custom hook
+// Import the new custom hooks
 import { usePatternAnalysisCache } from "../hooks/usePatternAnalysisCache";
+import { useConfigurationManagement } from "../hooks/useConfigurationManagement";
+import { useInitialPRDiscovery } from "../hooks/useInitialPRDiscovery";
+import { usePRAnalysisManager } from "../hooks/usePRAnalysisManager";
 
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
@@ -52,17 +55,16 @@ interface CodeQualityInsightsProps {
 }
 
 /**
- * CodeQualityInsights component provides meta-analysis of analyzed PRs
- * as an AI assistant that identifies patterns and provides development insights.
+ * Custom hook to manage developer ID from URL, localStorage, and props
  */
-export function CodeQualityInsights({
-  pullRequests,
-  allPRs,
-  developerId: propDeveloperId = "unknown", // Renamed to clarify it's from props
-}: CodeQualityInsightsProps) {
-  // Get developer ID from URL search params (this takes precedence)
+function useDeveloperId(propDeveloperId: string = "unknown") {
   const [searchParams] = useSearchParams();
   const urlDeveloperId = searchParams.get("username");
+
+  // State for developer ID
+  const [developerId, setDeveloperId] = useState(
+    urlDeveloperId || propDeveloperId
+  );
 
   // Try to get developer ID from localStorage as a fallback
   const loadDeveloperIdFromStorage = useCallback(() => {
@@ -70,17 +72,12 @@ export function CodeQualityInsights({
       return loadDeveloperIdFromLocalStorage();
     } catch (e) {
       console.error(
-        "[CodeQualityInsights] Error loading developer ID from localStorage:",
+        "[useDeveloperId] Error loading developer ID from localStorage:",
         e
       );
       return null;
     }
   }, []);
-
-  // Use URL developer ID if available, fallback to localStorage, then to prop
-  const [developerId, setDeveloperId] = useState(
-    urlDeveloperId || propDeveloperId
-  );
 
   // Effect to initialize developerId from localStorage if needed
   useEffect(() => {
@@ -88,7 +85,7 @@ export function CodeQualityInsights({
       const storedDeveloperId = loadDeveloperIdFromStorage();
       if (storedDeveloperId) {
         console.log(
-          `[CodeQualityInsights] Recovered developer ID from localStorage: ${storedDeveloperId}`
+          `[useDeveloperId] Recovered developer ID from localStorage: ${storedDeveloperId}`
         );
         setDeveloperId(storedDeveloperId);
 
@@ -101,10 +98,10 @@ export function CodeQualityInsights({
             // Use replace state to avoid adding to browser history
             window.history.replaceState({}, "", url.toString());
             console.log(
-              `[CodeQualityInsights] Updated URL with recovered developer ID: ${storedDeveloperId}`
+              `[useDeveloperId] Updated URL with recovered developer ID: ${storedDeveloperId}`
             );
           } catch (e) {
-            console.error("[CodeQualityInsights] Failed to update URL:", e);
+            console.error("[useDeveloperId] Failed to update URL:", e);
           }
         }
       }
@@ -114,322 +111,30 @@ export function CodeQualityInsights({
     }
   }, [urlDeveloperId, developerId, loadDeveloperIdFromStorage]);
 
-  // Core metrics hook
-  const { analyzeMultiplePRs } = usePRMetrics();
-
-  // Get ALL relevant state and actions from Zustand store
-  const {
-    analyzingPRIds,
-    allAnalyzedPRIds,
-    selectedPRIds,
-    apiProvider, // Get provider from store
-    selectedModel, // Get model from store
-    setCalculatedThemes, // Use new action
-    metaAnalysisResult: storeMetaAnalysisResult, // Rename to avoid conflict
-    isGeneratingMetaAnalysis,
-    setIsGeneratingMetaAnalysis,
-    setMetaAnalysisResult: setStoreMetaAnalysisResult, // Rename to avoid conflict
-    addAnalyzedPRIds,
-    // toggleSelectedPR, // Commented out as it's unused
-    setSelectedModel, // Restore action
-    // Career Development features removed as per requirements
-    commonStrengths, // Get themes from store
-    // commonWeaknesses, // Commented out as it's unused
-    // commonSuggestions, // Commented out as it's unused
-    averageScore,
-    setSelectedPRIds,
-    clearAnalysisData, // Need this for clear cache
-  } = useAnalysisStore();
-
-  // Ref to track mounted state and prevent initial effect run
-  const isMountedRef = useRef(false);
-
-  // Ref to prevent duplicate analysis calls
-  const isAnalyzingRef = useRef(false);
-
-  // Use our new pattern analysis cache hook
-  const {
-    metaAnalysisResult,
-    isFromCache,
-    isPatternsOutdated,
-    analyzedPRsInLastPattern,
-    setMetaAnalysisResult,
-    setIsPatternsOutdated,
-    setAnalyzedPRsInLastPattern,
-    cachePatternAnalysis,
-    clearPatternCache,
-  } = usePatternAnalysisCache({ developerId });
-
-  // Sync meta analysis between hook and store
+  // Effect to save current developer ID for persistence across refreshes
   useEffect(() => {
-    if (metaAnalysisResult !== storeMetaAnalysisResult) {
-      setStoreMetaAnalysisResult(metaAnalysisResult);
-    }
-  }, [metaAnalysisResult, storeMetaAnalysisResult, setStoreMetaAnalysisResult]);
-
-  // API configuration hook (now only manages key and saveToken preference)
-  const {
-    apiKey,
-    saveApiKey,
-    handleProviderChange, // Need this from API hook
-    setApiKey, // Need this
-    setSaveToken, // Need this
-    saveToken, // Need this
-    handleResetApiKey, // Need this
-  } = useAPIConfiguration();
-
-  console.log(`[CodeQualityInsights] Rendering. apiKey state: '${apiKey}'`);
-
-  // Local component state (remains local)
-  const [maxPRs, setMaxPRs] = useState(5);
-  const [isConfigVisible, setIsConfigVisible] = useState(false);
-  const [useAllPRs, setUseAllPRs] = useState(false);
-
-  // Overall loading state combines hook flag and store set size
-  const isLoading = analyzingPRIds.size > 0; // Use only store state
-
-  // Determine which PRs to potentially analyze based on filters - Commented out as unused
-  // const prsToAnalyze = useAllPRs && allPRs ? allPRs : pullRequests;
-
-  // Effect to handle model auto-selection (uses store state/actions)
-  useEffect(() => {
-    const models = MODEL_OPTIONS[apiProvider] || [];
-    const currentProviderModels = models.map((m) => m.id);
-
-    if (models.length === 1) {
-      // Auto-select if only one model exists and it's not already selected
-      if (selectedModel !== models[0].id) {
-        setSelectedModel(models[0].id);
-        console.log(`Auto-selected model for ${apiProvider}: ${models[0].id}`);
-      }
-    } else {
-      // If multiple models exist for the provider OR no models exist (invalid provider?):
-      // Check if a model is selected AND if it's NOT valid for the CURRENT provider.
-      if (selectedModel && !currentProviderModels.includes(selectedModel)) {
-        // Clear the selection ONLY if the currently selected model is incompatible
-        setSelectedModel(undefined);
-        console.log(
-          `Cleared incompatible model selection (${selectedModel}) for provider ${apiProvider}.`
-        );
-      }
-      // If a model is selected AND it *is* valid, do nothing - keep the user's/persisted choice.
-    }
-    // Depend on provider AND the selected model itself
-  }, [apiProvider, selectedModel, setSelectedModel]);
-
-  // Removed wrapped handleProviderChange - use store action directly
-
-  // Loading state
-  const isOverallLoading = isLoading;
-
-  // Function to generate meta-analysis across selected PRs
-  const handleGenerateMetaAnalysis = useCallback(async () => {
-    if (!apiKey || !apiProvider || !selectedModel) {
-      console.warn(
-        "[handleGenerateMetaAnalysis] Cannot generate meta-analysis: API config incomplete."
-      );
-      alert("Please ensure API provider, model, and key are configured.");
-      return;
-    }
-
-    if (selectedPRIds.size < 3) {
-      alert("Please select at least 3 analyzed PRs for meta-analysis.");
-      return;
-    }
-
-    try {
-      setIsGeneratingMetaAnalysis(true);
-
-      // Fetch PR analysis data for selected PRs
-      const prAnalysisPromises = Array.from(selectedPRIds).map((prId) =>
-        cacheService.getPRAnalysis(prId)
-      );
-
-      const prAnalysisResults = await Promise.all(prAnalysisPromises);
-      const validResults = prAnalysisResults.filter(
-        (result) => result && result.feedback
-      ) as PRAnalysisResult[];
-
-      if (validResults.length < 2) {
-        throw new Error("Not enough valid PR analysis data available");
-      }
-
-      // Generate meta-analysis
-      const metaAnalysis = await generateMetaAnalysis(validResults, {
-        apiKey,
-        provider: apiProvider,
-        model: selectedModel,
-      });
-
-      // Store which PRs were included in this pattern analysis
-      const metaAnalysisWithMetadata = {
-        ...metaAnalysis,
-        analyzedPRIds: Array.from(selectedPRIds),
-      };
-
-      // Use our new hook's function to cache the result
-      await cachePatternAnalysis(metaAnalysisWithMetadata);
-    } catch (error) {
-      console.error("Failed to generate meta-analysis:", error);
-      alert(
-        `Failed to generate meta-analysis: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-      setMetaAnalysisResult(null);
-    } finally {
-      setIsGeneratingMetaAnalysis(false);
-    }
-  }, [
-    apiKey,
-    apiProvider,
-    selectedModel,
-    selectedPRIds,
-    setIsGeneratingMetaAnalysis,
-    setMetaAnalysisResult,
-    cachePatternAnalysis,
-  ]);
-
-  // Track the current developer ID for detecting changes and cache status
-  const prevDeveloperIdRef = useRef<string | null>(null);
-
-  // Log the developer ID on mount and changes
-  useEffect(() => {
-    console.log(
-      `[CodeQualityInsights] Component mounted/updated with developerId: ${developerId} (from URL: ${!!urlDeveloperId})`
-    );
-
-    // Save current developer ID for persistence across refreshes
     if (developerId && developerId !== "unknown") {
       saveCurrentDeveloperToLocalStorage(developerId);
     }
-
-    // Check if LocalStorage/IndexedDB are available
-    try {
-      const testKey = "github-review-storage-test";
-      localStorage.setItem(testKey, "test");
-      localStorage.removeItem(testKey);
-      console.log("[CodeQualityInsights] LocalStorage is available");
-
-      if (window.indexedDB) {
-        console.log("[CodeQualityInsights] IndexedDB is available");
-      } else {
-        console.warn("[CodeQualityInsights] IndexedDB is NOT available");
-      }
-    } catch (e) {
-      console.error("[CodeQualityInsights] Storage access error:", e);
-    }
-
-    return () => {
-      console.log(
-        `[CodeQualityInsights] Component unmounting with developerId: ${developerId}`
-      );
-    };
   }, [developerId]);
 
-  // Effect for discovering analyzed IDs and setting initial selection on mount
-  useEffect(() => {
-    // Run only once on initial mount
-    if (isMountedRef.current) return;
-    isMountedRef.current = true;
+  return { developerId, setDeveloperId };
+}
 
-    console.log(
-      "[Initial ID Discovery Effect] RUNNING - Checking cache for new PRs..."
-    );
+/**
+ * Custom hook to manage theme updates based on selected PRs
+ */
+function useThemeManagement(
+  selectedPRIds: Set<number>,
+  metaAnalysisResult: CachedMetaAnalysisResult | null,
+  analyzedPRsInLastPattern: Set<number>,
+  isGeneratingMetaAnalysis: boolean,
+  developerId: string
+) {
+  const { setCalculatedThemes } = useAnalysisStore();
+  const { setIsPatternsOutdated } = usePatternAnalysisCache({ developerId });
 
-    const discoverAndSetInitialSelection = async () => {
-      let currentKnownIds = Array.from(
-        useAnalysisStore.getState().allAnalyzedPRIds
-      );
-      console.log(
-        `[Initial ID Discovery Effect] Known analyzed IDs before check: ${
-          currentKnownIds.join(", ") || "None"
-        }`
-      );
-
-      // Determine PRs to check in cache (those not already known)
-      const effectivePRsToCheck = useAllPRs && allPRs ? allPRs : pullRequests;
-      const prIdsToCheckInCache = effectivePRsToCheck
-        .map((pr) => pr.id)
-        .filter((id) => !currentKnownIds.includes(id)); // Use includes for array
-
-      let newlyFoundCachedIds: number[] = [];
-      if (prIdsToCheckInCache.length > 0) {
-        console.log(
-          `[Initial ID Discovery Effect] Checking cache for ${
-            prIdsToCheckInCache.length
-          } potential new PR IDs: ${prIdsToCheckInCache.join(", ")}`
-        );
-        try {
-          const cacheResults = await Promise.all(
-            prIdsToCheckInCache.map((id) => cacheService.getPRAnalysis(id))
-          );
-          newlyFoundCachedIds = cacheResults
-            .filter((result) => result !== null)
-            .map((result) => result!.prId);
-
-          if (newlyFoundCachedIds.length > 0) {
-            console.log(
-              `[Initial ID Discovery Effect] Found ${
-                newlyFoundCachedIds.length
-              } new analyzed PRs in cache. Adding IDs to store: ${newlyFoundCachedIds.join(
-                ", "
-              )}`
-            );
-            addAnalyzedPRIds(newlyFoundCachedIds); // Add new IDs to store
-            // Update our local list of known IDs for the next step
-            currentKnownIds = [...currentKnownIds, ...newlyFoundCachedIds];
-          } else {
-            console.log(
-              "[Initial ID Discovery Effect] No new analyzed PRs found in cache."
-            );
-          }
-        } catch (error) {
-          console.error(
-            "[Initial ID Discovery Effect] Error checking cache for new PRs:",
-            error
-          );
-        }
-      } else {
-        console.log(
-          "[Initial ID Discovery Effect] No new PRs to check in cache."
-        );
-      }
-
-      // --- Set initial selection ---
-      // Select ALL known analyzed PRs initially
-      if (currentKnownIds.length > 0) {
-        console.log(
-          `[Initial ID Discovery Effect] Setting initial selected PRs to ALL known analyzed IDs: ${currentKnownIds.join(
-            ", "
-          )}`
-        );
-        setSelectedPRIds(currentKnownIds);
-      } else {
-        console.log(
-          `[Initial ID Discovery Effect] No known analyzed PRs found, initial selection is empty.`
-        );
-        setSelectedPRIds([]); // Ensure it's empty if no PRs found
-      }
-
-      // DO NOT load themes or summary here - let the other effect handle it
-      console.log("[Initial ID Discovery Effect] COMPLETED.");
-    };
-
-    discoverAndSetInitialSelection();
-    // Dependencies: only actions needed to update IDs/selection
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    addAnalyzedPRIds,
-    setSelectedPRIds,
-    pullRequests,
-    allPRs,
-    useAllPRs,
-    setIsPatternsOutdated,
-  ]); // Added PR list dependencies
-
-  // Update the *** NEW Effect: Update themes based on selected PRs ***
-  // to use setAnalyzedPRsInLastPattern to avoid the unused variable warning
+  // Update themes based on selected PRs
   useEffect(() => {
     const currentSelectedIds = Array.from(selectedPRIds); // Get current selection
     console.log(
@@ -449,7 +154,6 @@ export function CodeQualityInsights({
           commonSuggestions: [],
           averageScore: 0,
         });
-        // Career Development summary removed as per requirements
         return;
       }
 
@@ -490,8 +194,6 @@ export function CodeQualityInsights({
             averageScore: 0,
           });
         }
-
-        // Career Development summary removed as per requirements
       } catch (error) {
         console.error(
           "[Selection Change Effect] Error fetching or processing selected PR data:",
@@ -504,13 +206,10 @@ export function CodeQualityInsights({
           commonSuggestions: [],
           averageScore: 0,
         });
-        // Career Development summary removed
       }
     };
 
     updateThemesForSelection();
-
-    // This effect should run when selectedPRIds changes
 
     // Mark patterns as outdated if we have an existing meta analysis
     // and if the current selection differs from what was analyzed before
@@ -536,147 +235,234 @@ export function CodeQualityInsights({
     }
   }, [
     selectedPRIds,
-    setCalculatedThemes,
     metaAnalysisResult,
     isGeneratingMetaAnalysis,
     analyzedPRsInLastPattern,
+    setCalculatedThemes,
     setIsPatternsOutdated,
-  ]); // Add dependencies
+  ]);
+}
 
-  // Function to trigger the *manual* analysis of PRs (handleAnalyze)
-  const handleAnalyze = useCallback(async () => {
-    if (isAnalyzingRef.current) {
-      console.log("Analysis already in progress.");
-      return;
+/**
+ * CodeQualityInsights component provides meta-analysis of analyzed PRs
+ * as an AI assistant that identifies patterns and provides development insights.
+ */
+export function CodeQualityInsights({
+  pullRequests,
+  allPRs,
+  developerId: propDeveloperId = "unknown", // Renamed to clarify it's from props
+}: CodeQualityInsightsProps) {
+  // Use the developer ID hook
+  const { developerId } = useDeveloperId(propDeveloperId);
+
+  // Core metrics hook
+  const { analyzeMultiplePRs } = usePRMetrics();
+
+  // Get ALL relevant state and actions from Zustand store
+  const {
+    analyzingPRIds,
+    allAnalyzedPRIds,
+    selectedPRIds,
+    apiProvider,
+    selectedModel,
+    metaAnalysisResult: storeMetaAnalysisResult,
+    isGeneratingMetaAnalysis,
+    setIsGeneratingMetaAnalysis,
+    setMetaAnalysisResult: setStoreMetaAnalysisResult,
+    addAnalyzedPRIds,
+    setSelectedPRIds,
+    clearAnalysisData,
+    commonStrengths,
+    averageScore,
+  } = useAnalysisStore();
+
+  // Ref to prevent duplicate analysis calls
+  const isAnalyzingRef = useRef(false);
+
+  // Use our new pattern analysis cache hook
+  const {
+    metaAnalysisResult,
+    isFromCache,
+    isPatternsOutdated,
+    analyzedPRsInLastPattern,
+    setMetaAnalysisResult,
+    setIsPatternsOutdated,
+    setAnalyzedPRsInLastPattern,
+    cachePatternAnalysis,
+    clearPatternCache,
+  } = usePatternAnalysisCache({ developerId });
+
+  // Use the configuration management hook
+  const {
+    apiKey,
+    saveToken,
+    setApiKey,
+    setSaveToken,
+    saveApiKey,
+    handleResetApiKey,
+    handleProviderChange,
+    setSelectedModel: configSetSelectedModel,
+    isConfigVisible,
+    setIsConfigVisible,
+    useAllPRs,
+    setUseAllPRs,
+    maxPRs,
+    setMaxPRs,
+  } = useConfigurationManagement();
+
+  // Use the PR discovery hook to find previously analyzed PRs in cache
+  useInitialPRDiscovery({
+    pullRequests,
+    allPRs,
+    useAllPRs,
+  });
+
+  // Use the theme management hook
+  useThemeManagement(
+    selectedPRIds,
+    metaAnalysisResult,
+    analyzedPRsInLastPattern,
+    isGeneratingMetaAnalysis,
+    developerId
+  );
+
+  // Use the PR analysis manager
+  const { handleAnalyze, isAnalyzing } = usePRAnalysisManager({
+    pullRequests,
+    allPRs,
+    useAllPRs,
+    maxPRs,
+  });
+
+  // Sync meta analysis between hook and store
+  useEffect(() => {
+    if (metaAnalysisResult !== storeMetaAnalysisResult) {
+      setStoreMetaAnalysisResult(metaAnalysisResult);
     }
-    if (!apiKey || !selectedModel) {
-      console.error("API key or model not selected.");
+  }, [metaAnalysisResult, storeMetaAnalysisResult, setStoreMetaAnalysisResult]);
+
+  // Get API configuration (will be phased out once migration to useConfigurationManagement is complete)
+  const {
+    apiKey: legacyApiKey,
+    saveApiKey: legacySaveApiKey,
+    handleProviderChange: legacyHandleProviderChange,
+    setApiKey: legacySetApiKey,
+    setSaveToken: legacySetSaveToken,
+    saveToken: legacySaveToken,
+    handleResetApiKey: legacyHandleResetApiKey,
+  } = useAPIConfiguration();
+
+  // Use the apiKey from configuration management hook, falling back to legacy if not available
+  const effectiveApiKey = apiKey || legacyApiKey;
+
+  console.log(
+    `[CodeQualityInsights] Rendering. apiKey state: '${effectiveApiKey}'`
+  );
+
+  // Overall loading state combines hook flag and store set size
+  const isLoading = analyzingPRIds.size > 0; // Use only store state
+  const isOverallLoading = isLoading;
+
+  // Track the current developer ID for detecting changes and cache status
+  const prevDeveloperIdRef = useRef<string | null>(null);
+
+  // Function to handle the analyze button click
+  const handleAnalyzeClick = useCallback(async () => {
+    if (!effectiveApiKey || !selectedModel) {
       alert("Please select an AI provider, a model, and enter your API key.");
-      // Optionally, bring focus to the config panel if hidden
       return;
     }
-
-    isAnalyzingRef.current = true;
-    saveApiKey();
-
-    console.log(
-      `Starting manual analysis with Provider: ${apiProvider}, Model: ${selectedModel}`
-    );
 
     try {
-      const prsToConsider = useAllPRs && allPRs ? allPRs : pullRequests;
-      // Get current state to filter correctly
-      const currentAnalyzedIds = useAnalysisStore.getState().allAnalyzedPRIds;
-      const currentAnalyzingIds = useAnalysisStore.getState().analyzingPRIds;
+      saveApiKey(); // Save API key if configured to do so
 
-      const prsToAnalyzeNow = prsToConsider
-        .filter(
-          (pr) =>
-            !currentAnalyzedIds.has(pr.id) && !currentAnalyzingIds.has(pr.id)
-        )
-        .slice(0, maxPRs);
-
-      if (prsToAnalyzeNow.length === 0) {
-        alert("All eligible PRs are already analyzed or being analyzed.");
-        isAnalyzingRef.current = false;
-        return;
-      }
-
-      console.log(
-        `Attempting to manually analyze ${prsToAnalyzeNow.length} PRs...`
-      );
-
-      const config: AIAnalysisConfig = {
-        apiKey,
+      await handleAnalyze({
+        apiKey: effectiveApiKey,
         provider: apiProvider,
         model: selectedModel,
+      });
+    } catch (error) {
+      console.error("Error during analysis:", error);
+      alert(
+        `Error during analysis: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }, [effectiveApiKey, selectedModel, apiProvider, handleAnalyze, saveApiKey]);
+
+  // Function to generate meta-analysis across selected PRs
+  const handleGenerateMetaAnalysis = useCallback(async () => {
+    if (!effectiveApiKey || !apiProvider || !selectedModel) {
+      console.warn(
+        "[handleGenerateMetaAnalysis] Cannot generate meta-analysis: API config incomplete."
+      );
+      alert("Please ensure API provider, model, and key are configured.");
+      return;
+    }
+
+    if (selectedPRIds.size < 3) {
+      alert("Please select at least 3 analyzed PRs for meta-analysis.");
+      return;
+    }
+
+    try {
+      setIsGeneratingMetaAnalysis(true);
+
+      // Fetch PR analysis data for selected PRs
+      const prAnalysisPromises = Array.from(selectedPRIds).map((prId) =>
+        cacheService.getPRAnalysis(prId)
+      );
+
+      const prAnalysisResults = await Promise.all(prAnalysisPromises);
+      const validResults = prAnalysisResults.filter(
+        (result) => result && result.feedback
+      ) as PRAnalysisResult[];
+
+      if (validResults.length < 2) {
+        throw new Error("Not enough valid PR analysis data available");
+      }
+
+      // Generate meta-analysis
+      const metaAnalysis = await generateMetaAnalysis(validResults, {
+        apiKey: effectiveApiKey,
+        provider: apiProvider,
+        model: selectedModel,
+      });
+
+      // Store which PRs were included in this pattern analysis
+      const metaAnalysisWithMetadata = {
+        ...metaAnalysis,
+        analyzedPRIds: Array.from(selectedPRIds),
       };
 
-      const results: PRAnalysisResult[] = await analyzeMultiplePRs(
-        prsToAnalyzeNow,
-        config,
-        maxPRs
+      // Use our new hook's function to cache the result
+      await cachePatternAnalysis(metaAnalysisWithMetadata);
+    } catch (error) {
+      console.error("Failed to generate meta-analysis:", error);
+      alert(
+        `Failed to generate meta-analysis: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
-      // ... handle results, calculate themes, set state ...
-      console.log(`Analysis completed for ${results.length} PRs.`);
-      console.log(`Raw results from analyzeMultiplePRs:`, results); // Log raw results
-
-      const successfulResults = results.filter((res) => !res.error);
-      if (successfulResults.length > 0) {
-        // Get IDs of successfully analyzed PRs
-        const newlyAnalyzedIds = successfulResults.map((r) => r.prId);
-        console.log(
-          `[handleAnalyze] Adding newly analyzed IDs to store: ${newlyAnalyzedIds.join(
-            ", "
-          )}`
-        );
-        addAnalyzedPRIds(newlyAnalyzedIds); // Add IDs to store
-
-        // Also select the newly analyzed PRs
-        const currentSelection = Array.from(selectedPRIds);
-        const updatedSelection = [...currentSelection, ...newlyAnalyzedIds];
-        console.log(
-          `[handleAnalyze] Updating selected PR IDs: ${updatedSelection.join(
-            ", "
-          )}`
-        );
-        setSelectedPRIds(updatedSelection);
-
-        // Calculate themes ONLY for the newly analyzed PRs
-        const newThemes = calculateCommonThemes(successfulResults);
-        console.log(
-          `[handleAnalyze] Calculated themes for new results:`,
-          newThemes
-        );
-
-        // Replace existing themes
-        setCalculatedThemes(newThemes);
-        console.log("[handleAnalyze] Store updated with new themes.");
-
-        // Mark patterns as outdated if we have meta-analysis results and new PRs were analyzed
-        if (metaAnalysisResult) {
-          // When new PRs are analyzed, they weren't part of the previous pattern analysis
-          const anyNewPRsInSelection = newlyAnalyzedIds.some((id) =>
-            selectedPRIds.has(id)
-          );
-
-          if (anyNewPRsInSelection) {
-            setIsPatternsOutdated(true);
-          }
-        }
-      } else {
-        console.warn(
-          "Manual analysis completed, but no successful results to aggregate."
-        );
-        // Decide if we should clear existing themes here or leave them
-        // setCalculatedThemes({ ... }); // Optional clear
-      }
-    } catch (error: unknown) {
-      console.error("Error during manual analysis orchestration:", error);
+      setMetaAnalysisResult(null);
     } finally {
-      isAnalyzingRef.current = false;
+      setIsGeneratingMetaAnalysis(false);
     }
   }, [
-    apiKey,
-    selectedModel,
+    effectiveApiKey,
     apiProvider,
-    useAllPRs,
-    allPRs,
-    pullRequests,
-    // Removed allAnalyzedPRIds, analyzingPRIds from deps - use getState inside
-    analyzeMultiplePRs,
-    setCalculatedThemes,
-    saveApiKey,
-    maxPRs,
-    addAnalyzedPRIds,
+    selectedModel,
+    selectedPRIds,
+    setIsGeneratingMetaAnalysis,
+    setMetaAnalysisResult,
+    cachePatternAnalysis,
   ]);
 
   // Toggle between filtered PRs and all PRs
-  const handleToggleAllPRs = () => {
+  const handleToggleAllPRs = useCallback(() => {
     setUseAllPRs(!useAllPRs);
-    // Reset selection when toggling? Optional.
-    // setSelectedPRIds([]);
-  };
+  }, [useAllPRs, setUseAllPRs]);
 
   // Handle maxPRs change
   const handleMaxPRsChange = (value: number) => {
@@ -708,7 +494,7 @@ export function CodeQualityInsights({
       );
       alert("Failed to clear cache."); // Inform user
     }
-  }, [clearAnalysisData, clearPatternCache]); // Add clearPatternCache to deps
+  }, [clearAnalysisData, clearPatternCache, setIsConfigVisible]);
 
   // Log state just before rendering conditional UI
   console.log(
@@ -720,7 +506,7 @@ export function CodeQualityInsights({
   console.log(
     `[CodeQualityInsights Render] isOverallLoading: ${isOverallLoading}`
   );
-  console.log(`[CodeQualityInsights Render] hasApiKey: ${!!apiKey}`);
+  console.log(`[CodeQualityInsights Render] hasApiKey: ${!!effectiveApiKey}`);
   console.log(
     `[CodeQualityInsights Render] allAnalyzedPRIds.size: ${allAnalyzedPRIds.size}`
   );
@@ -787,13 +573,15 @@ export function CodeQualityInsights({
           {/* --- Configuration Panel (Render when visible) --- */}
           {isConfigVisible && (
             <ConfigurationPanel
-              apiKey={apiKey}
+              apiKey={effectiveApiKey}
               apiProvider={apiProvider}
               selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              saveToken={saveToken}
-              setSaveToken={setSaveToken}
-              handleProviderChange={handleProviderChange}
+              setSelectedModel={configSetSelectedModel}
+              saveToken={saveToken !== undefined ? saveToken : legacySaveToken}
+              setSaveToken={setSaveToken || legacySetSaveToken}
+              handleProviderChange={
+                handleProviderChange || legacyHandleProviderChange
+              }
               useAllPRs={useAllPRs}
               handleToggleAllPRs={handleToggleAllPRs}
               allPRs={allPRs}
@@ -802,8 +590,8 @@ export function CodeQualityInsights({
               setIsConfigVisible={setIsConfigVisible}
               // handleAnalyze is no longer needed for the primary button
               // isAnalyzing is no longer needed for the primary button
-              setApiKey={setApiKey}
-              handleResetApiKey={handleResetApiKey}
+              setApiKey={setApiKey || legacySetApiKey}
+              handleResetApiKey={handleResetApiKey || legacyHandleResetApiKey}
               handleClearCache={handleClearCacheAndStore}
               allAnalyzedPRIdsSize={allAnalyzedPRIds.size}
             />
@@ -966,11 +754,11 @@ export function CodeQualityInsights({
                 </div>
               ) : allAnalyzedPRIds.size === 0 ? (
                 <EmptyState
-                  handleAnalyze={handleAnalyze}
+                  handleAnalyze={handleAnalyzeClick}
                   maxPRs={maxPRs}
-                  hasApiKey={!!apiKey}
+                  hasApiKey={!!effectiveApiKey}
                   setIsConfigVisible={setIsConfigVisible}
-                  handleMaxPRsChange={handleMaxPRsChange}
+                  handleMaxPRsChange={setMaxPRs}
                 />
               ) : (
                 <div className="group relative overflow-hidden p-6 mt-4 bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-100 dark:from-purple-800/30 dark:via-indigo-900/30 dark:to-purple-800/40 rounded-xl shadow-xl text-left animate-subtle-gradient">
