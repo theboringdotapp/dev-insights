@@ -37,7 +37,7 @@ export default function PullRequestCard({
 }: PullRequestCardProps) {
   // States for tracking analysis information
   const [analysisResult, setAnalysisResult] = useState<PRAnalysisResult | null>(
-    null,
+    null
   );
   const [justAnalyzed, setJustAnalyzed] = useState(false);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
@@ -47,8 +47,12 @@ export default function PullRequestCard({
 
   // Effect to load analysis when PR is analyzed
   useEffect(() => {
+    // Track if the effect is still mounted to prevent state updates after unmount
+    let isMounted = true;
+
     if (isAnalyzed && !analysisResult && !isLoadingAnalysis) {
       const fetchAnalysis = async () => {
+        if (!isMounted) return;
         setIsLoadingAnalysis(true);
 
         // First try memory cache
@@ -61,22 +65,29 @@ export default function PullRequestCard({
           } catch (error) {
             console.error(
               `Error fetching analysis for PR #${pr.number}:`,
-              error,
+              error
             );
           }
         }
 
-        setAnalysisResult(result);
-        setIsLoadingAnalysis(false);
+        // Only update state if still mounted
+        if (isMounted) {
+          setAnalysisResult(result);
+          setIsLoadingAnalysis(false);
+        }
       };
 
       fetchAnalysis();
     }
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+    // Remove analysisResult and isLoadingAnalysis from dependencies
   }, [
     isAnalyzed,
     pr.id,
-    analysisResult,
-    isLoadingAnalysis,
     getAnalysisFromMemoryCache,
     getAnalysisForPR,
     pr.number,
@@ -84,20 +95,27 @@ export default function PullRequestCard({
 
   // When isCurrentlyAnalyzing changes from true to false, set justAnalyzed to true
   useEffect(() => {
-    if (!isCurrentlyAnalyzing && !justAnalyzed && isAnalyzed) {
-      setJustAnalyzed(true);
+    // We only care about the transition from analyzing to not analyzing
+    const hasFinishedAnalyzing = !isCurrentlyAnalyzing && isAnalyzed;
 
-      // Auto-reset justAnalyzed after 5 seconds to avoid keeping expansion state indefinitely
+    // Only set justAnalyzed if it's not already set and analysis just finished
+    if (hasFinishedAnalyzing && !justAnalyzed) {
+      // Track previous state to avoid repeated triggers
       const timer = setTimeout(() => {
         setJustAnalyzed(false);
       }, 5000);
 
+      setJustAnalyzed(true);
       return () => clearTimeout(timer);
     }
-  }, [isCurrentlyAnalyzing, isAnalyzed, justAnalyzed]);
+    // Remove justAnalyzed from dependencies to prevent re-triggering when it changes
+  }, [isCurrentlyAnalyzing, isAnalyzed]);
 
-  // When PR changes, reset the analysis state
+  // Reset state when PR changes (prevent stale data)
   useEffect(() => {
+    // Initial mount - nothing to clean up yet
+
+    // When pr.id changes, reset state before processing the new PR
     return () => {
       setAnalysisResult(null);
       setJustAnalyzed(false);
@@ -111,7 +129,7 @@ export default function PullRequestCard({
     : "border-gray-300";
 
   console.log(
-    `[PullRequestCard] Rendering PR #${pr.number}. hasApiKeys prop: ${hasApiKeys}`,
+    `[PullRequestCard] Rendering PR #${pr.number}. hasApiKeys prop: ${hasApiKeys}`
   );
 
   return (

@@ -511,7 +511,7 @@ export function CodeQualityInsights({
   }, [
     developerId,
     setMetaAnalysisResult,
-    metaAnalysisResult,
+    //metaAnalysisResult,
     setAnalyzedPRsInLastPattern,
     setIsPatternsOutdated,
     loadLastPatternResultFromLocalStorage,
@@ -609,7 +609,14 @@ export function CodeQualityInsights({
     discoverAndSetInitialSelection();
     // Dependencies: only actions needed to update IDs/selection
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addAnalyzedPRIds, setSelectedPRIds, pullRequests, allPRs, useAllPRs]); // Added PR list dependencies
+  }, [
+    addAnalyzedPRIds,
+    setSelectedPRIds,
+    pullRequests,
+    allPRs,
+    useAllPRs,
+    setIsPatternsOutdated,
+  ]); // Added PR list dependencies
 
   // *** NEW Effect: Update themes based on selected PRs ***
   useEffect(() => {

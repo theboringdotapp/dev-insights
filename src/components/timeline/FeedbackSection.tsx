@@ -24,18 +24,19 @@ export function FeedbackSection({
   const [visibleCodeSnippets, setVisibleCodeSnippets] = useState<number[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   
-  // Detect dark mode
+  // Detect dark mode once on mount
   useEffect(() => {
-    // Initial check
-    setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches || 
-                 document.documentElement.classList.contains('dark'));
+    // One-time check for dark mode
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches || 
+                  document.documentElement.classList.contains('dark');
     
-    // Watch for changes
-    const darkModeListener = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', darkModeListener);
+    // Only set if different from current state to avoid unnecessary re-renders
+    if (isDark !== isDarkMode) {
+      setIsDarkMode(isDark);
+    }
     
-    return () => mediaQuery.removeEventListener('change', darkModeListener);
+    // We don't need to watch for changes since code snippets are collapsible
+    // and will re-evaluate when expanded
   }, []);
 
   // Toggle code snippet visibility

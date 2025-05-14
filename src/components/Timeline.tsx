@@ -43,11 +43,11 @@ export function Timeline({
   // Use timeframe info hook
   const { maxItems, isLikelyHittingLimit } = useTimeframeInfo(
     timeframe,
-    pullRequests.length,
+    pullRequests.length
   );
 
   // Only load metrics for visible PRs
-  useEffect(() => {
+  /*  useEffect(() => {
     // Only preload for PRs that don't already have metrics
     const prsToLoad = pullRequests.filter(
       (pr) =>
@@ -61,12 +61,12 @@ export function Timeline({
         loadPRMetrics(pr);
       });
     }
-  }, [pullRequests, metricsCache, loadPRMetrics]);
+  }, [pullRequests, metricsCache, loadPRMetrics]); */
 
   // Wrapper function to ensure getPRMetrics output matches MonthGroup prop type
   // Simplified: Directly return the cached metrics object
   const getMetricsForTimeline = (
-    pr: PullRequestItem,
+    pr: PullRequestItem
   ): PullRequestMetrics | undefined => {
     return getPRMetrics(pr);
   };

@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { AggregatedFeedback, FeedbackFrequency, MetaAnalysisResult } from "../lib/types";
+import {
+  AggregatedFeedback,
+  FeedbackFrequency,
+  MetaAnalysisResult,
+} from "../lib/types";
 import { AIProvider } from "../hooks/useAPIConfiguration";
 
 // Define the state structure
@@ -127,7 +131,7 @@ export const useAnalysisStore = create<AnalysisState>()(
           careerDevelopmentSummary: summary,
           isGeneratingSummary: false,
         }),
-        
+
       setMetaAnalysisResult: (result) =>
         set({
           metaAnalysisResult: result,
