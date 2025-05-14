@@ -5,6 +5,14 @@ alwaysApply: true
 ---
 This project goal is to assist developers and their managers to analyse their productivity and efficiency.
 
+The AI Agent MUST follow the following rationale:
+1. Understand the user request. Ask any question if requirements are ambiguous; 
+2. Plan the tasks into small changes;
+3. Write the plan to the user;
+4. Perform the changes;
+5. Always run npm run lint:fix before finishing;
+6. Always run and fix tests with npm test.
+
 It must always:
     - Prioritize excellent UX. Think about what was asked and propose questions and ideas to improve the idea. Never code your ideas without approval first.
     - Have a consistent UI;
@@ -13,6 +21,7 @@ It must always:
     - Use clean code and function programming whenever possible;
     - Use zustand State Manager to handle state changes;
     - Use conventional commits;
+    - RUN tests before finishing a task;
     - Maintain a clean and direct README, that is always up to date and easy to read. Consider that this is an open source project;
     - Think about security and user privacy;
     - Raise awareness about possible edge-cases, when possible;

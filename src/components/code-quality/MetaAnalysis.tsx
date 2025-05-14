@@ -1,11 +1,6 @@
 import React from "react";
-import { MetaAnalysisResult, FocusArea } from "../../lib/types";
-import {
-  ChevronDownIcon,
-  TrendingUpIcon,
-  GanttChartIcon,
-  Users2Icon,
-} from "lucide-react";
+import { MetaAnalysisResult } from "../../lib/types";
+import { GanttChartIcon, Users2Icon } from "lucide-react";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -20,63 +15,6 @@ const Skeleton = ({ className }: { className?: string }) => (
     className={`animate-pulse bg-gray-200 dark:bg-gray-700 rounded ${className}`}
   ></div>
 );
-
-// Card components
-const Card = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <div
-    className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm ${className}`}
-  >
-    {children}
-  </div>
-);
-
-const CardHeader = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => <div className={`p-4 ${className}`}>{children}</div>;
-
-const CardTitle = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <h3
-    className={`text-lg font-medium text-zinc-800 dark:text-zinc-200 ${className}`}
-  >
-    {children}
-  </h3>
-);
-
-const CardDescription = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <p className={`text-sm text-zinc-500 dark:text-zinc-400 ${className}`}>
-    {children}
-  </p>
-);
-
-const CardContent = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => <div className={`p-4 pt-0 ${className}`}>{children}</div>;
 
 // Badge component removed as it's now handled by PatternBadge
 
@@ -130,12 +68,8 @@ export default function MetaAnalysis({
     );
   }
 
-  const {
-    recurring_patterns,
-    recommended_focus_areas,
-    development_trajectory,
-    managerial_insights,
-  } = metaAnalysis;
+  const { recurring_patterns, recommended_focus_areas, managerial_insights } =
+    metaAnalysis;
 
   return (
     <div className="space-y-6">

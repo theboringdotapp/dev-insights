@@ -18,7 +18,6 @@ import { useInitialPRDiscovery } from "../hooks/useInitialPRDiscovery";
 import { usePRAnalysisManager } from "../hooks/usePRAnalysisManager";
 
 import { PullRequestItem, PRAnalysisResult } from "../lib/types";
-import { usePRMetrics } from "../lib/usePRMetrics";
 import { useAnalysisStore } from "../stores/analysisStore";
 import {
   calculateCommonThemes,
@@ -247,9 +246,6 @@ export function CodeQualityInsights({
   // Use the developer ID hook
   const { developerId } = useDeveloperId(propDeveloperId);
 
-  // Core metrics hook
-  const { analyzeMultiplePRs } = usePRMetrics();
-
   // Get ALL relevant state and actions from Zustand store
   const {
     analyzingPRIds,
@@ -261,15 +257,10 @@ export function CodeQualityInsights({
     isGeneratingMetaAnalysis,
     setIsGeneratingMetaAnalysis,
     setMetaAnalysisResult: setStoreMetaAnalysisResult,
-    addAnalyzedPRIds,
-    setSelectedPRIds,
     clearAnalysisData,
     commonStrengths,
     averageScore,
   } = useAnalysisStore();
-
-  // Ref to prevent duplicate analysis calls
-  const isAnalyzingRef = useRef(false);
 
   // Use our new pattern analysis cache hook
   const {
@@ -279,7 +270,6 @@ export function CodeQualityInsights({
     analyzedPRsInLastPattern,
     setMetaAnalysisResult,
     setIsPatternsOutdated,
-    setAnalyzedPRsInLastPattern,
     cachePatternAnalysis,
     clearPatternCache,
   } = usePatternAnalysisCache({ developerId });
@@ -337,7 +327,6 @@ export function CodeQualityInsights({
   // Get API configuration (will be phased out once migration to useConfigurationManagement is complete)
   const {
     apiKey: legacyApiKey,
-    saveApiKey: legacySaveApiKey,
     handleProviderChange: legacyHandleProviderChange,
     setApiKey: legacySetApiKey,
     setSaveToken: legacySetSaveToken,
@@ -456,11 +445,6 @@ export function CodeQualityInsights({
   const handleToggleAllPRs = useCallback(() => {
     setUseAllPRs(!useAllPRs);
   }, [useAllPRs, setUseAllPRs]);
-
-  // Handle maxPRs change
-  const handleMaxPRsChange = (value: number) => {
-    setMaxPRs(value);
-  };
 
   // Update clear cache function to work without the hook
   const handleClearCacheAndStore = useCallback(async () => {

@@ -67,24 +67,6 @@ const OpportunityIcon = () => (
   </svg>
 );
 
-const CareerIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="text-zinc-600 dark:text-zinc-400"
-  >
-    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-  </svg>
-);
-
 interface PRAnalysisDetailsProps {
   analysisResult: PRAnalysisResult;
   defaultOpen?: boolean;
@@ -107,7 +89,7 @@ export function PRAnalysisDetails({
 
   return (
     <div className="mt-2 pt-1">
-      <Collapsible defaultOpen={defaultOpen} className="group">
+      <Collapsible defaultOpen={defaultOpen}>
         <CollapsibleTrigger className="flex items-center w-full text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors px-2.5 py-2 rounded-md border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20">
           <svg
             xmlns="http://www.w3.org/2000/svg"

@@ -23,13 +23,13 @@ export default function DeveloperDashboard() {
   // Get username from URL or default to user profile
   const usernameFromUrl = searchParams.get("username");
   const [username, setUsername] = useState(
-    usernameFromUrl || userProfile?.login || "",
+    usernameFromUrl || userProfile?.login || ""
   );
   const [timeframe, setTimeframe] = useState<Timeframe>("1month");
   const [showData, setShowData] = useState(!!usernameFromUrl);
   const [showOnlyImportantPRs, setShowOnlyImportantPRs] = useState(true);
   const [searchTrigger, setSearchTrigger] = useState<number | undefined>(
-    usernameFromUrl ? 1 : undefined,
+    usernameFromUrl ? 1 : undefined
   );
 
   // State for real commit data from PR metrics
@@ -70,7 +70,7 @@ export default function DeveloperDashboard() {
     undefined, // org is no longer used
     undefined, // repo is no longer used
     timeframe,
-    searchTrigger,
+    searchTrigger
   );
 
   // Compute PR counts and filtered stats
