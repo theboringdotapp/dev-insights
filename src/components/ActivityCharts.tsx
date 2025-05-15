@@ -45,6 +45,9 @@ export function ActivityCharts({
       return;
     }
 
+    // Track if component is still mounted/effect is current
+    let isCurrent = true;
+
     try {
       setIsLoading(true);
       setLoadedPRCount(0);
@@ -77,13 +80,19 @@ export function ActivityCharts({
         return;
       }
 
+      // Keep track of loading promises to facilitate cleanup
+      const loadingPromises: Promise<void>[] = [];
+
       // Load metrics for each PR that doesn't have them
       pullRequests.forEach((pr) => {
         const metrics = getPRMetrics(pr);
         if (!metrics?.isLoaded && !metrics?.isLoading) {
           // Start loading metrics for this PR
-          loadPRMetrics(pr)
+          const loadPromise = loadPRMetrics(pr)
             .then((loadedMetrics) => {
+              // Skip updating state if component unmounted or PR list changed
+              if (!isCurrent) return;
+
               if (loadedMetrics) {
                 completedPRs++;
                 totalCommits += loadedMetrics.commits?.length || 0;
@@ -105,6 +114,9 @@ export function ActivityCharts({
               }
             })
             .catch((err) => {
+              // Skip updating state if component unmounted or PR list changed
+              if (!isCurrent) return;
+
               console.error("Error loading PR metrics:", err);
               // Continue even if one PR fails to load
               completedPRs++;
@@ -114,8 +126,22 @@ export function ActivityCharts({
                 onCommitDataLoaded?.(totalCommits, false);
               }
             });
+
+          loadingPromises.push(loadPromise);
         }
       });
+
+      // Return cleanup function
+      return () => {
+        // Mark current effect as stale to prevent further state updates
+        isCurrent = false;
+
+        // Reset loading state in parent component on cleanup
+        if (isLoading) {
+          console.log("[ActivityCharts] Cleaning up ongoing data loading");
+          onCommitDataLoaded?.(0, false);
+        }
+      };
     } catch (err) {
       console.error("Error in ActivityCharts useEffect:", err);
       setError("Failed to load PR metrics data");

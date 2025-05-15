@@ -55,6 +55,15 @@ export default function DeveloperDashboard() {
     }
   }, [username, showData]);
 
+  // Reset stats when developer ID changes
+  useEffect(() => {
+    if (usernameFromUrl && usernameFromUrl !== username) {
+      // Reset commit stats to avoid showing previous user's data while loading
+      setRealCommitCount(0);
+      setIsLoadingCommits(false);
+    }
+  }, [usernameFromUrl, username]);
+
   // Listen for URL parameter changes and update search
   useEffect(() => {
     // Skip if we're already handling a search to prevent cycles
@@ -144,6 +153,10 @@ export default function DeveloperDashboard() {
         clearAnalysisData();
         setDeveloperId(newUsername);
         setUsername(newUsername);
+
+        // Reset commit stats to avoid showing previous user's data
+        setRealCommitCount(0);
+        setIsLoadingCommits(false);
 
         // Update URL with the username
         setSearchParams({ username: newUsername });
