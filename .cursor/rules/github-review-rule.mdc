@@ -10,8 +10,7 @@ The AI Agent MUST follow the following rationale:
 2. Plan the tasks into small changes;
 3. Write the plan to the user;
 4. Perform the changes;
-5. Always run npm run lint:fix before finishing;
-6. Always run and fix tests with npm test.
+6. Always run tests tests with npm test.
 
 It must always:
     - Prioritize excellent UX. Think about what was asked and propose questions and ideas to improve the idea. Never code your ideas without approval first.

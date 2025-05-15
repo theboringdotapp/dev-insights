@@ -6,6 +6,7 @@ import {
   LAST_PATTERN_RESULT_KEY,
 } from "../lib/localStorageUtils";
 import cacheService from "../lib/cacheService";
+import { useAnalysisStore } from "../stores/analysisStore";
 
 interface UsePatternAnalysisCacheProps {
   developerId: string;
@@ -40,8 +41,95 @@ export function usePatternAnalysisCache({
     Set<number>
   >(new Set());
 
+  // Get selected PRs and all analyzed PRs from the store
+  const { selectedPRIds, allAnalyzedPRIds } = useAnalysisStore();
+
   // Ref to track previous developer ID for change detection
   const prevDeveloperIdRef = useRef<string | null>(null);
+
+  // Ref to track previously analyzed PRs for change detection
+  const prevAnalyzedPRsRef = useRef<Set<number>>(new Set());
+
+  /**
+   * Effect to check if patterns are outdated when analyzed PRs change
+   */
+  useEffect(() => {
+    // Debug logging
+    console.log(
+      `[Pattern Cache Debug] Running check effect - metaAnalysisResult: ${!!metaAnalysisResult}, analyzedPRsInLastPattern.size: ${
+        analyzedPRsInLastPattern.size
+      }, selectedPRIds.size: ${
+        Array.from(selectedPRIds).length
+      }, allAnalyzedPRIds.size: ${Array.from(allAnalyzedPRIds).length}`
+    );
+
+    // Only check if we have an existing meta analysis result
+    if (metaAnalysisResult && analyzedPRsInLastPattern.size > 0) {
+      // Convert sets to arrays for comparison
+      const lastPatternPRs = Array.from(analyzedPRsInLastPattern);
+      const currentSelectedPRs = Array.from(selectedPRIds);
+      const currentAnalyzedPRs = Array.from(allAnalyzedPRIds);
+
+      console.log(
+        `[Pattern Cache Debug] Detailed comparison - lastPatternPRs: [${lastPatternPRs.join(
+          ", "
+        )}], currentSelectedPRs: [${currentSelectedPRs.join(
+          ", "
+        )}], currentAnalyzedPRs: [${currentAnalyzedPRs.join(", ")}]`
+      );
+
+      // Check if new PRs have been analyzed since the last pattern generation
+      const hasNewAnalyzedPRs = currentAnalyzedPRs.some(
+        (prId) => !prevAnalyzedPRsRef.current.has(prId)
+      );
+
+      // Check if the selection has changed
+      const selectionChanged =
+        // Different count of selected PRs
+        currentSelectedPRs.length !== lastPatternPRs.length ||
+        // Or different PRs in selection
+        currentSelectedPRs.some(
+          (prId) => !analyzedPRsInLastPattern.has(prId)
+        ) ||
+        // Or selected PRs include newly analyzed ones
+        hasNewAnalyzedPRs;
+
+      console.log(
+        `[Pattern Cache Debug] hasNewAnalyzedPRs: ${hasNewAnalyzedPRs}, selectionChanged: ${selectionChanged}, current isPatternsOutdated: ${isPatternsOutdated}`
+      );
+
+      // Update patterns outdated state if needed
+      if (selectionChanged) {
+        console.log(
+          "[Pattern Cache] Pattern is outdated: selection changed or new PRs analyzed"
+        );
+        setIsPatternsOutdated(true);
+      }
+
+      // Update the ref with current analyzed PRs
+      prevAnalyzedPRsRef.current = new Set(currentAnalyzedPRs);
+    } else if (metaAnalysisResult) {
+      // This handles the case where we have a meta analysis but no analyzedPRsInLastPattern set yet
+      // This can happen if the meta analysis was loaded from cache but the analyzedPRsInLastPattern wasn't properly set
+      console.log(
+        "[Pattern Cache] Meta analysis exists but no analyzedPRsInLastPattern, initializing from cached data"
+      );
+      if (
+        metaAnalysisResult.analyzedPRIds &&
+        metaAnalysisResult.analyzedPRIds.length > 0
+      ) {
+        setAnalyzedPRsInLastPattern(new Set(metaAnalysisResult.analyzedPRIds));
+      }
+    }
+  }, [
+    allAnalyzedPRIds,
+    selectedPRIds,
+    metaAnalysisResult,
+    analyzedPRsInLastPattern,
+    setIsPatternsOutdated,
+    setAnalyzedPRsInLastPattern,
+    isPatternsOutdated,
+  ]);
 
   /**
    * Load pattern analysis from cache
@@ -112,24 +200,40 @@ export function usePatternAnalysisCache({
           setMetaAnalysisResult(cachedPattern);
           setIsFromCache(true);
 
-          // If the developer changed, we need to verify if selected PRs match what was in the pattern
+          // Store the PRs that were analyzed in the pattern
+          const patternPRIds = new Set(cachedPattern.analyzedPRIds || []);
+          // Explicitly cast to the expected type
+          const typedPRIds = new Set<number>(
+            (cachedPattern.analyzedPRIds || []).filter(
+              (id) => typeof id === "number"
+            )
+          );
+          setAnalyzedPRsInLastPattern(typedPRIds);
+
+          // Initialize the ref with the current analyzed PRs
+          prevAnalyzedPRsRef.current = new Set(Array.from(allAnalyzedPRIds));
+
+          // If the developer changed, pattern is considered outdated
           if (developerChanged) {
             console.log(
-              `[Pattern Cache] Developer changed, checking if PRs match`
-            );
-            setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || [])
+              `[Pattern Cache] Developer changed, setting patterns as outdated`
             );
             setIsPatternsOutdated(true);
           } else {
-            // Same developer, pattern from cache is initially considered up-to-date
+            // Check if selection has changed since the pattern was generated
+            const currentSelectedPRs = Array.from(selectedPRIds);
+            const lastPatternPRs = Array.from(patternPRIds);
+
+            const selectionChanged =
+              // Different count of selected PRs
+              currentSelectedPRs.length !== lastPatternPRs.length ||
+              // Or different PRs in selection
+              currentSelectedPRs.some((prId) => !patternPRIds.has(prId));
+
             console.log(
-              `[Pattern Cache] Same developer, setting patterns as up-to-date`
+              `[Pattern Cache] Selection changed: ${selectionChanged}`
             );
-            setIsPatternsOutdated(false);
-            setAnalyzedPRsInLastPattern(
-              new Set(cachedPattern.analyzedPRIds || [])
-            );
+            setIsPatternsOutdated(selectionChanged);
           }
         } else {
           console.log(
@@ -172,7 +276,7 @@ export function usePatternAnalysisCache({
     };
 
     loadCachedPatternAnalysis();
-  }, [developerId, metaAnalysisResult]);
+  }, [developerId, selectedPRIds, allAnalyzedPRIds]);
 
   /**
    * Cache a new pattern analysis result
@@ -200,6 +304,17 @@ export function usePatternAnalysisCache({
         resultWithMetadata
       );
 
+      // Ensure the analyzedPRIds field is present
+      if (
+        !resultWithMetadata.analyzedPRIds ||
+        resultWithMetadata.analyzedPRIds.length === 0
+      ) {
+        console.warn(
+          "[Pattern Cache] Result doesn't contain analyzedPRIds, using current selection"
+        );
+        resultWithMetadata.analyzedPRIds = Array.from(selectedPRIds);
+      }
+
       // Cache in IndexedDB
       await cacheService.cachePatternAnalysis(developerId, resultWithMetadata);
 
@@ -213,7 +328,20 @@ export function usePatternAnalysisCache({
       // Update state
       setMetaAnalysisResult(resultWithMetadata);
       setIsFromCache(true);
-      setIsPatternsOutdated(false);
+      setIsPatternsOutdated(false); // Explicitly reset this flag
+
+      // Store the current PRs that were analyzed in this pattern
+      console.log(
+        `[Pattern Cache] Setting analyzedPRsInLastPattern to: [${resultWithMetadata.analyzedPRIds.join(
+          ", "
+        )}]`
+      );
+      setAnalyzedPRsInLastPattern(
+        new Set(resultWithMetadata.analyzedPRIds || [])
+      );
+
+      // Update the ref with current analyzed PRs
+      prevAnalyzedPRsRef.current = new Set(Array.from(allAnalyzedPRIds));
     } catch (error) {
       console.error("[Pattern Cache] Failed to cache pattern analysis:", error);
 
@@ -248,9 +376,11 @@ export function usePatternAnalysisCache({
       // Clear from localStorage
       try {
         localStorage.removeItem(LAST_PATTERN_RESULT_KEY);
-        console.log("[Pattern Cache] Cleared localStorage pattern backup");
-      } catch (e) {
-        console.error("[Pattern Cache] Error clearing localStorage:", e);
+      } catch (localStorage_error) {
+        console.error(
+          "[Pattern Cache] Error clearing pattern from localStorage:",
+          localStorage_error
+        );
       }
 
       console.log("[Pattern Cache] Pattern cache cleared successfully");

@@ -413,9 +413,16 @@ export function CodeQualityInsights({
       });
 
       // Store which PRs were included in this pattern analysis
+      const selectedPRIdsArray = Array.from(selectedPRIds);
+      console.log(
+        `[handleGenerateMetaAnalysis] Setting analyzedPRIds to: [${selectedPRIdsArray.join(
+          ", "
+        )}]`
+      );
+
       const metaAnalysisWithMetadata = {
         ...metaAnalysis,
-        analyzedPRIds: Array.from(selectedPRIds),
+        analyzedPRIds: selectedPRIdsArray,
       };
 
       // Use our new hook's function to cache the result
@@ -592,6 +599,12 @@ export function CodeQualityInsights({
               {/* Pattern Analysis Results */}
               {metaAnalysisResult ? (
                 <div className="mt-0">
+                  {/* Debug log wrapped in a React Fragment */}
+                  {/* {console.log(
+                    `[CodeQualityInsights Debug] isPatternsOutdated: ${isPatternsOutdated}, metaAnalysisResult exists: ${!!metaAnalysisResult}, isFromCache: ${isFromCache}, analyzedPRsInLastPattern.size: ${
+                      analyzedPRsInLastPattern.size
+                    }, selectedPRIds.size: ${selectedPRIds.size}`
+                  )} */}
                   {isFromCache && !isPatternsOutdated && (
                     <div className="text-right mb-1 p-1 rounded-md">
                       <div className="flex items-center justify-end">
@@ -609,7 +622,13 @@ export function CodeQualityInsights({
                       </div>
                     </div>
                   )}
-                  {isPatternsOutdated && (
+                  {/* Debug log wrapped in a React Fragment */}
+                  {/* {console.log(
+                    `[OutdatedWarning Debug] Should show warning? ${
+                      isPatternsOutdated && !!metaAnalysisResult
+                    }, isPatternsOutdated=${isPatternsOutdated}, metaAnalysisResult exists=${!!metaAnalysisResult}`
+                  )} */}
+                  {isPatternsOutdated && metaAnalysisResult && (
                     <div className="mb-4 p-3 border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/40 rounded-md">
                       <div className="flex items-start">
                         <div className="flex-1">
