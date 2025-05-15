@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import MetricsSummary from "./insights/MetricsSummary";
-// InsightsSummary component removed as per requirements
 import EmptyState from "./insights/EmptyState";
 
 // Import the extracted localStorage utility functions

@@ -3,12 +3,15 @@ import { useState } from "react";
 import DeveloperDashboard from "./components/DeveloperDashboard";
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
+import { DeveloperProvider } from "./contexts/DeveloperContext";
 import "./App.css";
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <DeveloperProvider>
+        <AppContent />
+      </DeveloperProvider>
     </AuthProvider>
   );
 }

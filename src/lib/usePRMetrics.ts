@@ -14,6 +14,7 @@ import {
 } from "./aiAnalysisService";
 import cacheService from "./cacheService";
 import { toast } from "sonner";
+import { useDeveloperContext } from "../contexts/DeveloperContext";
 
 export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
 
@@ -28,6 +29,12 @@ export function usePRMetrics() {
   const [prAnalysisCache, setPRAnalysisCache] = useState<
     Record<number, PRAnalysisResult>
   >({});
+
+  // Get current developer ID
+  const { developerId } = useDeveloperContext();
+
+  // Get Zustand actions
+  const { startAnalysis, completeAnalysis, failAnalysis } = useAnalysisStore();
 
   /**
    * Load metrics for a specific PR
@@ -168,41 +175,59 @@ export function usePRMetrics() {
   };
 
   /**
-   * Analyzes a PR's code with AI
+   * Analyzes PR code with AI or retrieves from cache
    */
   const analyzePRCode = useCallback(
     async (
       pr: PullRequestItem,
-      config: AIAnalysisConfig
+      config?: AIAnalysisConfig
     ): Promise<PRAnalysisResult | null> => {
-      if (!isReady || !service || !pr.number) return null;
+      if (!isReady) {
+        throw new Error("GitHub service not ready");
+      }
 
-      // Get Zustand actions inside the callback if not passed as args
-      const { startAnalysis, completeAnalysis, failAnalysis } =
-        useAnalysisStore.getState();
-      const previouslyAnalyzed = !!useAnalysisStore
-        .getState()
-        .allAnalyzedPRIds.has(pr.id);
+      if (!service) {
+        throw new Error("GitHub service unavailable");
+      }
 
-      startAnalysis(pr.id); // Mark as analyzing *before* doing work
+      // Log which PR we're analyzing
+      console.log(`[usePRMetrics] Analyzing PR #${pr.number}: ${pr.title}`);
+
       try {
-        // First, check if we have cached results
-        const cachedResult = await cacheService.getPRAnalysis(pr.id);
-        if (cachedResult) {
-          console.log(`Using cached analysis for PR #${pr.number}`);
+        startAnalysis(pr.id); // Mark as analyzing
 
-          // Update the in-memory cache
-          setPRAnalysisCache((prev) => ({
-            ...prev,
-            [pr.id]: cachedResult,
-          }));
+        // Check if the current PR has been analyzed before
+        const previouslyAnalyzed = useAnalysisStore
+          .getState()
+          .allAnalyzedPRIds.has(pr.id);
 
-          // Update the hook's internal memory cache as well
-          setPRAnalysisCache((prev) => ({ ...prev, [pr.id]: cachedResult }));
-
-          // *** IMPORTANT FIX: Mark as complete even if from cache ***
+        // Check cache first (both in-memory and persistent)
+        // Get from memory cache
+        if (prAnalysisCache[pr.id]) {
+          const cachedResult = prAnalysisCache[pr.id];
+          console.log(`Found PR #${pr.id} in memory cache`);
           completeAnalysis(pr.id, !previouslyAnalyzed);
           return cachedResult;
+        }
+
+        // Check persistent cache
+        try {
+          const cachedResult = await cacheService.getPRAnalysis(
+            pr.id,
+            developerId
+          );
+          if (cachedResult) {
+            console.log(`Found PR #${pr.id} in persistent cache`);
+            // Update the hook's internal memory cache as well
+            setPRAnalysisCache((prev) => ({ ...prev, [pr.id]: cachedResult }));
+
+            // *** IMPORTANT FIX: Mark as complete even if from cache ***
+            completeAnalysis(pr.id, !previouslyAnalyzed);
+            return cachedResult;
+          }
+        } catch (cacheError) {
+          console.warn("Error retrieving from cache:", cacheError);
+          // Continue with analysis if cache lookup fails
         }
 
         // Extract repo owner and name
@@ -246,7 +271,7 @@ export function usePRMetrics() {
         }));
 
         // Store in persistent cache
-        await cacheService.cachePRAnalysis(result);
+        await cacheService.cachePRAnalysis(result, developerId);
 
         completeAnalysis(pr.id, !previouslyAnalyzed); // Mark as complete
         return result;
@@ -275,12 +300,19 @@ export function usePRMetrics() {
         return null;
       }
     },
-    [isReady, service, analyzePRWithAI, formatPRFilesForAnalysis, cacheService]
+    [
+      isReady,
+      service,
+      analyzePRWithAI,
+      formatPRFilesForAnalysis,
+      cacheService,
+      startAnalysis,
+      completeAnalysis,
+      failAnalysis,
+      developerId,
+      prAnalysisCache,
+    ]
   );
-
-  // Get Zustand actions
-  const { startAnalysis, completeAnalysis, failAnalysis } =
-    useAnalysisStore.getState();
 
   /**
    * Analyzes multiple PRs with AI
@@ -375,7 +407,10 @@ export function usePRMetrics() {
 
       // If not in memory, check persistent cache
       try {
-        const cachedResult = await cacheService.getPRAnalysis(prId);
+        const cachedResult = await cacheService.getPRAnalysis(
+          prId,
+          developerId
+        );
 
         // If found in persistent cache, update in-memory cache
         if (cachedResult) {
@@ -392,7 +427,7 @@ export function usePRMetrics() {
 
       return null;
     },
-    [prAnalysisCache]
+    [prAnalysisCache, developerId]
   );
 
   // Create a synchronous version that only checks in-memory cache

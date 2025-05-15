@@ -15,10 +15,14 @@ import { CodeQualityInsights } from "./CodeQualityInsights";
 import { useSearchParams } from "react-router-dom";
 import UnauthenticatedView from "./UnauthenticatedView";
 import ScrollToTop from "./ui/ScrollToTop";
+import { useDeveloperContext } from "../contexts/DeveloperContext";
+import { useAnalysisStore } from "../stores/analysisStore";
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { setDeveloperId } = useDeveloperContext();
+  const { clearAnalysisData } = useAnalysisStore();
 
   // Get username from URL or default to user profile
   const usernameFromUrl = searchParams.get("username");
@@ -52,10 +56,12 @@ export default function DeveloperDashboard() {
   useEffect(() => {
     if (usernameFromUrl && usernameFromUrl !== username) {
       setUsername(usernameFromUrl);
+      setDeveloperId(usernameFromUrl); // Update developer context
       setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
       setShowData(true);
+      clearAnalysisData(); // Clear analysis data when switching users via URL
     }
-  }, [usernameFromUrl, username]);
+  }, [usernameFromUrl, username, setDeveloperId, clearAnalysisData]);
 
   // Auto-trigger search if username is in URL
   useEffect(() => {
@@ -111,6 +117,12 @@ export default function DeveloperDashboard() {
   ]);
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
+    // If username is changing, clear analysis data
+    if (newUsername !== username) {
+      clearAnalysisData();
+      setDeveloperId(newUsername);
+    }
+
     setUsername(newUsername);
     setTimeframe(newTimeframe);
     // Update URL with the username
@@ -219,6 +231,7 @@ export default function DeveloperDashboard() {
                 <CodeQualityInsights
                   pullRequests={filteredPRs}
                   allPRs={allPRs}
+                  developerId={username}
                 />
               </div>
             </div>
