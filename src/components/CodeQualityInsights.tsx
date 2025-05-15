@@ -587,12 +587,30 @@ export function CodeQualityInsights({
           {!isConfigVisible && (
             <>
               {/* Analysis Overview Section */}
-              {!isOverallLoading && allAnalyzedPRIds.size > 0 && (
+              {allAnalyzedPRIds.size > 0 && (
                 <div className="space-y-3">
-                  <MetricsSummary
-                    analyzedPRCount={allAnalyzedPRIds.size}
-                    averageScore={averageScore}
-                  />
+                  {isOverallLoading ? (
+                    // Skeleton for MetricsSummary
+                    <div className="p-4 bg-white dark:bg-zinc-800 rounded-lg shadow animate-pulse">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="h-5 bg-zinc-300 dark:bg-zinc-700 rounded w-2/5"></div>{" "}
+                        {/* Text: "X PRs Analyzed" */}
+                        <div className="h-5 bg-zinc-300 dark:bg-zinc-700 rounded w-1/4"></div>{" "}
+                        {/* Text: "Avg Score" */}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="h-8 bg-zinc-300 dark:bg-zinc-700 rounded w-1/5"></div>{" "}
+                        {/* Value: Count */}
+                        <div className="h-8 bg-zinc-300 dark:bg-zinc-700 rounded w-1/5"></div>{" "}
+                        {/* Value: Score */}
+                      </div>
+                    </div>
+                  ) : (
+                    <MetricsSummary
+                      analyzedPRCount={allAnalyzedPRIds.size}
+                      averageScore={averageScore}
+                    />
+                  )}
                 </div>
               )}
 
