@@ -9,6 +9,31 @@ const PATTERN_ANALYSIS_STORE = "pattern-analysis";
 // Debug flag - set to true for verbose logging
 const DEBUG = true;
 
+// Connection pool to avoid repeatedly opening the database
+let dbConnectionPromise: Promise<IDBDatabase> | null = null;
+
+// Locks to prevent concurrent access to the same resources
+const operationLocks: Record<string, boolean> = {};
+
+// Helper to get/create a lock for a specific operation
+function getLock(key: string): boolean {
+  if (operationLocks[key]) {
+    if (DEBUG)
+      console.log(
+        `[CacheService] Operation in progress for ${key}, skipping duplicate`
+      );
+    return false;
+  }
+
+  operationLocks[key] = true;
+  return true;
+}
+
+// Helper to release a lock
+function releaseLock(key: string): void {
+  operationLocks[key] = false;
+}
+
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -16,10 +41,24 @@ interface CacheEntry<T> {
 }
 
 /**
- * Initialize the IndexedDB database
+ * Initialize the IndexedDB database with connection pooling
  */
 async function initializeDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  // If we already have a connection promise, return it
+  if (dbConnectionPromise) {
+    try {
+      return await dbConnectionPromise;
+    } catch (e) {
+      console.warn(
+        "[CacheService] Connection pool error, creating new connection:",
+        e
+      );
+      dbConnectionPromise = null; // Reset and try again
+    }
+  }
+
+  // Create a new connection promise
+  dbConnectionPromise = new Promise((resolve, reject) => {
     try {
       if (DEBUG)
         console.log(
@@ -29,12 +68,36 @@ async function initializeDB(): Promise<IDBDatabase> {
 
       request.onerror = (event) => {
         console.error("IndexedDB error:", event);
+        dbConnectionPromise = null; // Reset the pool on error
         reject("Failed to open database");
       };
 
       request.onsuccess = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
         if (DEBUG) console.log(`[CacheService] Successfully opened database`);
-        resolve((event.target as IDBOpenDBRequest).result);
+
+        // Set up error handling for the connection
+        db.onerror = (event) => {
+          console.error("[CacheService] Database error:", event);
+          dbConnectionPromise = null; // Reset the pool on connection error
+        };
+
+        // Set up connection close handler
+        db.onclose = () => {
+          console.log("[CacheService] Database connection closed");
+          dbConnectionPromise = null; // Reset the pool when connection closes
+        };
+
+        // Set up version change handler
+        db.onversionchange = () => {
+          console.log(
+            "[CacheService] Database version change, closing connection"
+          );
+          db.close();
+          dbConnectionPromise = null; // Reset the pool on version change
+        };
+
+        resolve(db);
       };
 
       request.onupgradeneeded = (event) => {
@@ -152,6 +215,17 @@ export const cacheService = {
     prId: number,
     developerId: string
   ): Promise<PRAnalysisResult | null> {
+    // Create unique key for this operation
+    const opKey = `getPR-${developerId}-${prId}`;
+
+    // Skip if this exact operation is already in progress
+    if (!getLock(opKey)) {
+      console.log(
+        `[CacheService] Skipping duplicate request for PR ${prId} (${developerId})`
+      );
+      return null;
+    }
+
     try {
       const db = await initializeDB();
       const transaction = db.transaction(PR_ANALYSIS_STORE, "readonly");
@@ -194,6 +268,9 @@ export const cacheService = {
       console.error("Cache retrieval error:", error);
       // Fall back to localStorage
       return this.getPRAnalysisFromLocalStorage(prId, developerId);
+    } finally {
+      // Always release the lock when done
+      releaseLock(opKey);
     }
   },
 
@@ -415,12 +492,23 @@ export const cacheService = {
       return null;
     }
 
-    if (DEBUG)
+    // Create unique key for this operation
+    const opKey = `getPattern-${developerId}`;
+
+    // Skip if this exact operation is already in progress
+    if (!getLock(opKey)) {
       console.log(
-        `[CacheService] Retrieving pattern analysis for developer: ${developerId}`
+        `[CacheService] Skipping duplicate pattern request for ${developerId}`
       );
+      return null;
+    }
 
     try {
+      if (DEBUG)
+        console.log(
+          `[CacheService] Retrieving pattern analysis for developer: ${developerId}`
+        );
+
       const db = await initializeDB();
       const transaction = db.transaction(PATTERN_ANALYSIS_STORE, "readonly");
       const store = transaction.objectStore(PATTERN_ANALYSIS_STORE);
@@ -487,6 +575,9 @@ export const cacheService = {
           `[CacheService] Error in IndexedDB retrieval, trying localStorage fallback`
         );
       return this.getPatternAnalysisFromLocalStorage(developerId);
+    } finally {
+      // Always release the lock when done
+      releaseLock(opKey);
     }
   },
 

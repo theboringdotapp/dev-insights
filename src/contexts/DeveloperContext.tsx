@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -29,24 +30,40 @@ export function DeveloperProvider({ children }: DeveloperProviderProps) {
   const [searchParams] = useSearchParams();
   const { userProfile } = useAuth();
 
+  // Keep track of previous ID to detect actual changes
+  const prevIdRef = useRef<string>("");
+
   // Initialize from URL or authenticated user
   const initialDeveloperId =
     searchParams.get("username") || userProfile?.login || "";
   const [developerId, setDeveloperIdState] = useState(initialDeveloperId);
 
-  // Update developerId when URL or user profile changes
+  // Only set from userProfile if we don't have any other source
   useEffect(() => {
-    const urlUsername = searchParams.get("username");
-    if (urlUsername) {
-      setDeveloperIdState(urlUsername);
-    } else if (!developerId && userProfile?.login) {
+    if (!developerId && userProfile?.login) {
+      console.log(
+        `[DeveloperContext] Setting initial developer ID from user profile: ${userProfile.login}`
+      );
       setDeveloperIdState(userProfile.login);
     }
-  }, [searchParams, userProfile, developerId]);
+  }, [userProfile, developerId]);
 
-  // Custom setter that also logs changes
+  // Custom setter that also logs changes and prevents redundant updates
   const setDeveloperId = (id: string) => {
-    console.log(`[DeveloperContext] Setting developer ID: ${id}`);
+    // Skip if the ID isn't actually changing
+    if (id === developerId) {
+      console.log(
+        `[DeveloperContext] Skipping redundant update to same ID: ${id}`
+      );
+      return;
+    }
+
+    // Update previous ID ref
+    prevIdRef.current = developerId;
+
+    console.log(
+      `[DeveloperContext] Setting developer ID: ${id} (previous: ${prevIdRef.current})`
+    );
     setDeveloperIdState(id);
   };
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { TimeframeSelector, Timeframe } from "./TimeframeSelector";
-import { useSearchParams } from "react-router-dom";
 
 interface SearchFormProps {
   username: string;
@@ -17,7 +16,6 @@ export function SearchForm({
 }: SearchFormProps) {
   const [username, setUsername] = useState(initialUsername);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
-  const [, setSearchParams] = useSearchParams();
 
   // Update form when initialUsername changes (from URL)
   useEffect(() => {
@@ -27,9 +25,13 @@ export function SearchForm({
   // Handle form submission (still needed for explicit search)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Update URL only on explicit submission
-    setSearchParams({ username: username });
-    onSearch(username, timeframe);
+
+    // We don't need to update URL here, let the parent component handle it
+    // This avoids double URL updates and potential race conditions
+    if (username.trim().length > 2) {
+      console.log(`[SearchForm] Form submitted for user: ${username}`);
+      onSearch(username, timeframe);
+    }
   };
 
   // Listen for timeframe changes to trigger search
@@ -39,12 +41,14 @@ export function SearchForm({
 
       // Only trigger search if we have a valid username
       if (username.trim().length > 2) {
-        // Update URL when timeframe changes *if* username is valid
-        setSearchParams({ username: username });
+        console.log(
+          `[SearchForm] Timeframe changed to: ${newTimeframe} for user: ${username}`
+        );
+        // Let the parent component update the URL
         onSearch(username, newTimeframe);
       }
     },
-    [username, onSearch, setSearchParams]
+    [username, onSearch]
   );
 
   return (

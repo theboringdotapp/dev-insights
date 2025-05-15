@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
 import { SearchForm } from "./SearchForm";
@@ -40,6 +40,9 @@ export default function DeveloperDashboard() {
   const [realCommitCount, setRealCommitCount] = useState(0);
   const [isLoadingCommits, setIsLoadingCommits] = useState(false);
 
+  // Use a ref to track when a search is already in progress to prevent URL listener cycles
+  const isHandlingSearchRef = useRef(false);
+
   // For handling PR metrics
   const { enhancePRsWithMetrics, calculateFilteredStats } = usePRMetrics();
 
@@ -54,7 +57,18 @@ export default function DeveloperDashboard() {
 
   // Listen for URL parameter changes and update search
   useEffect(() => {
+    // Skip if we're already handling a search to prevent cycles
+    if (isHandlingSearchRef.current) {
+      console.log(
+        `[DeveloperDashboard] Ignoring URL change during active search`
+      );
+      return;
+    }
+
     if (usernameFromUrl && usernameFromUrl !== username) {
+      console.log(
+        `[DeveloperDashboard] URL changed to user: ${usernameFromUrl} (previous: ${username})`
+      );
       setUsername(usernameFromUrl);
       setDeveloperId(usernameFromUrl); // Update developer context
       setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
@@ -117,19 +131,36 @@ export default function DeveloperDashboard() {
   ]);
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
-    // If username is changing, clear analysis data
-    if (newUsername !== username) {
-      clearAnalysisData();
-      setDeveloperId(newUsername);
-    }
+    console.log(
+      `[DeveloperDashboard] Search triggered for: ${newUsername} (current: ${username})`
+    );
 
-    setUsername(newUsername);
-    setTimeframe(newTimeframe);
-    // Update URL with the username
-    setSearchParams({ username: newUsername });
-    // Increment the search trigger to cause a re-fetch
-    setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
-    setShowData(true);
+    try {
+      // Set flag to prevent the URL effect from reacting while we're handling search
+      isHandlingSearchRef.current = true;
+
+      // Only update if username is actually changing
+      if (newUsername !== username) {
+        clearAnalysisData();
+        setDeveloperId(newUsername);
+        setUsername(newUsername);
+
+        // Update URL with the username
+        setSearchParams({ username: newUsername });
+      } else if (newTimeframe !== timeframe) {
+        // If only timeframe changed
+        setTimeframe(newTimeframe);
+      }
+
+      // Increment the search trigger to cause a re-fetch
+      setSearchTrigger((prev) => (prev === undefined ? 1 : prev + 1));
+      setShowData(true);
+    } finally {
+      // Always reset the flag after a short delay to ensure that React batch updates complete first
+      setTimeout(() => {
+        isHandlingSearchRef.current = false;
+      }, 100);
+    }
   };
 
   const handleFilterChange = (showOnlyImportant: boolean) => {

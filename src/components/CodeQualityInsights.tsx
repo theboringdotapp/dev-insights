@@ -1,14 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useRef, useCallback } from "react";
 import MetricsSummary from "./insights/MetricsSummary";
 import EmptyState from "./insights/EmptyState";
 
 // Import the extracted localStorage utility functions
-import {
-  CachedMetaAnalysisResult,
-  saveCurrentDeveloperToLocalStorage,
-  loadDeveloperIdFromLocalStorage,
-} from "../lib/localStorageUtils";
+import { CachedMetaAnalysisResult } from "../lib/localStorageUtils";
 
 // Import the new custom hooks
 import { usePatternAnalysisCache } from "../hooks/usePatternAnalysisCache";
@@ -30,6 +25,7 @@ import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 // import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 // import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
 import MetaAnalysis from "./code-quality/MetaAnalysis";
+import { useDeveloperContext } from "../contexts/DeveloperContext";
 
 import cacheService from "../lib/cacheService";
 
@@ -41,74 +37,7 @@ import cacheService from "../lib/cacheService";
 interface CodeQualityInsightsProps {
   pullRequests: PullRequestItem[];
   allPRs?: PullRequestItem[];
-  developerId: string;
-}
-
-/**
- * Custom hook to manage developer ID from URL, localStorage, and props
- */
-function useDeveloperId(propDeveloperId: string = "unknown") {
-  const [searchParams] = useSearchParams();
-  const urlDeveloperId = searchParams.get("username");
-
-  // State for developer ID
-  const [developerId, setDeveloperId] = useState(
-    urlDeveloperId || propDeveloperId
-  );
-
-  // Try to get developer ID from localStorage as a fallback
-  const loadDeveloperIdFromStorage = useCallback(() => {
-    try {
-      return loadDeveloperIdFromLocalStorage();
-    } catch (e) {
-      console.error(
-        "[useDeveloperId] Error loading developer ID from localStorage:",
-        e
-      );
-      return null;
-    }
-  }, []);
-
-  // Effect to initialize developerId from localStorage if needed
-  useEffect(() => {
-    if ((!developerId || developerId === "unknown") && !urlDeveloperId) {
-      const storedDeveloperId = loadDeveloperIdFromStorage();
-      if (storedDeveloperId) {
-        console.log(
-          `[useDeveloperId] Recovered developer ID from localStorage: ${storedDeveloperId}`
-        );
-        setDeveloperId(storedDeveloperId);
-
-        // If needed, update the URL with the recovered developer ID
-        if (window.location.search === "") {
-          try {
-            // Create a new URL with the recovered developer ID
-            const url = new URL(window.location.href);
-            url.searchParams.set("username", storedDeveloperId);
-            // Use replace state to avoid adding to browser history
-            window.history.replaceState({}, "", url.toString());
-            console.log(
-              `[useDeveloperId] Updated URL with recovered developer ID: ${storedDeveloperId}`
-            );
-          } catch (e) {
-            console.error("[useDeveloperId] Failed to update URL:", e);
-          }
-        }
-      }
-    } else if (urlDeveloperId && urlDeveloperId !== developerId) {
-      // URL parameter takes precedence over state
-      setDeveloperId(urlDeveloperId);
-    }
-  }, [urlDeveloperId, developerId, loadDeveloperIdFromStorage]);
-
-  // Effect to save current developer ID for persistence across refreshes
-  useEffect(() => {
-    if (developerId && developerId !== "unknown") {
-      saveCurrentDeveloperToLocalStorage(developerId);
-    }
-  }, [developerId]);
-
-  return { developerId, setDeveloperId };
+  developerId?: string; // This is now optional as we'll use the context
 }
 
 /**
@@ -124,20 +53,41 @@ function useThemeManagement(
   const { setCalculatedThemes } = useAnalysisStore();
   const { setIsPatternsOutdated } = usePatternAnalysisCache({ developerId });
 
+  // Cache for PR results to avoid repeated database calls
+  const resultsCache = useRef<Record<number, PRAnalysisResult>>({});
+  // Track previous selection for change detection
+  const prevSelectedIdsRef = useRef<Set<number>>(new Set());
+
   // Update themes based on selected PRs
   useEffect(() => {
-    const currentSelectedIds = Array.from(selectedPRIds); // Get current selection
-    console.log(
-      `[Selection Change Effect] Running. Selected IDs: ${
-        currentSelectedIds.join(", ") || "None"
-      }`
-    );
+    const currentSelectedIds = Array.from(selectedPRIds);
+
+    // Check if selection actually changed to avoid unnecessary work
+    const prevSelectedIds = Array.from(prevSelectedIdsRef.current);
+    const selectionChanged =
+      prevSelectedIds.length !== currentSelectedIds.length ||
+      currentSelectedIds.some((id) => !prevSelectedIdsRef.current.has(id));
+
+    if (!selectionChanged && Object.keys(resultsCache.current).length > 0) {
+      // If selection hasn't changed and we have cached results, skip processing
+      return;
+    }
+
+    // Update the ref with current selection
+    prevSelectedIdsRef.current = new Set(currentSelectedIds);
+
+    // Log only when selection actually changes
+    if (selectionChanged) {
+      console.log(
+        `[Selection Change Effect] Selection changed. IDs: ${
+          currentSelectedIds.join(", ") || "None"
+        }`
+      );
+    }
 
     const updateThemesForSelection = async () => {
       if (currentSelectedIds.length === 0) {
-        console.log(
-          "[Selection Change Effect] No PRs selected. Clearing themes."
-        );
+        // Clear themes if no selection
         setCalculatedThemes({
           commonStrengths: [],
           commonWeaknesses: [],
@@ -147,35 +97,38 @@ function useThemeManagement(
         return;
       }
 
-      console.log(
-        `[Selection Change Effect] Fetching data for ${currentSelectedIds.length} selected PRs...`
-      );
       try {
         const results: PRAnalysisResult[] = [];
+        const idsToFetch = currentSelectedIds.filter(
+          (id) => !resultsCache.current[id]
+        );
+
+        // Only fetch what we don't already have in cache
+        if (idsToFetch.length > 0) {
+          for (const id of idsToFetch) {
+            const result = await cacheService.getPRAnalysis(id, developerId);
+            if (result) {
+              results.push(result);
+              // Store in our local cache to avoid repeated fetches
+              resultsCache.current[id] = result;
+            }
+          }
+        }
+
+        // Use cached results for the rest
         for (const id of currentSelectedIds) {
-          const result = await cacheService.getPRAnalysis(id);
-          if (result) {
-            results.push(result);
-          } else {
-            console.warn(
-              `[Selection Change Effect] Could not find cached data for selected PR #${id}`
-            );
+          if (resultsCache.current[id] && !idsToFetch.includes(id)) {
+            results.push(resultsCache.current[id]);
           }
         }
 
         if (results.length > 0) {
-          console.log(
-            `[Selection Change Effect] Calculating themes for ${results.length} results...`
-          );
           const themes = calculateCommonThemes(results);
-          console.log(
-            "[Selection Change Effect] Calculated themes:",
-            JSON.stringify(themes)
-          );
-          setCalculatedThemes(themes); // Update store
-        } else {
+          setCalculatedThemes(themes);
+        } else if (currentSelectedIds.length > 0) {
+          // Only log warning if we expected results but got none
           console.warn(
-            "[Selection Change Effect] No valid results found for selected PRs. Clearing themes."
+            `[Selection Change Effect] No valid results found for ${currentSelectedIds.length} selected PRs. Clearing themes.`
           );
           setCalculatedThemes({
             commonStrengths: [],
@@ -201,36 +154,45 @@ function useThemeManagement(
 
     updateThemesForSelection();
 
-    // Mark patterns as outdated if we have an existing meta analysis
-    // and if the current selection differs from what was analyzed before
-    if (metaAnalysisResult && !isGeneratingMetaAnalysis) {
+    // Check if we need to mark patterns as outdated (only if meta analysis exists)
+    if (
+      metaAnalysisResult &&
+      !isGeneratingMetaAnalysis &&
+      analyzedPRsInLastPattern.size > 0
+    ) {
       const currentSelection = new Set(selectedPRIds);
 
       // Check if selection has changed since last pattern analysis
       if (currentSelection.size !== analyzedPRsInLastPattern.size) {
         setIsPatternsOutdated(true);
       } else {
-        // Check if any PRs are different between current selection and last analysis
-        const anyDifferent =
-          Array.from(currentSelection).some(
-            (id) => !analyzedPRsInLastPattern.has(id)
-          ) ||
-          Array.from(analyzedPRsInLastPattern).some(
-            (id) => !currentSelection.has(id)
-          );
+        // Check if any PRs are different
+        const anyDifferent = Array.from(currentSelection).some(
+          (id) => !analyzedPRsInLastPattern.has(id)
+        );
+
         if (anyDifferent) {
           setIsPatternsOutdated(true);
         }
       }
     }
   }, [
-    selectedPRIds,
+    selectedPRIds, // Re-run when selection changes
+    developerId, // Re-run when developer changes
+    // Include these dependencies for state updates but with less frequent changes
     metaAnalysisResult,
     isGeneratingMetaAnalysis,
     analyzedPRsInLastPattern,
     setCalculatedThemes,
     setIsPatternsOutdated,
   ]);
+
+  // Clear cache when developer changes
+  useEffect(() => {
+    // Clear results cache when developer changes
+    resultsCache.current = {};
+    prevSelectedIdsRef.current = new Set();
+  }, [developerId]);
 }
 
 /**
@@ -240,10 +202,9 @@ function useThemeManagement(
 export function CodeQualityInsights({
   pullRequests,
   allPRs,
-  developerId: propDeveloperId = "unknown", // Renamed to clarify it's from props
 }: CodeQualityInsightsProps) {
-  // Use the developer ID hook
-  const { developerId } = useDeveloperId(propDeveloperId);
+  // Use the DeveloperContext instead of a custom hook
+  const { developerId } = useDeveloperContext();
 
   // Get ALL relevant state and actions from Zustand store
   const {
@@ -392,7 +353,7 @@ export function CodeQualityInsights({
 
       // Fetch PR analysis data for selected PRs
       const prAnalysisPromises = Array.from(selectedPRIds).map((prId) =>
-        cacheService.getPRAnalysis(prId)
+        cacheService.getPRAnalysis(prId, developerId)
       );
 
       const prAnalysisResults = await Promise.all(prAnalysisPromises);
@@ -445,6 +406,7 @@ export function CodeQualityInsights({
     setIsGeneratingMetaAnalysis,
     setMetaAnalysisResult,
     cachePatternAnalysis,
+    developerId,
   ]);
 
   // Toggle between filtered PRs and all PRs

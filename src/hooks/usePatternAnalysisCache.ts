@@ -54,81 +54,47 @@ export function usePatternAnalysisCache({
    * Effect to check if patterns are outdated when analyzed PRs change
    */
   useEffect(() => {
-    // Debug logging
-    console.log(
-      `[Pattern Cache Debug] Running check effect - metaAnalysisResult: ${!!metaAnalysisResult}, analyzedPRsInLastPattern.size: ${
-        analyzedPRsInLastPattern.size
-      }, selectedPRIds.size: ${
-        Array.from(selectedPRIds).length
-      }, allAnalyzedPRIds.size: ${Array.from(allAnalyzedPRIds).length}`
+    // Skip this check if we don't have any analysis result or analyzed PRs yet
+    if (!metaAnalysisResult || analyzedPRsInLastPattern.size === 0) {
+      return;
+    }
+
+    // Skip excessive debug logging - only log when things actually change
+    const currentSelectedPRs = Array.from(selectedPRIds);
+    const lastPatternPRs = Array.from(analyzedPRsInLastPattern);
+    const currentAnalyzedPRs = Array.from(allAnalyzedPRIds);
+
+    // Check if new PRs have been analyzed since the last pattern generation
+    const hasNewAnalyzedPRs = currentAnalyzedPRs.some(
+      (prId) => !prevAnalyzedPRsRef.current.has(prId)
     );
 
-    // Only check if we have an existing meta analysis result
-    if (metaAnalysisResult && analyzedPRsInLastPattern.size > 0) {
-      // Convert sets to arrays for comparison
-      const lastPatternPRs = Array.from(analyzedPRsInLastPattern);
-      const currentSelectedPRs = Array.from(selectedPRIds);
-      const currentAnalyzedPRs = Array.from(allAnalyzedPRIds);
+    // Check if the selection has changed
+    const selectionChanged =
+      // Different count of selected PRs
+      currentSelectedPRs.length !== lastPatternPRs.length ||
+      // Or different PRs in selection
+      currentSelectedPRs.some((prId) => !analyzedPRsInLastPattern.has(prId)) ||
+      // Or selected PRs include newly analyzed ones
+      hasNewAnalyzedPRs;
 
+    // Only update state or log if something actually changed
+    if (selectionChanged && !isPatternsOutdated) {
       console.log(
-        `[Pattern Cache Debug] Detailed comparison - lastPatternPRs: [${lastPatternPRs.join(
-          ", "
-        )}], currentSelectedPRs: [${currentSelectedPRs.join(
-          ", "
-        )}], currentAnalyzedPRs: [${currentAnalyzedPRs.join(", ")}]`
+        "[Pattern Cache] Pattern is outdated: selection changed or new PRs analyzed"
       );
-
-      // Check if new PRs have been analyzed since the last pattern generation
-      const hasNewAnalyzedPRs = currentAnalyzedPRs.some(
-        (prId) => !prevAnalyzedPRsRef.current.has(prId)
-      );
-
-      // Check if the selection has changed
-      const selectionChanged =
-        // Different count of selected PRs
-        currentSelectedPRs.length !== lastPatternPRs.length ||
-        // Or different PRs in selection
-        currentSelectedPRs.some(
-          (prId) => !analyzedPRsInLastPattern.has(prId)
-        ) ||
-        // Or selected PRs include newly analyzed ones
-        hasNewAnalyzedPRs;
-
-      console.log(
-        `[Pattern Cache Debug] hasNewAnalyzedPRs: ${hasNewAnalyzedPRs}, selectionChanged: ${selectionChanged}, current isPatternsOutdated: ${isPatternsOutdated}`
-      );
-
-      // Update patterns outdated state if needed
-      if (selectionChanged) {
-        console.log(
-          "[Pattern Cache] Pattern is outdated: selection changed or new PRs analyzed"
-        );
-        setIsPatternsOutdated(true);
-      }
-
-      // Update the ref with current analyzed PRs
-      prevAnalyzedPRsRef.current = new Set(currentAnalyzedPRs);
-    } else if (metaAnalysisResult) {
-      // This handles the case where we have a meta analysis but no analyzedPRsInLastPattern set yet
-      // This can happen if the meta analysis was loaded from cache but the analyzedPRsInLastPattern wasn't properly set
-      console.log(
-        "[Pattern Cache] Meta analysis exists but no analyzedPRsInLastPattern, initializing from cached data"
-      );
-      if (
-        metaAnalysisResult.analyzedPRIds &&
-        metaAnalysisResult.analyzedPRIds.length > 0
-      ) {
-        setAnalyzedPRsInLastPattern(new Set(metaAnalysisResult.analyzedPRIds));
-      }
+      setIsPatternsOutdated(true);
     }
+
+    // Update the ref with current analyzed PRs
+    prevAnalyzedPRsRef.current = new Set(currentAnalyzedPRs);
   }, [
-    allAnalyzedPRIds,
     selectedPRIds,
+    allAnalyzedPRIds,
     metaAnalysisResult,
     analyzedPRsInLastPattern,
-    setIsPatternsOutdated,
-    setAnalyzedPRsInLastPattern,
     isPatternsOutdated,
+    setIsPatternsOutdated,
   ]);
 
   /**
@@ -143,19 +109,28 @@ export function usePatternAnalysisCache({
         return;
       }
 
+      // Check if developer changed - only reload cache if developer changed
+      const developerChanged =
+        prevDeveloperIdRef.current !== null &&
+        prevDeveloperIdRef.current !== developerId;
+
+      if (!developerChanged && metaAnalysisResult) {
+        // If developer hasn't changed and we already have a result, don't reload
+        console.log(
+          `[Pattern Cache] Using existing cache for developer: ${developerId}, skipping reload`
+        );
+        return;
+      }
+
       console.log(
         `[Pattern Cache] Attempting to load cached patterns for developer: ${developerId}`
       );
 
-      // Check if developer changed
-      const developerChanged =
-        prevDeveloperIdRef.current !== null &&
-        prevDeveloperIdRef.current !== developerId;
       console.log(
         `[Pattern Cache] Developer changed: ${developerChanged}, previous: ${prevDeveloperIdRef.current}, current: ${developerId}`
       );
 
-      // Update the reference
+      // Update the reference BEFORE any async operations to prevent race conditions
       prevDeveloperIdRef.current = developerId;
 
       try {
@@ -201,12 +176,15 @@ export function usePatternAnalysisCache({
           setIsFromCache(true);
 
           // Store the PRs that were analyzed in the pattern
-          const patternPRIds = new Set(cachedPattern.analyzedPRIds || []);
+          // Cast to CachedMetaAnalysisResult to access analyzedPRIds property
+          const patternPRIds = new Set(
+            (cachedPattern as CachedMetaAnalysisResult).analyzedPRIds || []
+          );
           // Explicitly cast to the expected type
           const typedPRIds = new Set<number>(
-            (cachedPattern.analyzedPRIds || []).filter(
-              (id) => typeof id === "number"
-            )
+            (
+              (cachedPattern as CachedMetaAnalysisResult).analyzedPRIds || []
+            ).filter((id) => typeof id === "number")
           );
           setAnalyzedPRsInLastPattern(typedPRIds);
 
@@ -276,7 +254,7 @@ export function usePatternAnalysisCache({
     };
 
     loadCachedPatternAnalysis();
-  }, [developerId, selectedPRIds, allAnalyzedPRIds]);
+  }, [developerId]); // ONLY re-run when developerId changes
 
   /**
    * Cache a new pattern analysis result
