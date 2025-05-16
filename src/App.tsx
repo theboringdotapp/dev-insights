@@ -27,76 +27,93 @@ function AppContent() {
 
   return (
     <>
-      {/* Header */}
-      <header className="bg-background p-4 border-b border-border sticky top-0 z-50">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-semibold bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-            DevInsight
-          </h1>
-          {isAuthenticated && (
-            <div className="relative">
-              <button
-                onClick={toggleDropdown}
-                className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted transition-colors focus:outline-none cursor-pointer"
-                aria-label="User menu"
-                aria-expanded={showDropdown}
+      {/* Header - removed sticky positioning */}
+      <header className="bg-card border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <a
+                href="/"
+                className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
+                <span className="font-semibold text-xl text-purple-600">
+                  DevInsight
+                </span>
+              </a>
+            </div>
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={toggleDropdown}
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted transition-colors focus:outline-none cursor-pointer"
+                  aria-label="User menu"
+                  aria-expanded={showDropdown}
                 >
-                  <path d="M12 1.27a11 11 0 00-3.48 21.46c.55.09.73-.28.73-.55v-1.84c-3.03.64-3.67-1.46-3.67-1.46-.55-1.29-1.28-1.65-1.28-1.65-.92-.65.1-.65.1-.65 1.1 0 1.73 1.1 1.73 1.1.92 1.65 2.57 1.2 3.21.92a2 2 0 01.64-1.47c-2.47-.27-5.04-1.19-5.04-5.5 0-1.1.46-2.1 1.2-2.84a3.76 3.76 0 010-2.93s.91-.28 3.11 1.1c1.8-.49 3.7-.49 5.5 0 2.1-1.38 3.02-1.1 3.02-1.1a3.76 3.76 0 010 2.93c.83.74 1.2 1.74 1.2 2.94 0 4.21-2.57 5.13-5.04 5.4.45.37.82.92.82 2.02v3.03c0 .27.1.64.73.55A11 11 0 0012 1.27"></path>
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5"
+                  >
+                    <path d="M12 1.27a11 11 0 00-3.48 21.46c.55.09.73-.28.73-.55v-1.84c-3.03.64-3.67-1.46-3.67-1.46-.55-1.29-1.28-1.65-1.28-1.65-.92-.65.1-.65.1-.65 1.1 0 1.73 1.1 1.73 1.1.92 1.65 2.57 1.2 3.21.92a2 2 0 01.64-1.47c-2.47-.27-5.04-1.19-5.04-5.5 0-1.1.46-2.1 1.2-2.84a3.76 3.76 0 010-2.93s.91-.28 3.11 1.1c1.8-.49 3.7-.49 5.5 0 2.1-1.38 3.02-1.1 3.02-1.1a3.76 3.76 0 010 2.93c.83.74 1.2 1.74 1.2 2.94 0 4.21-2.57 5.13-5.04 5.4.45.37.82.92.82 2.02v3.03c0 .27.1.64.73.55A11 11 0 0012 1.27"></path>
+                  </svg>
 
-                {userProfile && (
-                  <div className="flex items-center space-x-1 hidden md:flex">
-                    <span className="text-sm">{userProfile.login}</span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`h-4 w-4 transition-transform ${
-                        showDropdown ? "rotate-180" : ""
-                      }`}
-                    >
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+                  {userProfile && (
+                    <div className="flex items-center space-x-1 hidden md:flex">
+                      <span className="text-sm">{userProfile.login}</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`h-4 w-4 transition-transform ${
+                          showDropdown ? "rotate-180" : ""
+                        }`}
+                      >
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                  )}
+                </button>
+
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border z-50">
+                    <div className="py-1">
+                      {userProfile && (
+                        <div className="px-4 py-2 text-sm text-foreground border-b border-border">
+                          Signed in as <strong>{userProfile.login}</strong>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          logout();
+                          setShowDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      >
+                        Sign out
+                      </button>
+                    </div>
                   </div>
                 )}
-              </button>
-
-              {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-card border border-border z-50">
-                  <div className="py-1">
-                    {userProfile && (
-                      <div className="px-4 py-2 text-sm text-foreground border-b border-border">
-                        Signed in as <strong>{userProfile.login}</strong>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => {
-                        logout();
-                        setShowDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <a
+                href="#login"
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+              >
+                <Github className="mr-2 h-4 w-4" />
+                Login with GitHub
+              </a>
+            )}
+          </div>
         </div>
       </header>
 

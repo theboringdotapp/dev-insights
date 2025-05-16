@@ -90,7 +90,10 @@ function UnauthenticatedView(): React.ReactElement {
       >
         {/* Left side - Login Card (swapped positions) */}
         <motion.div variants={fadeIn} className="w-full md:w-1/2 max-w-md">
-          <div className="bg-card p-8 rounded-2xl shadow-lg border border-border">
+          <div
+            id="login"
+            className="bg-card p-8 rounded-2xl shadow-lg border border-border"
+          >
             <div className="text-center mb-6">
               <div className="mx-auto mb-4 p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 w-fit">
                 <LogIn size={28} strokeWidth={2} />
@@ -620,82 +623,13 @@ function UnauthenticatedView(): React.ReactElement {
         </div>
       </motion.div>
 
-      {/* Feature highlights */}
-      <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mb-12"
-        initial="hidden"
-        animate="visible"
-        variants={stagger}
-      >
-        <motion.div variants={fadeIn} className="text-center">
-          <div className="mx-auto mb-3 p-2.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 w-fit">
-            <Activity size={24} strokeWidth={2} />
-          </div>
-          <h3 className="text-lg font-semibold mb-2 text-foreground">Free</h3>
-          <p className="text-muted-foreground text-sm">
-            No payment or credit card required
-          </p>
-        </motion.div>
-
-        <motion.div variants={fadeIn} className="text-center">
-          <div className="mx-auto mb-3 p-2.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 w-fit">
-            <Lock size={24} strokeWidth={2} />
-          </div>
-          <h3 className="text-lg font-semibold mb-2 text-foreground">Secure</h3>
-          <p className="text-muted-foreground text-sm">
-            Your data stays in your browser
-          </p>
-        </motion.div>
-
-        <motion.div variants={fadeIn} className="text-center">
-          <div className="mx-auto mb-3 p-2.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 w-fit">
-            <Code size={24} strokeWidth={2} />
-          </div>
-          <h3 className="text-lg font-semibold mb-2 text-foreground">
-            Open Source
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            Code available on GitHub
-          </p>
-        </motion.div>
-      </motion.div>
-
       {/* Footer with attribution - add privacy policy link */}
       <motion.div
         variants={fadeIn}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { delay: 0.6 } }}
         className="mt-12 text-center text-sm text-zinc-500 dark:text-zinc-400"
-      >
-        <p>
-          vibecoded by{" "}
-          <a
-            href="https://theboring.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
-          >
-            theboring.app
-          </a>
-        </p>
-        <p className="mt-1 text-xs">
-          Freemium tools for improving your everyday life
-        </p>
-        <div className="mt-4 flex justify-center space-x-4 text-xs">
-          <a
-            href="/privacy-policy.html"
-            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
-          >
-            Privacy Policy
-          </a>
-          <a
-            href="https://github.com/theboringdotapp/dev-insights"
-            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
-          >
-            GitHub
-          </a>
-        </div>
-      </motion.div>
+      ></motion.div>
     </div>
   );
 }
