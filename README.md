@@ -2,7 +2,8 @@
 
 DevInsight is a tool that helps developers analyze their GitHub activity and improve their coding practices through AI-powered feedback.
 
-![DevInsight Screenshot](public/screenshot.png)
+![image](https://github.com/user-attachments/assets/138f8716-24c9-473b-91f2-4453c90eb275)
+
 
 ## Features
 
