@@ -1,7 +1,6 @@
 import { Github } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import { Toaster } from "sonner";
 import "./App.css";
 import { DeveloperProvider } from "./contexts/DeveloperContext";
 import { AuthProvider, useAuth } from "./lib/auth";
@@ -48,7 +47,7 @@ function AppContent() {
                 className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
               >
                 <span className="font-semibold text-xl text-purple-600">
-                  DevInsight
+                  Developer Insights
                 </span>
               </a>
             </div>
@@ -171,8 +170,6 @@ function AppContent() {
           </div>
         </div>
       </footer>
-
-      <Toaster richColors position="top-right" />
     </div>
   );
 }

@@ -21,8 +21,8 @@ jobs:
         id: git-time-stats
         uses: theboringdotapp/git-time-stats-action@1.1
         with:
-          session-gap: 30 # Minutes gap between sessions
-          min-session: 5 # Minimum session duration in minutes
+          session-gap: 60 # Minutes gap between sessions
+          min-session: 10 # Minimum session duration in minutes
           max-session: 8 # Maximum session duration in hours
           readme-path: "README.md"
           commit-changes: "true"

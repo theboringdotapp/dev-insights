@@ -69,9 +69,9 @@ export default function DeveloperDashboard() {
   // Update document title when username changes
   useEffect(() => {
     if (username && showData) {
-      document.title = `DevInsight - ${username}`;
+      document.title = `Developer Insights - ${username}`;
     } else {
-      document.title = "DevInsight";
+      document.title = "Developer Insights";
     }
   }, [username, showData]);
 
@@ -249,8 +249,8 @@ export default function DeveloperDashboard() {
               </h3>
               <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto mb-6">
                 We couldn't find any pull requests for{" "}
-                <strong>{username}</strong> in the selected timeframe.
-                DevInsight analyzes pull requests, not individual commits.
+                <strong>{username}</strong> in the selected timeframe. Developer
+                Insights analyzes pull requests, not individual commits.
               </p>
               <div className="space-y-4 max-w-md mx-auto text-sm">
                 <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/20 rounded-md p-3 text-left">

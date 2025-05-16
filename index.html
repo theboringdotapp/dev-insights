@@ -2,9 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DevInsight</title>
+    
+    <!-- HTML Meta Tags -->
+    <title>Developer Insights</title>
+    <meta name="description" content="Get developer insights from your GitHub activity">
+
+    <!-- Facebook Meta Tags -->
+    <meta property="og:url" content="https://insights.theboring.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Developer Insights">
+    <meta property="og:description" content="Get developer insights from your GitHub activity">
+    <meta property="og:image" content="https://opengraph.b-cdn.net/production/images/f324b5ec-7f4c-4d50-a6fe-cd6ad1452415.jpg?token=TLtHUy7K3l5wMx6PxW6Ul6bA87Zkok2anyb7jL49-zk&height=630&width=1200&expires=33283432652">
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="insights.theboring.app">
+    <meta property="twitter:url" content="https://insights.theboring.app/">
+    <meta name="twitter:title" content="Developer Insights">
+    <meta name="twitter:description" content="Get developer insights from your GitHub activity">
+    <meta name="twitter:image" content="https://opengraph.b-cdn.net/production/images/f324b5ec-7f4c-4d50-a6fe-cd6ad1452415.jpg?token=TLtHUy7K3l5wMx6PxW6Ul6bA87Zkok2anyb7jL49-zk&height=630&width=1200&expires=33283432652">
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/src/main.tsx" as="script" />
+    <link rel="preload" href="/src/index.css" as="style" />
+    
+    <!-- Add preconnect hints for external resources -->
+    <link rel="preconnect" href="https://api.github.com" crossorigin />
+    
+    <!-- Disable console.log in production -->
+    <script>
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.log = function() {};
+        console.debug = function() {};
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

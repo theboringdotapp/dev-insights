@@ -69,7 +69,7 @@ function UnauthenticatedView(): React.ReactElement {
           variants={fadeIn}
           className="text-4xl md:text-5xl font-bold text-purple-600 dark:text-purple-400 mb-4"
         >
-          DevInsight
+          Developer Insights
         </motion.h1>
 
         <motion.p
@@ -202,7 +202,7 @@ function UnauthenticatedView(): React.ReactElement {
                   github-review
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border border-green-200 dark:border-green-800 bg-white/70 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300">
-                  devinsight
+                  developer-insights
                 </span>
               </div>
             </div>
@@ -615,8 +615,8 @@ function UnauthenticatedView(): React.ReactElement {
               Browser-Only App
             </h4>
             <p className="text-sm text-zinc-700 dark:text-zinc-400">
-              DevInsight runs in your browser, calling GitHub and AI APIs
-              directly. Your code never passes through any of our servers.
+              Developer Insights runs in your browser, calling GitHub and AI
+              APIs directly. Your code never passes through any of our servers.
             </p>
           </motion.div>
         </div>

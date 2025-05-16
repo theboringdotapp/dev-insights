@@ -1,6 +1,6 @@
-# DevInsight
+# Developer Insights
 
-DevInsight is a tool that helps developers analyze their GitHub activity and improve their coding practices through AI-powered feedback.
+Developer Insights is a tool that helps developers analyze their GitHub activity and improve their coding practices through AI-powered feedback.
 
 ![image](https://github.com/user-attachments/assets/138f8716-24c9-473b-91f2-4453c90eb275)
 
