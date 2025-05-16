@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
   Github,
   LogIn,
-  Code,
   Lock,
   Activity,
   BookOpenCheck,

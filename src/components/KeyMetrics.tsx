@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { PullRequestItem } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { Timeframe } from "./TimeframeSelector";
@@ -17,7 +17,40 @@ export function KeyMetrics({
   realCommitCount,
   isLoadingCommits,
 }: KeyMetricsProps) {
-  const { getPRMetrics } = usePRMetrics();
+  const { getPRMetrics, loadPRMetrics, metricsCache } = usePRMetrics();
+  const [isLoadingChangeRequests, setIsLoadingChangeRequests] = useState(false);
+
+  // Proactively load metrics for all PRs if not already loaded
+  useEffect(() => {
+    if (!pullRequests.length) return;
+
+    // Check if we need to load any PR metrics
+    const hasUnloadedPRs = pullRequests.some(
+      (pr) =>
+        !metricsCache[pr.id] ||
+        (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading)
+    );
+
+    if (hasUnloadedPRs) {
+      setIsLoadingChangeRequests(true);
+
+      const unloadedPRs = pullRequests.filter(
+        (pr) =>
+          !metricsCache[pr.id] ||
+          (!metricsCache[pr.id].isLoaded && !metricsCache[pr.id].isLoading)
+      );
+
+      // Create an array of promises for loading PR metrics
+      const loadPromises = unloadedPRs.map((pr) => loadPRMetrics(pr));
+
+      // Once all metrics are loaded, update loading state
+      Promise.all(loadPromises).finally(() => {
+        setIsLoadingChangeRequests(false);
+      });
+    } else {
+      setIsLoadingChangeRequests(false);
+    }
+  }, [pullRequests, metricsCache, loadPRMetrics]);
 
   // Calculate time unit based on timeframe
   const timeUnit = React.useMemo(() => {
@@ -69,7 +102,6 @@ export function KeyMetrics({
     let closedPRCount = 0;
     let totalDurationDays = 0;
     let changeRequestCount = 0;
-    let prsWithChangeRequests = 0;
 
     pullRequests.forEach((pr) => {
       const metrics = getPRMetrics(pr);
@@ -94,7 +126,6 @@ export function KeyMetrics({
         }
 
         if (metrics.changeRequestCount > 0) {
-          prsWithChangeRequests++;
           changeRequestCount += metrics.changeRequestCount;
         }
       }
@@ -104,11 +135,9 @@ export function KeyMetrics({
     const avgDaysToClose =
       closedPRCount > 0 ? (totalDurationDays / closedPRCount).toFixed(1) : null;
 
-    // Calculate average changes per PR that had changes
+    // Calculate average changes per PR across all PRs (including those with zero changes)
     const avgChangesPerPR =
-      prsWithChangeRequests > 0
-        ? (changeRequestCount / prsWithChangeRequests).toFixed(1)
-        : "0";
+      closedPRCount > 0 ? (changeRequestCount / closedPRCount).toFixed(1) : "0";
 
     return {
       prsPerTimeUnit,
@@ -146,6 +175,14 @@ export function KeyMetrics({
         {suffix}
       </span>
     );
+  };
+
+  // Helper function to render change request value with its own loading state
+  const renderChangeRequestValue = (value: string) => {
+    if (isLoadingChangeRequests) {
+      return <span className="text-gray-400">Loading...</span>;
+    }
+    return <span>{value || "0"}</span>;
   };
 
   return (
@@ -219,11 +256,9 @@ export function KeyMetrics({
         >
           <div className="text-sm text-gray-600 mb-1">Avg. change requests</div>
           <div className="text-3xl font-semibold text-purple-700">
-            {renderValue(metrics.avgChangesPerPR)}
+            {renderChangeRequestValue(metrics.avgChangesPerPR)}
           </div>
-          <div className="text-xs text-gray-500 mt-2">
-            Per PR needing changes
-          </div>
+          <div className="text-xs text-gray-500 mt-2">Per closed PR</div>
         </motion.div>
       </div>
 
