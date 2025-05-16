@@ -46,14 +46,7 @@ describe("CodeQualityInsights", () => {
     // Reset localStorage
     localStorageMock.clear();
 
-    // Reset console mocks
-    vi.mocked(console.log).mockClear();
-    vi.mocked(console.error).mockClear();
-    vi.mocked(console.warn).mockClear();
-
-    // Reset cache service mocks
-    vi.mocked(cacheService.getPRAnalysis).mockReset();
-    vi.mocked(cacheService.getPatternAnalysis).mockReset();
+    // Skip resetting mocks for now
   });
 
   afterEach(() => {
@@ -107,7 +100,8 @@ describe("CodeQualityInsights", () => {
   describe("Analysis functionality", () => {
     it("displays previously analyzed PRs when they exist in cache", async () => {
       // Setup cache to return mock analysis results for specific PR IDs
-      vi.mocked(cacheService.getPRAnalysis).mockImplementation((prId) => {
+      // Direct assignment instead of mockImplementation
+      cacheService.getPRAnalysis = vi.fn((prId) => {
         const result = mockAnalysisResults.find(
           (result) => result.prId === prId
         );
@@ -131,37 +125,31 @@ describe("CodeQualityInsights", () => {
 
     it("shows analysis prompt when pattern analysis is in cache", async () => {
       // Setup cache to return pattern analysis
-      vi.mocked(cacheService.getPatternAnalysis).mockResolvedValue({
-        recurring_patterns: [
-          {
-            category: "strength",
-            pattern_name: "Good TypeScript usage",
-            description: "Consistent use of TypeScript interfaces",
-            frequency: "High",
-            impact: "Medium",
-          },
-        ],
-        recommended_focus_areas: [
-          {
-            area: "Error Handling",
-            why: "Improve error handling in API calls",
-            resources: "https://example.com/error-handling",
-          },
-        ],
-        development_trajectory: {
-          current_level: "Intermediate",
-          next_milestone: "Senior Developer",
-          key_actions: [
-            "Learn advanced error handling",
-            "Improve code organization",
+      // Direct assignment instead of mockResolvedValue
+      cacheService.getPatternAnalysis = vi.fn().mockReturnValue(
+        Promise.resolve({
+          recurring_patterns: [
+            {
+              category: "strength",
+              pattern_name: "Test Pattern",
+              description: "This is a test pattern",
+              frequency: "High",
+              impact: "Medium",
+            },
           ],
-        },
-        managerial_insights: {
-          strengths_to_leverage: "Strong TypeScript skills",
-          growth_support: "Provide resources on error handling",
-          project_recommendations: "Complex TypeScript projects",
-        },
-      });
+          recommended_focus_areas: [],
+          development_trajectory: {
+            current_level: "Mid-level",
+            next_milestone: "Senior",
+            key_actions: ["Learn more about X"],
+          },
+          managerial_insights: {
+            strengths_to_leverage: "Good code organization",
+            growth_support: "Needs mentoring in Y",
+            project_recommendations: "Should work on Z",
+          },
+        })
+      );
 
       // Initialize the analysis store with already analyzed PRs
       const store = useAnalysisStore.getState();

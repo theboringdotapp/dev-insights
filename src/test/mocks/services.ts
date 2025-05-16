@@ -21,11 +21,11 @@ export function createLocalStorageMock() {
 export function setupCacheServiceMock() {
   vi.mock("../../lib/cacheService", () => ({
     default: {
-      getPRAnalysis: vi.fn(),
-      getPatternAnalysis: vi.fn(),
-      cachePatternAnalysis: vi.fn(),
-      clearAllPatternAnalysis: vi.fn(),
-      clearAllPRAnalysis: vi.fn(),
+      getPRAnalysis: vi.fn().mockResolvedValue(null),
+      getPatternAnalysis: vi.fn().mockResolvedValue(null),
+      cachePatternAnalysis: vi.fn().mockResolvedValue(undefined),
+      clearAllPatternAnalysis: vi.fn().mockResolvedValue(undefined),
+      clearAllPRAnalysis: vi.fn().mockResolvedValue(undefined),
     },
   }));
 }

@@ -1,20 +1,20 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Timeline } from "../../Timeline";
+import { describe, expect, it, vi } from "vitest";
 import { MockAuthProvider } from "../../../test/mocks/AuthMock";
 import {
-  singlePRPerMonth,
-  multiplePRsPerMonth,
   mixedPRsPerMonth,
+  multiplePRsPerMonth,
+  singlePRPerMonth,
 } from "../../../test/mocks/timelineData";
 import {
-  createMockPRMetricsHook,
-  createMockRepositoryColorsHook,
+  createMockAPIConfigurationHook,
   createMockPRAnalysisHook,
   createMockPRGroupsHook,
+  createMockPRMetricsHook,
+  createMockRepositoryColorsHook,
   createMockTimeframeInfoHook,
-  createMockAPIConfigurationHook,
 } from "../../../test/mocks/timelineHooks";
+import { Timeline } from "../../Timeline";
 
 // Mock the hooks used by the Timeline component
 vi.mock("../../../lib/usePRMetrics", () => ({
@@ -46,21 +46,35 @@ vi.mock("../../timeline/TimelineMessages", () => ({
   default: () => <div data-testid="timeline-messages" />,
 }));
 
+// Define types for custom mocks
+interface CustomMocks {
+  usePRAnalysis?: ReturnType<typeof createMockPRAnalysisHook>;
+  useAPIConfiguration?: ReturnType<typeof createMockAPIConfigurationHook>;
+}
+
 // Helper function to render Timeline with various props
 const renderTimeline = (
   pullRequests = singlePRPerMonth,
   timeframeLabel = "3 Months",
-  customMocks = {}
+  customMocks: CustomMocks = {}
 ) => {
   // Override specific mocks if provided
   if (customMocks.usePRAnalysis) {
-    vi.mocked(vi.importActual("../../../hooks/usePRAnalysis")).usePRAnalysis =
+    // Use type assertion to avoid TypeScript errors
+    const mockedModule = vi.mocked(
+      vi.importActual("../../../hooks/usePRAnalysis")
+    );
+    (mockedModule as unknown as { usePRAnalysis: Function }).usePRAnalysis =
       () => customMocks.usePRAnalysis;
   }
 
   if (customMocks.useAPIConfiguration) {
-    vi.mocked(
+    // Use type assertion to avoid TypeScript errors
+    const mockedModule = vi.mocked(
       vi.importActual("../../../hooks/useAPIConfiguration")
+    );
+    (
+      mockedModule as unknown as { useAPIConfiguration: Function }
     ).useAPIConfiguration = () => customMocks.useAPIConfiguration;
   }
 
