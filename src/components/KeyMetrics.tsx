@@ -155,7 +155,7 @@ export function KeyMetrics({
       transition={{ duration: 0.4, delay: 0.1 }}
       className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full"
     >
-      <h3 className="text-xl font-semibold text-gray-900 mb-6">
+      <h3 className="text-xl font-semibold text-gray-900 mb-6 text-left">
         Key Performance Metrics
       </h3>
 

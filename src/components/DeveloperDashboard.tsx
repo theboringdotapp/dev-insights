@@ -2,10 +2,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "../lib/auth";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
 import { SearchForm } from "./SearchForm";
-import { StatsDisplay } from "./StatsDisplay";
 import { Timeframe } from "./TimeframeSelector";
 import { Timeline } from "./Timeline";
-import { PullRequestItem, DeveloperStats } from "../lib/types";
+import { PullRequestItem } from "../lib/types";
 import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
@@ -44,7 +43,7 @@ export default function DeveloperDashboard() {
   const isHandlingSearchRef = useRef(false);
 
   // For handling PR metrics
-  const { enhancePRsWithMetrics, calculateFilteredStats } = usePRMetrics();
+  const { enhancePRsWithMetrics } = usePRMetrics();
 
   // Update document title when username changes
   useEffect(() => {
@@ -103,13 +102,12 @@ export default function DeveloperDashboard() {
   );
 
   // Compute PR counts and filtered stats
-  const { allPRs, importantPRs, filteredPRs, filteredStats } = useMemo(() => {
+  const { allPRs, importantPRs, filteredPRs } = useMemo(() => {
     if (!showData || developerData.isLoading || developerData.error) {
       return {
         allPRs: [],
         importantPRs: [],
         filteredPRs: [],
-        filteredStats: null,
       };
     }
 
@@ -117,27 +115,11 @@ export default function DeveloperDashboard() {
     const importantPRs = allPRs.filter(isImportantPR);
     const filteredPRs = showOnlyImportantPRs ? importantPRs : allPRs;
 
-    // Calculate filtered stats when showing only important PRs
-    let filteredStats: DeveloperStats | null = null;
-    if (
-      developerData.stats &&
-      importantPRs.length > 0 &&
-      importantPRs.length < allPRs.length
-    ) {
-      filteredStats = calculateFilteredStats(importantPRs, developerData.stats);
-    }
-
     // We don't need to store the enhanced PRs since Timeline handles this internally
     enhancePRsWithMetrics(filteredPRs);
 
-    return { allPRs, importantPRs, filteredPRs, filteredStats };
-  }, [
-    developerData,
-    showOnlyImportantPRs,
-    showData,
-    enhancePRsWithMetrics,
-    calculateFilteredStats,
-  ]);
+    return { allPRs, importantPRs, filteredPRs };
+  }, [developerData, showOnlyImportantPRs, showData, enhancePRsWithMetrics]);
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     console.log(
@@ -222,17 +204,6 @@ export default function DeveloperDashboard() {
               />
             </div>
           </div>
-
-          {/* Stats Summary */}
-          {developerData.stats && (
-            <StatsDisplay
-              stats={developerData.stats}
-              filteredStats={filteredStats}
-              showFiltered={showOnlyImportantPRs}
-              realCommitCount={realCommitCount}
-              isLoadingCommits={isLoadingCommits}
-            />
-          )}
 
           {/* Activity Charts and Key Metrics Side by Side */}
           {filteredPRs.length > 0 && (
