@@ -683,7 +683,7 @@ function UnauthenticatedView(): React.ReactElement {
         </p>
         <div className="mt-4 flex justify-center space-x-4 text-xs">
           <a
-            href="/privacy-policy"
+            href="/privacy-policy.html"
             className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
           >
             Privacy Policy
