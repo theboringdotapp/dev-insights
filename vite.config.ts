@@ -1,6 +1,6 @@
-import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import path from "path";
 import { defineConfig } from "vite";
 
 // https://vite.dev/config/
@@ -41,6 +41,38 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split UI framework dependencies
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          // Split charting libraries
+          "vendor-charts": ["recharts"],
+          // Split data/API libraries
+          "vendor-data": ["octokit", "zustand"],
+          // Split UI component libraries
+          "vendor-ui": [
+            "framer-motion",
+            "lucide-react",
+            "sonner",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-label",
+          ],
+        },
+      },
+    },
+    // Reduce chunk size to improve loading performance
+    chunkSizeWarningLimit: 800,
+    // Optimize/minify output
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
     },
   },
 });

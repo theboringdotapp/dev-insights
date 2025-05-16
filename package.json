@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "find:unused-react": "node find-unused-react-imports.js",
     "fix:unused-react": "node remove-unused-react-imports.js",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "analyze": "node analyze-bundle.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
@@ -56,6 +57,7 @@
     "glob": "^11.0.2",
     "globals": "^15.15.0",
     "jsdom": "^26.1.0",
+    "terser": "^5.39.2",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0",

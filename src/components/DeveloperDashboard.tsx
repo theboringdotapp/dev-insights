@@ -1,21 +1,42 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useDeveloperContext } from "../contexts/DeveloperContext";
 import { useAuth } from "../lib/auth";
+import { isImportantPR } from "../lib/prUtils";
+import { PullRequestItem } from "../lib/types";
 import { useDeveloperPerformance } from "../lib/useGitHubService";
+import { usePRMetrics } from "../lib/usePRMetrics";
+import { useAnalysisStore } from "../stores/analysisStore";
+import { FilterToggle } from "./FilterToggle";
 import { SearchForm } from "./SearchForm";
 import { Timeframe } from "./TimeframeSelector";
-import { Timeline } from "./Timeline";
-import { PullRequestItem } from "../lib/types";
-import { FilterToggle } from "./FilterToggle";
-import { isImportantPR } from "../lib/prUtils";
-import { usePRMetrics } from "../lib/usePRMetrics";
-import { ActivityCharts } from "./ActivityCharts";
-import { KeyMetrics } from "./KeyMetrics";
-import { CodeQualityInsights } from "./CodeQualityInsights";
-import { useSearchParams } from "react-router-dom";
 import UnauthenticatedView from "./UnauthenticatedView";
 import ScrollToTop from "./ui/ScrollToTop";
-import { useDeveloperContext } from "../contexts/DeveloperContext";
-import { useAnalysisStore } from "../stores/analysisStore";
+
+// Lazy load heavy components
+const Timeline = lazy(() =>
+  import("./Timeline").then((module) => ({ default: module.Timeline }))
+);
+const CodeQualityInsights = lazy(() =>
+  import("./CodeQualityInsights").then((module) => ({
+    default: module.CodeQualityInsights,
+  }))
+);
+const ActivityCharts = lazy(() =>
+  import("./ActivityCharts").then((module) => ({
+    default: module.ActivityCharts,
+  }))
+);
+const KeyMetrics = lazy(() =>
+  import("./KeyMetrics").then((module) => ({ default: module.KeyMetrics }))
+);
+
+// Loading component for lazy-loaded components
+const ComponentLoader = () => (
+  <div className="border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-6 flex items-center justify-center h-64">
+    <div className="w-8 h-8 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin"></div>
+  </div>
+);
 
 export default function DeveloperDashboard() {
   const { isAuthenticated, userProfile } = useAuth();
@@ -250,31 +271,30 @@ export default function DeveloperDashboard() {
             </div>
           )}
 
-          {/* Activity Charts and Key Metrics Side by Side */}
+          {/* Activity Charts */}
           {filteredPRs.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Activity Charts - Takes 2/3 of the space on large screens */}
-              <div className="lg:col-span-2">
-                <ActivityCharts
-                  pullRequests={filteredPRs}
-                  showOnlyImportantPRs={showOnlyImportantPRs}
-                  onCommitDataLoaded={(count, isLoading) => {
-                    setRealCommitCount(count);
-                    setIsLoadingCommits(isLoading);
-                  }}
-                />
-              </div>
+            <Suspense fallback={<ComponentLoader />}>
+              <ActivityCharts
+                pullRequests={filteredPRs}
+                showOnlyImportantPRs={showOnlyImportantPRs}
+                onCommitDataLoaded={(count, isLoading) => {
+                  setRealCommitCount(count);
+                  setIsLoadingCommits(isLoading);
+                }}
+              />
+            </Suspense>
+          )}
 
-              {/* Key Metrics - Takes 1/3 of the space */}
-              <div className="lg:col-span-1">
-                <KeyMetrics
-                  pullRequests={filteredPRs}
-                  timeframe={timeframe}
-                  realCommitCount={realCommitCount}
-                  isLoadingCommits={isLoadingCommits}
-                />
-              </div>
-            </div>
+          {/* Key Metrics */}
+          {filteredPRs.length > 0 && (
+            <Suspense fallback={<ComponentLoader />}>
+              <KeyMetrics
+                pullRequests={filteredPRs}
+                timeframe={timeframe}
+                realCommitCount={realCommitCount}
+                isLoadingCommits={isLoadingCommits}
+              />
+            </Suspense>
           )}
 
           {/* Two-column layout for Dashboard and Timeline */}
@@ -283,21 +303,25 @@ export default function DeveloperDashboard() {
               {/* Main column (Timeline) - Takes 2/3 of the space on large screens */}
               <div className="lg:col-span-2 order-2 lg:order-1">
                 {/* Timeline View */}
-                <Timeline
-                  pullRequests={filteredPRs}
-                  timeframeLabel={timeframeLabel}
-                  timeframe={timeframe}
-                />
+                <Suspense fallback={<ComponentLoader />}>
+                  <Timeline
+                    pullRequests={filteredPRs}
+                    timeframeLabel={timeframeLabel}
+                    timeframe={timeframe}
+                  />
+                </Suspense>
               </div>
 
               {/* Side column (Code Quality Assistant) - Takes 1/3 of the space */}
               <div className="lg:col-span-1 lg:mt-0 order-1 lg:order-2">
                 {/* AI Code Quality Analysis */}
-                <CodeQualityInsights
-                  pullRequests={filteredPRs}
-                  allPRs={allPRs}
-                  developerId={username}
-                />
+                <Suspense fallback={<ComponentLoader />}>
+                  <CodeQualityInsights
+                    pullRequests={filteredPRs}
+                    allPRs={allPRs}
+                    developerId={username}
+                  />
+                </Suspense>
               </div>
             </div>
           ) : allPRs.length > 0 ? (
@@ -326,20 +350,17 @@ export default function DeveloperDashboard() {
   );
 }
 
-// Helper functions
 function getTimeframeLabel(timeframe: Timeframe): string {
   switch (timeframe) {
-    case "1week":
-      return "Last Week";
     case "1month":
-      return "Last Month";
+      return "Past Month";
     case "3months":
-      return "Last 3 Months";
+      return "Past 3 Months";
     case "6months":
-      return "Last 6 Months";
+      return "Past 6 Months";
     case "1year":
-      return "Last Year";
+      return "Past Year";
     default:
-      return "Timeline";
+      return "Past Month";
   }
 }
