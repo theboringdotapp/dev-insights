@@ -177,8 +177,8 @@ export default function PullRequestCard({
   return (
     <div
       key={pr.id}
-      // Added relative, adjusted padding for top-left button space on mobile
-      className="relative pt-12 pb-4 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30 shadow-sm"
+      // Removed shadow-sm for a more minimalistic look
+      className="relative pt-12 pb-4 px-3 sm:pt-4 sm:px-4 bg-white dark:bg-zinc-900/60 rounded-lg border border-zinc-200 dark:border-zinc-700/30"
     >
       {/* Stack vertically on mobile, row on sm+ */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
@@ -283,7 +283,7 @@ export default function PullRequestCard({
       {isAnalyzed && (
         <div>
           {isLoadingAnalysis ? (
-            <div className="py-2.5 px-3 border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 rounded-md text-xs text-purple-600 dark:text-purple-400 flex items-center">
+            <div className="py-2.5 mt-3 px-3 border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 rounded-md text-xs text-purple-600 dark:text-purple-400 flex items-center">
               <svg
                 className="animate-spin mr-2 h-3 w-3 text-purple-600 dark:text-purple-400"
                 xmlns="http://www.w3.org/2000/svg"

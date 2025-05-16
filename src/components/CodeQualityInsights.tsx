@@ -469,7 +469,7 @@ export function CodeQualityInsights({
   );
 
   return (
-    <div className="sticky top-4 z-10 bg-white dark:bg-gray-900 p-0 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-md space-y-0 max-h-[calc(100vh-2rem)] overflow-hidden">
+    <div className="sticky top-4 z-10 bg-white dark:bg-gray-900 p-0 rounded-lg border border-gray-200 dark:border-gray-700/50 overflow-hidden max-h-[calc(100vh-2rem)]">
       {/* Header with settings toggle - sticky at top */}
       <div className="sticky top-0 z-20 flex items-center justify-between bg-white dark:bg-gray-900 px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center">
@@ -736,7 +736,7 @@ export function CodeQualityInsights({
                   handleMaxPRsChange={setMaxPRs}
                 />
               ) : (
-                <div className="group relative overflow-hidden p-6 mt-4 bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-100 dark:from-purple-800/30 dark:via-indigo-900/30 dark:to-purple-800/40 rounded-xl shadow-xl text-left animate-subtle-gradient">
+                <div className="group relative overflow-hidden p-6 mt-4 bg-gradient-to-br from-purple-100 via-indigo-50 to-purple-100 dark:from-purple-800/30 dark:via-indigo-900/30 dark:to-purple-800/40 rounded-xl text-left animate-subtle-gradient">
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 dark:via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none opacity-50 group-hover:opacity-100"></div>
                   <div className="relative z-10">
                     <div className="mb-4">
@@ -814,7 +814,7 @@ export function CodeQualityInsights({
                             isGeneratingMetaAnalysis) ||
                           selectedPRIds.size < 3
                             ? "bg-purple-400 text-white cursor-not-allowed dark:bg-purple-800 opacity-75 focus:ring-purple-400 dark:focus:ring-purple-700"
-                            : "bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 shadow-md hover:shadow-lg focus:ring-purple-500"
+                            : "bg-purple-600 text-white hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 focus:ring-purple-500"
                         }`}
                       >
                         {selectedPRIds.size < 3 ? (

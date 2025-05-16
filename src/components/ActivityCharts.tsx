@@ -241,7 +241,7 @@ export function ActivityCharts({
   // If there's no data, show a message
   if (!pullRequests.length) {
     return (
-      <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500 shadow-sm">
+      <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
         No pull request data available for analysis.
       </div>
     );
@@ -250,7 +250,7 @@ export function ActivityCharts({
   // If there was an error, show error message
   if (error) {
     return (
-      <div className="bg-red-50 p-6 rounded-lg text-center text-red-500 shadow-sm">
+      <div className="bg-red-50 p-6 rounded-lg text-center text-red-500">
         {error}
       </div>
     );
@@ -269,7 +269,7 @@ export function ActivityCharts({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100"
+      className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200"
     >
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

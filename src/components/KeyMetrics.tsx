@@ -129,7 +129,7 @@ export function KeyMetrics({
 
   if (!pullRequests.length || !metrics) {
     return (
-      <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500 shadow-sm">
+      <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
         No data available for performance analysis.
       </div>
     );
@@ -153,7 +153,7 @@ export function KeyMetrics({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
-      className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full"
+      className="bg-white p-6 rounded-xl border border-gray-200 h-full"
     >
       <h3 className="text-xl font-semibold text-gray-900 mb-6 text-left">
         Key Performance Metrics

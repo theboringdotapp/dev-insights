@@ -126,7 +126,7 @@ export function EmptyState({
           </button>
 
           {!hasApiKey && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 rounded-md text-xs text-red-600 dark:text-red-400">
+            <div className="mb-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 rounded-md text-xs text-red-600 dark:text-red-400">
               <div className="flex items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
