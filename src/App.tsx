@@ -26,9 +26,9 @@ function AppContent() {
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen w-full">
       {/* Header - removed sticky positioning */}
-      <header className="bg-card border-b border-border">
+      <header className="w-full bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -118,15 +118,17 @@ function AppContent() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-4 flex-grow">
-        <Routes>
-          <Route path="/" element={<DeveloperDashboard />} />
-        </Routes>
+      <main className="w-full flex-grow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Routes>
+            <Route path="/" element={<DeveloperDashboard />} />
+          </Routes>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border mt-8">
-        <div className="container max-w-6xl mx-auto px-4">
+      <footer className="w-full py-8 border-t border-border mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <div className="flex items-center space-x-2">
@@ -170,7 +172,7 @@ function AppContent() {
       </footer>
 
       <Toaster richColors position="top-right" />
-    </>
+    </div>
   );
 }
 
