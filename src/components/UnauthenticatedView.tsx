@@ -1,20 +1,20 @@
-import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Github,
-  LogIn,
-  Lock,
   Activity,
-  BookOpenCheck,
-  Lightbulb,
-  TrendingUp,
-  BookOpen,
   BarChart,
-  FileCode2,
-  Users2,
-  Shield,
+  BookOpen,
+  BookOpenCheck,
   ExternalLink,
+  FileCode2,
+  Github,
+  Lightbulb,
+  Lock,
+  LogIn,
+  Shield,
+  TrendingUp,
+  Users2,
 } from "lucide-react";
+import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
 
 function UnauthenticatedView(): React.ReactElement {
@@ -616,7 +616,7 @@ function UnauthenticatedView(): React.ReactElement {
             </h4>
             <p className="text-sm text-zinc-700 dark:text-zinc-400">
               DevInsight runs in your browser, calling GitHub and AI APIs
-              directly. Your code never passes through any servers.
+              directly. Your code never passes through any of our servers.
             </p>
           </motion.div>
         </div>
