@@ -10,7 +10,7 @@ import { FilterToggle } from "./FilterToggle";
 import { isImportantPR } from "../lib/prUtils";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { ActivityCharts } from "./ActivityCharts";
-import { PerformanceMetrics } from "./PerformanceMetrics";
+import { KeyMetrics } from "./KeyMetrics";
 import { CodeQualityInsights } from "./CodeQualityInsights";
 import { useSearchParams } from "react-router-dom";
 import UnauthenticatedView from "./UnauthenticatedView";
@@ -234,26 +234,31 @@ export default function DeveloperDashboard() {
             />
           )}
 
-          {/* Activity Charts */}
+          {/* Activity Charts and Key Metrics Side by Side */}
           {filteredPRs.length > 0 && (
-            <ActivityCharts
-              pullRequests={filteredPRs}
-              showOnlyImportantPRs={showOnlyImportantPRs}
-              onCommitDataLoaded={(count, isLoading) => {
-                setRealCommitCount(count);
-                setIsLoadingCommits(isLoading);
-              }}
-            />
-          )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Activity Charts - Takes 2/3 of the space on large screens */}
+              <div className="lg:col-span-2">
+                <ActivityCharts
+                  pullRequests={filteredPRs}
+                  showOnlyImportantPRs={showOnlyImportantPRs}
+                  onCommitDataLoaded={(count, isLoading) => {
+                    setRealCommitCount(count);
+                    setIsLoadingCommits(isLoading);
+                  }}
+                />
+              </div>
 
-          {/* Performance Metrics */}
-          {filteredPRs.length > 0 && (
-            <PerformanceMetrics
-              pullRequests={filteredPRs}
-              timeframe={timeframe}
-              realCommitCount={realCommitCount}
-              isLoadingCommits={isLoadingCommits}
-            />
+              {/* Key Metrics - Takes 1/3 of the space */}
+              <div className="lg:col-span-1">
+                <KeyMetrics
+                  pullRequests={filteredPRs}
+                  timeframe={timeframe}
+                  realCommitCount={realCommitCount}
+                  isLoadingCommits={isLoadingCommits}
+                />
+              </div>
+            </div>
           )}
 
           {/* Two-column layout for Dashboard and Timeline */}
