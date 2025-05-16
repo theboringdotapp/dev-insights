@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
  * ScrollToTop component displays a button that appears when the user scrolls down
  * and allows them to quickly scroll back to the top of the page.
  */
-export function ScrollToTop() {
+function ScrollToTop() {
   // State to track if the button should be visible
   const [isVisible, setIsVisible] = useState(false)
 

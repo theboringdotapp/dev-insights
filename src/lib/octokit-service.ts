@@ -129,43 +129,7 @@ export class GitHubDevService {
   /**
    * Fetches commits made by a specific user
    */
-  async getUserCommits({
-    org,
-    repo,
-    username,
-    since,
-    until,
-    perPage = 30,
-    page = 1,
-  }: {
-    org: string;
-    repo: string;
-    username: string;
-    since?: string; // ISO 8601 date format
-    until?: string; // ISO 8601 date format
-    perPage?: number;
-    page?: number;
-  }) {
-    try {
-      const response = await this.octokit.rest.repos.listCommits({
-        owner: org,
-        repo: repo,
-        author: username,
-        since,
-        until,
-        per_page: perPage,
-        page,
-      });
-
-      return response.data;
-    } catch (error) {
-      const octokitError = error as OctokitError;
-      throw new GitHubServiceError(
-        `Failed to fetch user commits: ${octokitError.message}`,
-        octokitError.status
-      );
-    }
-  }
+  
 
   /**
    * Fetches code reviews done by a specific user

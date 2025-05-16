@@ -9,7 +9,7 @@ interface MetricsSummaryProps {
  * MetricsSummary displays high-level metrics about analyzed PRs
  * in a clean, visually appealing format.
  */
-export function MetricsSummary({
+function MetricsSummary({
   analyzedPRCount,
   averageScore
 }: MetricsSummaryProps) {

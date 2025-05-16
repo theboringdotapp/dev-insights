@@ -67,7 +67,7 @@ interface PatternItemProps {
   index: number;
 }
 
-export function PatternItem({ pattern, index }: PatternItemProps) {
+function PatternItem({ pattern, index }: PatternItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Function to get the appropriate icon based on category

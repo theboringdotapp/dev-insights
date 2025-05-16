@@ -59,7 +59,7 @@ export interface DeveloperPerformanceData {
 }
 
 // New interface for individual feedback items with code context
-export interface CodeContext {
+interface CodeContext {
   filePath: string;
   startLine: number;
   endLine: number;
@@ -130,13 +130,13 @@ export interface FocusArea {
   resources: string;
 }
 
-export interface DevelopmentTrajectory {
+interface DevelopmentTrajectory {
   current_level: string;
   next_milestone: string;
   key_actions: string[];
 }
 
-export interface ManagerialInsights {
+interface ManagerialInsights {
   strengths_to_leverage: string;
   growth_support: string;
   project_recommendations: string;

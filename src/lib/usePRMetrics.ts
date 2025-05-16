@@ -16,7 +16,7 @@ import cacheService from "./cacheService";
 import { toast } from "sonner";
 import { useDeveloperContext } from "../contexts/DeveloperContext";
 
-export type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
+type PRWithMetrics = PullRequestItem & { metrics?: PullRequestMetrics };
 
 /**
  * Hook for lazy-loading PR metrics and AI analysis

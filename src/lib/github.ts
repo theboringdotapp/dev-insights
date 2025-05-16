@@ -1,7 +1,7 @@
 // Simple utility for making GitHub API requests with authentication
 
 // GitHub API Types
-export interface GitHubRepository {
+interface GitHubRepository {
   id: number;
   name: string;
   full_name: string;
@@ -35,7 +35,7 @@ export interface GitHubRepository {
 const GITHUB_API_BASE = "https://api.github.com";
 
 // Function to make authenticated GitHub API requests
-export async function fetchGitHub(
+async function fetchGitHub(
   endpoint: string,
   token: string,
   options: RequestInit = {}

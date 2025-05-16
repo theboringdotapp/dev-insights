@@ -17,7 +17,7 @@ interface FocusAreaItemProps {
   area: FocusArea;
 }
 
-export function FocusAreaItem({ area }: FocusAreaItemProps) {
+function FocusAreaItem({ area }: FocusAreaItemProps) {
   // Add style tag for shimmer animation
   React.useEffect(() => {
     if (!document.getElementById("shimmer-animation")) {

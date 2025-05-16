@@ -167,7 +167,7 @@ async function initializeDB(): Promise<IDBDatabase> {
 /**
  * Cache service for storing and retrieving PR analysis and pattern results
  */
-export const cacheService = {
+const cacheService = {
   /**
    * Store PR analysis result in IndexedDB
    */

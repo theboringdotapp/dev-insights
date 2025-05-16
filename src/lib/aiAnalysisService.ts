@@ -104,7 +104,7 @@ export async function analyzePRWithAI(
   }
 }
 
-import { getPRAnalysisBasePrompt, getSystemMessage, getCareerDevelopmentPrompt, getMetaAnalysisPrompt } from "./ai/prompts/codeAnalysisPrompts";
+import { getPRAnalysisBasePrompt, getSystemMessage, getMetaAnalysisPrompt } from "./ai/prompts/codeAnalysisPrompts";
 
 /**
  * Analyze code with OpenAI
@@ -407,9 +407,6 @@ async function analyzeWithGemini(
   // Default temperature (can be configured later if needed)
   const temperature = 0.7;
 
-  // Get the prompt from our centralized prompts
-  const prompt = getPRAnalysisBasePrompt(prContent);
-
   try {
     // Initialize the Gemini client
     const genAI = new GoogleGenerativeAI(config.apiKey);
@@ -664,165 +661,6 @@ function calculateCommonThemes(
     averageScore,
   };
 }
-
-// --- Refactored function to ONLY generate the AI summary ---
-// Renamed from aggregateFeedback
-export async function generateAICareerSummary(
-  // Takes the pre-calculated themes/score
-  calculatedThemes: Omit<AggregatedFeedback, "careerDevelopmentSummary">,
-  config: AIAnalysisConfig
-): Promise<string> {
-  // Returns only the summary string
-
-  console.log(
-    `[aiAnalysisService] Calling generateOverallCareerSummary for AI summary...`
-  );
-
-  // Call the existing internal function that makes the AI call
-  // Pass the pre-calculated themes/score to it
-  const careerDevelopmentSummary = await generateOverallCareerSummary(
-    calculatedThemes,
-    config
-  );
-
-  return careerDevelopmentSummary;
-}
-
-// Internal function: Generates the summary using AI (remains mostly the same)
-async function generateOverallCareerSummary(
-  aggregatedData: Omit<AggregatedFeedback, "careerDevelopmentSummary">,
-  config: AIAnalysisConfig
-): Promise<string> {
-  const { commonStrengths, commonWeaknesses, commonSuggestions, averageScore } =
-    aggregatedData;
-  // ... formatItems, responsibilities ...
-  const formatItems = (items: FeedbackFrequency[]) =>
-    items.map((item) => `- ${item.text} (Count: ${item.count})`).join("\n") ||
-    "None notable.";
-  const strengthsText = formatItems(commonStrengths);
-  const refinementNeedsText = formatItems(commonWeaknesses);
-  const learningPathwaysText = formatItems(commonSuggestions);
-  const responsibilities = `
-- Compreende um codebase de forma ampla, tendo a percepção de como alterações podem afetar o todo;
-- Implementa sem supervisão funcionalidades pequenas e médias;
-- Implementa, com auxílio da equipe, funcionalidades de complexidade média, que tenham efeitos colaterais no código mas que não alterem o núcleo ou a arquitetura do projeto;
-- Corrige a maior parte dos bugs;
-- Escreve testes automatizados de baixa ou média complexidade e proativamente adiciona testes automatizados em partes críticas da aplicação, coerentes com o seu nível de conhecimento técnico;
-- Executa testes manuais em uma funcionalidade garantindo que o happy-path e boa parte dos edge-cases estejam funcionando. As tarefas desenvolvidas raramente apresentam bugs;
-- Realiza code-reviews em códigos de todas as complexidades garantindo que o happy-path e boa parte dos edge-cases estejam funcionando. As tarefas revisadas raramente apresentam bugs;
-- Sabe dosar a meticulosidade do review de acordo com a complexidade da tarefa, sendo mais leniente quando cabível;
-- Atenta-se para possíveis falhas de segurança que seu código pode inserir no codebase;
-- Entende que partes do seu código podem não performar bem quando em escala;
-- Tem a percepção de como uma alteração pontual no código pode desencadear efeitos colaterais em outras partes do código. Ativamente corrige ou mitiga esses efeitos colaterais que podem ocorrer;
-- Preocupa-se com a legibilidade do código dos produtos, sugerindo onde o código de outros carbonautas pode ser escrito de uma forma mais legível;
-- Percebe, aponta e sugere melhorias no código de outros carbonautas quando identifica códigos que não seguem as boas práticas de desenvolvimento e das linguagens utilizadas;
-- Gerencia a sua própria rotina, sem supervisão, decidindo quais tarefas desenvolver de acordo com o seu nível de experiência e as necessidades da equipe;
-- Percebe quando há dependências entre tarefas que podem travar a equipe e ativamente reorganiza-as para evitar bloqueio por dependência;
-- Identifica e resolve ineficiências e redundâncias do dia-a-dia;
-- Auxilia desenvolvedores com menos experiência no desenvolvimento e planejamento;
-- Planeja o desenvolvimento de funcionalidades, com visão do curto prazo e com escopo limitado;
-- Possui um mindset positivo e orientado a encontrar soluções;
-- Comunica problemas técnicos e organizacionais de forma clara e objetiva, propondo soluções e formas de resolução;
-- Comunica-se de forma clara e ativa, facilitando tomadas de decisões em discussões;
-- Busca equilíbrio entre trabalho e bem-estar;
-- Busca constantemente melhorias na performance da equipe;
-- Contribui para o avanço dos conhecimentos técnicos da equipe;
-- Prospera, com auxílio, em um ambiente de incertezas;
-- Busca ativamente formas de melhorar os processos internos da Carbonaut;
-- Promove ativamente os valores da Carbonaut dentro do ambiente de trabalho.
-  `.trim();
-  const prompt = `
-You are assessing a developer's progress towards a 'Regular Developer' level based ONLY on aggregated feedback from multiple code reviews (pull requests).
-
-**Aggregated Feedback:**
-*Average Score (1-10):* ${averageScore.toFixed(1)}
-
-*Common Strengths Found:*
-${strengthsText}
-
-*Common Refinement Needs Found:*
-${refinementNeedsText}
-
-*Common Learning Pathways Suggested:*
-${learningPathwaysText}
-
-**Responsibilities of a Regular Developer (for context):**
-${responsibilities}
-
-**Task:**
-Write a concise summary (around 100-150 words) in English evaluating the developer's current trajectory towards the Regular Developer level based *strictly* on the aggregated feedback provided above. 
-- Identify specific strengths from the feedback that align with the Regular Developer responsibilities.
-- Identify key gaps or areas for development based on the common weaknesses and suggestions, relating them back to the responsibilities where possible.
-- Conclude with a brief statement on their overall progress towards the Regular level based on this feedback.
-- Do NOT invent information or make assumptions beyond the provided feedback data.
-- Respond ONLY with the summary text, no preamble or extra formatting.
-  `.trim();
-
-  console.log(
-    `[aiAnalysisService] Generating overall summary for ${config.provider}...`
-  );
-  try {
-    let summaryText = "";
-    if (config.provider === "openai") {
-      // --- IMPLEMENTED OpenAI call ---
-      const model = config.model;
-      if (!model) {
-        throw new Error(
-          "OpenAI model not specified in config for summary generation."
-        );
-      }
-      const response = await fetch("/api/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: getSystemMessage(config.provider),
-            },
-            { role: "user", content: prompt }, // Use the constructed prompt
-          ],
-          temperature: 0.6, // Slightly lower temp for summary
-          max_tokens: 500, // Summary should be shorter
-          // No response_format needed, expecting text
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenAI summary generation API error (${response.status}): ${errorText}`
-        );
-      }
-
-      const data = await response.json();
-      summaryText = data.choices?.[0]?.message?.content || "";
-      // --- End OpenAI call ---
-    } else if (config.provider === "anthropic") {
-      summaryText = await generateClaudeText(prompt, config);
-    } else if (config.provider === "gemini") {
-      // ... (Gemini call) ...
-      const genAI = new GoogleGenerativeAI(config.apiKey);
-      const model = genAI.getGenerativeModel({
-        model: config.model || "gemini-1.5-flash-latest",
-      });
-      const result = await model.generateContent(prompt);
-      summaryText = result.response.text();
-    } else {
-      throw new Error(
-        `Unsupported provider for summary generation: ${config.provider}`
-      );
-    }
-    return summaryText.trim();
-    } catch (error) {
-      console.error("Error generating overall career summary:", error);
-      return "(Could not generate AI career development summary due to an error.)";
-    }
-  }
 
   /**
    * Generate meta-analysis from multiple PR analyses

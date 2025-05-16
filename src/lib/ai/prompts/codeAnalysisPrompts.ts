@@ -39,39 +39,6 @@
 
 import { AIProvider } from "../../hooks/useAPIConfiguration";
 
-// Define the new feedback structure
-export interface CodeAnalysisPromptResult {
-  strengths: {
-    text: string;
-    codeContext?: {
-      filePath: string;
-      startLine: number;
-      endLine: number;
-      codeSnippet: string;
-    };
-  }[];
-  refinement_needs: {
-    text: string;
-    codeContext?: {
-      filePath: string;
-      startLine: number;
-      endLine: number;
-      codeSnippet: string;
-    };
-  }[];
-  learning_pathways: {
-    text: string;
-    codeContext?: {
-      filePath: string;
-      startLine: number;
-      endLine: number;
-      codeSnippet: string;
-    };
-  }[];
-  career_impact_summary: string;
-  overall_quality: number;
-}
-
 // Base template for PR code analysis
 export const getPRAnalysisBasePrompt = (prContent: string): string => `
   You are an experienced software engineer tasked with reviewing a GitHub pull request (PR) diff to provide constructive feedback for a developer's career growth. Your goal is to analyze the code changes and offer insights that will help the developer improve their skills and advance in their career.
@@ -222,21 +189,3 @@ export const getSystemMessage = (provider: AIProvider): string => {
       return "You are an expert code reviewer. Respond ONLY with valid JSON in the exact format requested.";
   }
 };
-
-// Career development summary prompt
-export const getCareerDevelopmentPrompt = (
-  aggregatedFeedback: string,
-): string => `
-You are assessing a developer's progress based ONLY on aggregated feedback from multiple code reviews (pull requests).
-
-Here is the aggregated feedback data:
-${aggregatedFeedback}
-
-Provide a concise career development summary that:
-1. Identifies the developer's current strengths and skill level
-2. Suggests 2-3 specific focus areas for immediate improvement
-3. Outlines a path for progression to the next career level
-4. Recommends specific learning resources or practices
-
-Your summary should be balanced, constructive, and actionable. Limit your response to 250-300 words maximum.
-`;

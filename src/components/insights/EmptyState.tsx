@@ -19,7 +19,7 @@ interface EmptyStateProps {
  * EmptyState component displayed when no PRs have been analyzed yet.
  * More direct and focused on developer learning.
  */
-export function EmptyState({
+function EmptyState({
   handleAnalyze,
   maxPRs,
   hasApiKey,

@@ -1,9 +1,9 @@
-import React, { createContext, useContext, ReactNode } from "react";
+import React, { createContext, ReactNode } from "react";
 import { GitHubUser } from "../../lib/types";
 import { vi } from "vitest";
 
 // Create mock user
-export const mockUser: GitHubUser = {
+const mockUser: GitHubUser = {
   login: "testuser",
   id: 123456,
   avatar_url: "https://github.com/testuser.png",
@@ -31,9 +31,6 @@ const mockAuthContext = createContext<AuthContextType>({
   userProfile: mockUser,
 });
 
-// Export the mock context to replace the original
-export const AuthContext = mockAuthContext;
-
 // Export a simple mock provider component
 export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -54,6 +51,3 @@ export const MockAuthProvider: React.FC<{ children: ReactNode }> = ({
     </mockAuthContext.Provider>
   );
 };
-
-// Mock the useAuth hook
-export const useAuth = () => useContext(mockAuthContext);

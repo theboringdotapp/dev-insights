@@ -35,7 +35,7 @@ interface RecurringPatternsProps {
   defaultOpen?: boolean;
 }
 
-export function RecurringPatterns({
+function RecurringPatterns({
   patterns,
   isLoading = false,
   defaultOpen = true,

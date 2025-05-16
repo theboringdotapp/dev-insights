@@ -14,7 +14,7 @@ interface FeedbackSectionProps {
  * FeedbackSection component displays a category of feedback items
  * with consistent styling and proper handling of empty states.
  */
-export function FeedbackSection({
+function FeedbackSection({
   title,
   items,
   badgeColor,

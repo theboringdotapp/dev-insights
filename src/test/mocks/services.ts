@@ -1,44 +1,14 @@
 import { vi } from "vitest";
 import { GitHubUser } from "../../lib/types";
-import React from "react";
 
 // Mock auth service
-export const mockAuthUser: GitHubUser = {
+const mockAuthUser: GitHubUser = {
   login: "testuser",
   id: 123456,
   avatar_url: "https://github.com/testuser.png",
   name: "Test User",
   email: "test@example.com",
 };
-
-export const mockAuthContext = {
-  accessToken: "test-token",
-  login: vi.fn(),
-  logout: vi.fn(),
-  isAuthenticated: true,
-  isLoading: false,
-  userProfile: mockAuthUser,
-};
-
-export function setupAuthMock() {
-  // Create a mock AuthContext and Provider
-  const mockAuthContextValue = mockAuthContext;
-
-  // Mock the auth module
-  vi.mock("../../lib/auth", () => {
-    // Import the actual context
-    const actual = vi.importActual("../../lib/auth");
-
-    return {
-      // Keep any other exports from the original module
-      ...actual,
-      // But override useAuth and AuthProvider
-      useAuth: () => mockAuthContextValue,
-      // Mock the AuthProvider to just render children
-      AuthProvider: ({ children }) => children,
-    };
-  });
-}
 
 // Mock localStorage
 export function createLocalStorageMock() {

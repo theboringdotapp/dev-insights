@@ -76,7 +76,7 @@ interface PRAnalysisDetailsProps {
  * PRAnalysisDetails component displays the AI feedback for a specific pull request
  * in an expandable/collapsible format.
  */
-export function PRAnalysisDetails({
+function PRAnalysisDetails({
   analysisResult,
   defaultOpen = false,
 }: PRAnalysisDetailsProps) {
