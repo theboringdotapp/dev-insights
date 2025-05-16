@@ -13,6 +13,8 @@ import {
   BarChart,
   FileCode2,
   Users2,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 
@@ -50,15 +52,15 @@ function UnauthenticatedView(): React.ReactElement {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] bg-background px-4 py-16">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] bg-background px-4 py-12">
       {/* Header */}
       <motion.div
-        className="text-center max-w-2xl mx-auto mb-10"
+        className="text-center max-w-2xl mx-auto mb-8"
         initial="hidden"
         animate="visible"
         variants={stagger}
       >
-        <motion.div variants={fadeIn} className="inline-flex items-center mb-4">
+        <motion.div variants={fadeIn} className="inline-flex items-center mb-6">
           <span className="bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400 text-xs font-medium px-3 py-1 rounded-full">
             Free & Open Source
           </span>
@@ -75,14 +77,13 @@ function UnauthenticatedView(): React.ReactElement {
           variants={fadeIn}
           className="text-zinc-700 dark:text-zinc-300 text-xl mb-8 max-w-lg mx-auto"
         >
-          Analyze your GitHub activity and improve your development workflow
-          with powerful insights and metrics.
+          Analyze your GitHub activity and get practical feedback on your code
         </motion.p>
       </motion.div>
 
       {/* Main content */}
       <motion.div
-        className="flex flex-col md:flex-row items-center justify-center w-full max-w-6xl gap-8 mb-16"
+        className="flex flex-col md:flex-row items-center justify-center w-full max-w-6xl gap-6 mb-12"
         initial="hidden"
         animate="visible"
         variants={stagger}
@@ -108,7 +109,7 @@ function UnauthenticatedView(): React.ReactElement {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center font-medium"
+                  className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white py-3 px-4 rounded-lg transition-colors flex items-center justify-center font-medium cursor-pointer"
                   onClick={() => setShowTokenInput(true)}
                 >
                   <Github className="mr-2.5 h-5 w-5" /> Connect with GitHub
@@ -140,7 +141,7 @@ function UnauthenticatedView(): React.ReactElement {
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors text-sm font-medium"
+                    className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-accent transition-colors text-sm font-medium cursor-pointer"
                     onClick={() => setShowTokenInput(false)}
                   >
                     Cancel
@@ -149,7 +150,7 @@ function UnauthenticatedView(): React.ReactElement {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="px-5 py-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white rounded-lg transition-colors text-sm font-medium cursor-pointer"
                   >
                     Login
                   </motion.button>
@@ -272,7 +273,7 @@ function UnauthenticatedView(): React.ReactElement {
                   AI Analysis
                 </span>
               </div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400 pl-2 border-l-2 border-purple-300 dark:border-purple-700">
+              <div className="text-xs text-zinc-700 dark:text-zinc-300 pl-2 border-l-2 border-purple-300 dark:border-purple-700">
                 Your code shows consistent patterns of clean function
                 organization and good naming conventions...
               </div>
@@ -283,19 +284,19 @@ function UnauthenticatedView(): React.ReactElement {
 
       {/* AI Analysis Feature Showcase Section */}
       <motion.div
-        className="w-full max-w-6xl mx-auto my-16 px-4"
+        className="w-full max-w-6xl mx-auto my-12 px-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <motion.h2
             className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.4 }}
           >
-            Powerful AI Code Analysis
+            AI Code Analysis
           </motion.h2>
           <motion.p
             className="text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto"
@@ -303,8 +304,8 @@ function UnauthenticatedView(): React.ReactElement {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.5 }}
           >
-            Get deep insights into your code quality and development patterns
-            with our AI-powered analysis tools
+            Get feedback on your code quality and identify patterns across your
+            pull requests
           </motion.p>
         </div>
 
@@ -324,7 +325,7 @@ function UnauthenticatedView(): React.ReactElement {
                 </h3>
               </div>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Detailed feedback on your individual pull requests
+                Feedback on your individual pull requests
               </p>
             </div>
 
@@ -411,7 +412,7 @@ function UnauthenticatedView(): React.ReactElement {
                 </h3>
               </div>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Find patterns and growth opportunities across your PRs
+                Identify patterns across multiple PRs
               </p>
             </div>
 
@@ -499,23 +500,129 @@ function UnauthenticatedView(): React.ReactElement {
             </div>
           </motion.div>
         </div>
+      </motion.div>
 
-        <motion.div
-          className="mt-10 text-center"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.8 }}
-        >
-          <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-            Our AI analyzes your code to provide actionable insights for both
-            individual improvements and long-term career growth
-          </p>
-        </motion.div>
+      {/* Security & Privacy Section */}
+      <motion.div
+        className="w-full max-w-6xl mx-auto my-8 px-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <div className="text-center mb-8">
+          <motion.div
+            className="inline-flex items-center justify-center mb-4 p-2.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <Shield className="h-7 w-7" />
+          </motion.div>
+          <motion.h2
+            className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            Private & Secure
+          </motion.h2>
+          <motion.p
+            className="text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            Your code stays in your browser. No servers store or process your
+            data.
+          </motion.p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Direct Communication */}
+          <motion.div
+            className="bg-white dark:bg-zinc-800/50 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700/50 p-6"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <Github className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                GitHub Direct Access
+              </h3>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Your browser connects directly with GitHub. We never see or store
+              your tokens or code.
+            </p>
+          </motion.div>
+
+          {/* Bring Your Own Keys */}
+          <motion.div
+            className="bg-white dark:bg-zinc-800/50 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700/50 p-6"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                <Lock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                Your API Keys
+              </h3>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Use your own API keys with your preferred AI provider. Keys stay
+              in your browser.
+            </p>
+          </motion.div>
+
+          {/* No Servers - Updated to mention Umami */}
+          <motion.div
+            className="bg-white dark:bg-zinc-800/50 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-700/50 p-6"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+          >
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <ExternalLink className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                No Servers
+              </h3>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Everything runs in your browser. We only use Umami for basic
+              anonymous analytics, with no personal data collected.
+            </p>
+          </motion.div>
+        </div>
+
+        <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/20 rounded-lg p-5 text-center">
+          <motion.div
+            className="max-w-3xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
+            <h4 className="text-sm font-medium text-purple-800 dark:text-purple-300 mb-2">
+              Browser-Only App
+            </h4>
+            <p className="text-sm text-zinc-700 dark:text-zinc-400">
+              DevInsight runs in your browser, calling GitHub and AI APIs
+              directly. Your code never passes through any servers.
+            </p>
+          </motion.div>
+        </div>
       </motion.div>
 
       {/* Feature highlights */}
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mb-12"
         initial="hidden"
         animate="visible"
         variants={stagger}
@@ -526,7 +633,7 @@ function UnauthenticatedView(): React.ReactElement {
           </div>
           <h3 className="text-lg font-semibold mb-2 text-foreground">Free</h3>
           <p className="text-muted-foreground text-sm">
-            No credit card required. Free.
+            No payment or credit card required
           </p>
         </motion.div>
 
@@ -536,7 +643,7 @@ function UnauthenticatedView(): React.ReactElement {
           </div>
           <h3 className="text-lg font-semibold mb-2 text-foreground">Secure</h3>
           <p className="text-muted-foreground text-sm">
-            Your emails are only read while scanning. No data is stored.
+            Your data stays in your browser
           </p>
         </motion.div>
 
@@ -548,17 +655,17 @@ function UnauthenticatedView(): React.ReactElement {
             Open Source
           </h3>
           <p className="text-muted-foreground text-sm">
-            The code is open source and available on GitHub
+            Code available on GitHub
           </p>
         </motion.div>
       </motion.div>
 
-      {/* Footer with attribution - matched to the image */}
+      {/* Footer with attribution - add privacy policy link */}
       <motion.div
         variants={fadeIn}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { delay: 0.6 } }}
-        className="mt-16 text-center text-sm text-zinc-500 dark:text-zinc-400"
+        className="mt-12 text-center text-sm text-zinc-500 dark:text-zinc-400"
       >
         <p>
           vibecoded by{" "}
@@ -566,7 +673,7 @@ function UnauthenticatedView(): React.ReactElement {
             href="https://theboring.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-purple-600 dark:text-purple-400 hover:underline"
+            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
           >
             theboring.app
           </a>
@@ -574,6 +681,20 @@ function UnauthenticatedView(): React.ReactElement {
         <p className="mt-1 text-xs">
           Freemium tools for improving your everyday life
         </p>
+        <div className="mt-4 flex justify-center space-x-4 text-xs">
+          <a
+            href="/privacy-policy"
+            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+          >
+            Privacy Policy
+          </a>
+          <a
+            href="https://github.com/carbonaut/github-review"
+            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+          >
+            GitHub
+          </a>
+        </div>
       </motion.div>
     </div>
   );

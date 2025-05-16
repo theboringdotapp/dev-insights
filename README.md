@@ -1,54 +1,76 @@
-# React + TypeScript + Vite
+# DevInsight
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+DevInsight is a tool that helps developers analyze their GitHub activity and improve their coding practices through AI-powered feedback.
 
-Currently, two official plugins are available:
+![DevInsight Screenshot](public/screenshot.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **GitHub Activity Analysis**: Review your pull requests and their metrics
+- **AI Code Analysis**: Get detailed feedback on individual pull requests
+- **Pattern Recognition**: Identify recurring patterns across multiple PRs
+- **Developer Growth**: Track improvements and areas for growth
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Privacy & Security
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **Browser-Only**: No servers store or process your code
+- **Direct GitHub Access**: Communicates directly with GitHub's API
+- **Your API Keys**: Use your preferred AI provider with your own API keys
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Technology Stack
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- React
+- TypeScript 
+- Tailwind CSS
+- Zustand (State Management)
+- Framer Motion
+- Recharts
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- GitHub account
+- API key from OpenAI, Anthropic, or Google (Gemini)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/github-review.git
+   cd github-review
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. Sign in using your GitHub personal access token
+2. Select a timeframe to analyze
+3. View your pull request timeline
+4. Analyze individual PRs to get AI feedback
+5. Generate meta-analysis to find patterns across multiple PRs
+
+## Contributing
+
+We welcome contributions! Please feel free to submit a Pull Request.
+
+## License
+
+This project is open source and available under the [GNU General Public License v3.0](LICENSE).
+
+## Acknowledgments
+
+- Built by [theboring.app](https://theboring.app)

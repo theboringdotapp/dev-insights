@@ -29,8 +29,8 @@ function AppContent() {
       <div className="container mx-auto p-4">
         <header className="bg-background p-4 border-b border-border">
           <div className="container mx-auto flex justify-between items-center">
-            <h1 className="text-xl font-semibold bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              DevInsights
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+              DevInsight
             </h1>
             {isAuthenticated && (
               <div className="relative">
