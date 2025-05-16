@@ -1,11 +1,13 @@
-import { describe, it, expect, vi, } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Timeline } from "../../Timeline";
 import { MockAuthProvider } from "../../../test/mocks/AuthMock";
 import {
   singlePRPerMonth,
   multiplePRsPerMonth,
-  mixedPRsPerMonth,,
+  mixedPRsPerMonth,
+  analyzedPRIds,
+  analyzingPRIds,
 } from "../../../test/mocks/timelineData";
 import {
   createMockPRMetricsHook,
