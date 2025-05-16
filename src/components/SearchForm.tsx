@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { TimeframeSelector, Timeframe } from "./TimeframeSelector";
 import { motion } from "framer-motion";
 
@@ -23,34 +23,25 @@ export function SearchForm({
     setUsername(initialUsername);
   }, [initialUsername]);
 
-  // Handle form submission (still needed for explicit search)
+  // Handle form submission - the only place where search is triggered
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // We don't need to update URL here, let the parent component handle it
-    // This avoids double URL updates and potential race conditions
     if (username.trim().length > 2) {
-      console.log(`[SearchForm] Form submitted for user: ${username}`);
+      console.log(
+        `[SearchForm] Form submitted for user: ${username} with timeframe: ${timeframe}`
+      );
       onSearch(username, timeframe);
     }
   };
 
-  // Listen for timeframe changes to trigger search
-  const handleTimeframeChange = useCallback(
-    (newTimeframe: Timeframe) => {
-      setTimeframe(newTimeframe);
-
-      // Only trigger search if we have a valid username
-      if (username.trim().length > 2) {
-        console.log(
-          `[SearchForm] Timeframe changed to: ${newTimeframe} for user: ${username}`
-        );
-        // Let the parent component update the URL
-        onSearch(username, newTimeframe);
-      }
-    },
-    [username, onSearch]
-  );
+  // Handle timeframe changes without triggering search
+  const handleTimeframeChange = (newTimeframe: Timeframe) => {
+    console.log(
+      `[SearchForm] Timeframe changed to: ${newTimeframe} (search not triggered)`
+    );
+    setTimeframe(newTimeframe);
+  };
 
   return (
     <motion.div
