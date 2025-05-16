@@ -1,25 +1,25 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CodeQualityInsights } from "../../CodeQualityInsights";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAnalysisStore } from "../../../stores/analysisStore";
+import { CodeQualityInsights } from "../../CodeQualityInsights";
 
 // Import shared mocks and utilities
+import cacheService from "../../../lib/cacheService";
+import {
+  mockAnalysisResults,
+  mockPullRequests,
+} from "../../../test/mocks/data";
 import {
   createLocalStorageMock,
   setupCacheServiceMock,
   setupGitHubServiceMocks,
 } from "../../../test/mocks/services";
 import {
-  mockPullRequests,
-  mockAnalysisResults,
-} from "../../../test/mocks/data";
-import {
+  cleanupTestEnvironment,
   renderWithRouter,
   setupTestEnvironment,
-  cleanupTestEnvironment,
 } from "../../../test/utils/render";
-import cacheService from "../../../lib/cacheService";
 
 // Setup test environment
 setupTestEnvironment();
@@ -161,9 +161,6 @@ describe("CodeQualityInsights", () => {
           growth_support: "Provide resources on error handling",
           project_recommendations: "Complex TypeScript projects",
         },
-        timestamp: Date.now(),
-        developerId: "testuser",
-        analyzedPRIds: [1, 2],
       });
 
       // Initialize the analysis store with already analyzed PRs

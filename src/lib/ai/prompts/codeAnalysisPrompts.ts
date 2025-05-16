@@ -37,7 +37,7 @@
  * improvement areas) and managers (looking for patterns and growth trajectories).
  */
 
-import { AIProvider } from "../../hooks/useAPIConfiguration";
+import { AIProvider } from "../../../hooks/useAPIConfiguration";
 
 // Base template for PR code analysis
 export const getPRAnalysisBasePrompt = (prContent: string): string => `

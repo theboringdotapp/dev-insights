@@ -8,6 +8,18 @@ export interface GitHubUser {
   [key: string]: string | number | boolean | null | undefined;
 }
 
+// AI interfaces
+export interface GenerateOptions {
+  prompt: string;
+  apiKey: string;
+  model: string;
+  temperature?: number;
+}
+
+export interface AI {
+  generate(options: GenerateOptions): Promise<string>;
+}
+
 // Pull Request item
 export interface PullRequestItem {
   id: number;
@@ -59,7 +71,7 @@ export interface DeveloperPerformanceData {
 }
 
 // New interface for individual feedback items with code context
-interface CodeContext {
+export interface CodeContext {
   filePath: string;
   startLine: number;
   endLine: number;
@@ -78,7 +90,7 @@ export interface AICodeFeedback {
   learning_pathways: FeedbackItem[];
   career_impact_summary: string;
   overall_quality?: number;
-  
+
   // Legacy field names for backward compatibility
   areas_for_improvement?: FeedbackItem[];
   growth_opportunities?: FeedbackItem[];
@@ -117,7 +129,7 @@ export interface AggregatedFeedback {
 
 // Meta Analysis Types
 export interface RecurringPattern {
-  category: 'strength' | 'refinement' | 'learning';
+  category: "strength" | "refinement" | "learning";
   pattern_name: string;
   description: string;
   frequency: string;

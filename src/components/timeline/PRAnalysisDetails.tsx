@@ -1,4 +1,4 @@
-import React from "react";
+
 import { PRAnalysisResult } from "../../lib/types";
 import {
   Collapsible,

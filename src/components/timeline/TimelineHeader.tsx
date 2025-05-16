@@ -1,5 +1,3 @@
-import React from "react";
-
 interface TimelineHeaderProps {
   timeframeLabel: string;
   repoColors: Record<string, string>;

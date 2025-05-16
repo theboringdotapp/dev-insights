@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 
 /**
  * ScrollToTop component displays a button that appears when the user scrolls down

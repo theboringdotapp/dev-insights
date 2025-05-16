@@ -1,4 +1,4 @@
-import React from "react";
+
 import PRFeatureItem from "./PRFeatureItem";
 import { FeedbackFrequency } from "../../../lib/types";
 

@@ -1,12 +1,13 @@
-import { useEffect, useCallback } from "react";
-import { PullRequestItem, PRAnalysisResult } from "../lib/types";
-import { usePRMetrics } from "../lib/usePRMetrics";
-import { useAnalysisStore } from "../stores/analysisStore";
+import { useCallback, useEffect } from "react";
+import { useDeveloperContext } from "../contexts/DeveloperContext";
 import {
   AIAnalysisConfig,
   calculateCommonThemes,
 } from "../lib/aiAnalysisService";
 import cacheService from "../lib/cacheService";
+import { PRAnalysisResult, PullRequestItem } from "../lib/types";
+import { usePRMetrics } from "../lib/usePRMetrics";
+import { useAnalysisStore } from "../stores/analysisStore";
 import { useAPIConfiguration } from "./useAPIConfiguration";
 
 export function usePRAnalysis(pullRequests: PullRequestItem[]) {
@@ -25,6 +26,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
   } = useAnalysisStore();
 
   const { apiKey } = useAPIConfiguration();
+  const { developerId } = useDeveloperContext();
   const hasApiKey = !!apiKey;
   console.log(
     `[usePRAnalysis] Rendering. apiKey: '${apiKey}', derived hasApiKey: ${hasApiKey}`
@@ -170,7 +172,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
 
       try {
         console.log(`Clearing cache for PR #${pr.id} before re-analysis.`);
-        await cacheService.deletePRAnalysis(pr.id);
+        await cacheService.deletePRAnalysis(pr.id, developerId);
 
         const config: AIAnalysisConfig = {
           apiKey,
@@ -231,6 +233,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       failAnalysis,
       getAnalysisForPR,
       setCalculatedThemes,
+      developerId,
     ]
   );
 

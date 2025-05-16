@@ -1,14 +1,4 @@
 import { vi } from "vitest";
-import { GitHubUser } from "../../lib/types";
-
-// Mock auth service
-const mockAuthUser: GitHubUser = {
-  login: "testuser",
-  id: 123456,
-  avatar_url: "https://github.com/testuser.png",
-  name: "Test User",
-  email: "test@example.com",
-};
 
 // Mock localStorage
 export function createLocalStorageMock() {

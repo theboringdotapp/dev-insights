@@ -1,4 +1,3 @@
-import React from "react";
 import { PullRequestItem } from "../../../lib/types";
 
 interface PRSelectionPanelProps {

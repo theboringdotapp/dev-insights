@@ -1,4 +1,4 @@
-import React from "react";
+
 
 export type Timeframe = "1week" | "1month" | "3months" | "6months" | "1year";
 

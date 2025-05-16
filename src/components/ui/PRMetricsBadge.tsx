@@ -1,4 +1,4 @@
-import React from "react";
+
 import { PullRequestMetrics } from "../../lib/types";
 
 interface PRMetricsBadgeProps {

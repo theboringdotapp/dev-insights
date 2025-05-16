@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 // Create a context for the collapsible state
 type CollapsibleContextValue = {
@@ -8,7 +8,7 @@ type CollapsibleContextValue = {
 };
 
 const CollapsibleContext = createContext<CollapsibleContextValue | undefined>(
-  undefined,
+  undefined
 );
 
 // Hook to consume the collapsible context
@@ -26,6 +26,7 @@ interface CollapsibleProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
+  className?: string;
 }
 
 // Main Collapsible component
@@ -34,6 +35,7 @@ export function Collapsible({
   open: controlledOpen,
   onOpenChange,
   children,
+  className = "",
 }: CollapsibleProps) {
   // Generate a unique ID for aria attributes
   const contentId = React.useId();
@@ -58,12 +60,12 @@ export function Collapsible({
         onOpenChange(newValue);
       }
     },
-    [isControlled, onOpenChange, open],
+    [isControlled, onOpenChange, open]
   );
 
   return (
     <CollapsibleContext.Provider value={{ open, setOpen, contentId }}>
-      <div className="w-full">{children}</div>
+      <div className={`w-full ${className}`}>{children}</div>
     </CollapsibleContext.Provider>
   );
 }

@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
+  PRAnalysisResult,
   PullRequestItem,
   PullRequestMetrics,
-  PRAnalysisResult,
 } from "../../lib/types";
-import { PRMetricsBadge } from "../ui/PRMetricsBadge";
+import { usePRMetrics } from "../../lib/usePRMetrics";
 import { CommitsList } from "../ui/CommitsList";
+import { PRMetricsBadge } from "../ui/PRMetricsBadge";
 import AnalysisButton from "./AnalysisButton";
 import PRAnalysisDetails from "./PRAnalysisDetails";
-import { usePRMetrics } from "../../lib/usePRMetrics";
 
 interface PullRequestCardProps {
   pr: PullRequestItem;

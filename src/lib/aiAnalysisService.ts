@@ -1,16 +1,17 @@
 import {
+  GoogleGenerativeAI,
+  HarmBlockThreshold,
+  HarmCategory,
+} from "@google/generative-ai"; // Import Gemini SDK
+import {
+  AggregatedFeedback,
   AICodeFeedback,
   FeedbackFrequency,
-  AggregatedFeedback,
-  FeedbackItem,
-  PRAnalysisResult,
   FeedbackInstance,
+  FeedbackItem,
+  MetaAnalysisResult,
+  PRAnalysisResult,
 } from "./types";
-import {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} from "@google/generative-ai"; // Import Gemini SDK
 
 // Types for AI analysis
 export interface AIAnalysisConfig {
@@ -104,7 +105,11 @@ export async function analyzePRWithAI(
   }
 }
 
-import { getPRAnalysisBasePrompt, getSystemMessage, getMetaAnalysisPrompt } from "./ai/prompts/codeAnalysisPrompts";
+import {
+  getMetaAnalysisPrompt,
+  getPRAnalysisBasePrompt,
+  getSystemMessage,
+} from "./ai/prompts/codeAnalysisPrompts";
 
 /**
  * Analyze code with OpenAI
@@ -177,8 +182,8 @@ async function analyzeWithOpenAI(
         // Fallback for parsing errors, providing empty arrays for the new structure
         return {
           strengths: [],
-          areas_for_improvement: [],
-          growth_opportunities: [],
+          refinement_needs: [],
+          learning_pathways: [],
           career_impact_summary:
             "The analysis couldn't be completed due to parsing issues with the AI response.",
           overall_quality: 5,
@@ -189,8 +194,14 @@ async function analyzeWithOpenAI(
     // Validate and structure the final response, providing defaults for the new structure
     return {
       strengths: parsedResponse.strengths || [],
-      refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
-      learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
+      refinement_needs:
+        parsedResponse.refinement_needs ||
+        parsedResponse.areas_for_improvement ||
+        [],
+      learning_pathways:
+        parsedResponse.learning_pathways ||
+        parsedResponse.growth_opportunities ||
+        [],
       career_impact_summary:
         parsedResponse.career_impact_summary || "No summary provided",
       overall_quality: parsedResponse.overall_quality,
@@ -240,7 +251,7 @@ async function analyzeWithClaude(
         max_tokens: 2000, // Increased from 1000
         messages: [
           { role: "system", content: getSystemMessage("anthropic") },
-          { role: "user", content: prompt }
+          { role: "user", content: prompt },
         ],
         temperature: 0.7,
       }),
@@ -303,8 +314,14 @@ async function analyzeWithClaude(
       // Validate and structure the final response (add null checks)
       return {
         strengths: parsedResponse.strengths || [],
-        refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
-        learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
+        refinement_needs:
+          parsedResponse.refinement_needs ||
+          parsedResponse.areas_for_improvement ||
+          [],
+        learning_pathways:
+          parsedResponse.learning_pathways ||
+          parsedResponse.growth_opportunities ||
+          [],
         career_impact_summary:
           parsedResponse.career_impact_summary || "No summary provided",
         overall_quality: parsedResponse.overall_quality,
@@ -438,8 +455,9 @@ async function analyzeWithGemini(
       },
     });
 
+    const prompt = getPRAnalysisBasePrompt(prContent);
     // Make the API call
-    const result = await geminiModel.generateContent(fullPrompt);
+    const result = await geminiModel.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
 
@@ -450,8 +468,14 @@ async function analyzeWithGemini(
       if (
         !parsedResponse ||
         !Array.isArray(parsedResponse.strengths) ||
-        !Array.isArray(parsedResponse.refinement_needs || parsedResponse.areas_for_improvement) ||
-        !Array.isArray(parsedResponse.learning_pathways || parsedResponse.growth_opportunities) ||
+        !Array.isArray(
+          parsedResponse.refinement_needs ||
+            parsedResponse.areas_for_improvement
+        ) ||
+        !Array.isArray(
+          parsedResponse.learning_pathways ||
+            parsedResponse.growth_opportunities
+        ) ||
         typeof parsedResponse.career_impact_summary !== "string"
         // typeof parsedResponse.overall_quality !== 'number' // Allow optional quality
       ) {
@@ -459,8 +483,14 @@ async function analyzeWithGemini(
       }
       return {
         strengths: parsedResponse.strengths || [],
-        refinement_needs: parsedResponse.refinement_needs || parsedResponse.areas_for_improvement || [],
-        learning_pathways: parsedResponse.learning_pathways || parsedResponse.growth_opportunities || [],
+        refinement_needs:
+          parsedResponse.refinement_needs ||
+          parsedResponse.areas_for_improvement ||
+          [],
+        learning_pathways:
+          parsedResponse.learning_pathways ||
+          parsedResponse.growth_opportunities ||
+          [],
         career_impact_summary:
           parsedResponse.career_impact_summary || "No summary provided.",
         overall_quality: parsedResponse.overall_quality, // Pass through if present
@@ -482,16 +512,16 @@ async function analyzeWithGemini(
           if (
             !parsedFallback ||
             !Array.isArray(parsedFallback.strengths) ||
-            !Array.isArray(parsedFallback.areas_for_improvement) ||
-            !Array.isArray(parsedFallback.growth_opportunities) ||
+            !Array.isArray(parsedFallback.refinement_needs) ||
+            !Array.isArray(parsedFallback.learning_pathways) ||
             typeof parsedFallback.career_impact_summary !== "string"
           ) {
             throw new Error("Gemini fallback JSON structure is invalid.");
           }
           return {
             strengths: parsedFallback.strengths || [],
-            areas_for_improvement: parsedFallback.areas_for_improvement || [],
-            growth_opportunities: parsedFallback.growth_opportunities || [],
+            learning_pathways: parsedFallback.learning_pathways || [],
+            refinement_needs: parsedFallback.refinement_needs || [],
             career_impact_summary:
               parsedFallback.career_impact_summary || "No summary provided.",
             overall_quality: parsedFallback.overall_quality,
@@ -531,13 +561,14 @@ async function analyzeWithGemini(
     if (message.includes("API key not valid")) {
       throw new Error("Invalid Gemini API Key provided.");
     }
-    
+
     // Provide fallback with new field names
     return {
       strengths: [],
       refinement_needs: [],
       learning_pathways: [],
-      career_impact_summary: "The code analysis could not be completed due to a Gemini API error.",
+      career_impact_summary:
+        "The code analysis could not be completed due to a Gemini API error.",
       overall_quality: 5,
     };
   }
@@ -623,7 +654,10 @@ function calculateCommonThemes(
       })
     );
     // Support both new field names and legacy field names
-    const refinementItems = result.feedback.refinement_needs || result.feedback.areas_for_improvement || [];
+    const refinementItems =
+      result.feedback.refinement_needs ||
+      result.feedback.areas_for_improvement ||
+      [];
     refinementItems.forEach((item) =>
       allRefinementNeeds.push({
         item,
@@ -632,8 +666,11 @@ function calculateCommonThemes(
         prTitle: result.prTitle,
       })
     );
-    
-    const learningItems = result.feedback.learning_pathways || result.feedback.growth_opportunities || [];
+
+    const learningItems =
+      result.feedback.learning_pathways ||
+      result.feedback.growth_opportunities ||
+      [];
     learningItems.forEach((item) =>
       allLearningPathways.push({
         item,
@@ -662,93 +699,109 @@ function calculateCommonThemes(
   };
 }
 
-  /**
-   * Generate meta-analysis from multiple PR analyses
-   * This function takes analyzed PR data and identifies patterns and insights across all PRs
-   */
-  export async function generateMetaAnalysis(
-    prAnalysisResults: PRAnalysisResult[],
-    config: AIAnalysisConfig
-  ): Promise<MetaAnalysisResult> {
-    try {
-      if (!prAnalysisResults || prAnalysisResults.length === 0) {
-        throw new Error("No PR analysis data provided for meta-analysis");
-      }
+/**
+ * Generate meta-analysis from multiple PR analyses
+ * This function takes analyzed PR data and identifies patterns and insights across all PRs
+ */
+export async function generateMetaAnalysis(
+  prAnalysisResults: PRAnalysisResult[],
+  config: AIAnalysisConfig
+): Promise<MetaAnalysisResult> {
+  try {
+    if (!prAnalysisResults || prAnalysisResults.length === 0) {
+      throw new Error("No PR analysis data provided for meta-analysis");
+    }
 
-      // Format the PR analysis data for the AI prompt
-      const analysisData = prAnalysisResults.map(result => {
+    // Format the PR analysis data for the AI prompt
+    const analysisData = prAnalysisResults
+      .map((result) => {
         const { prTitle, prId, feedback } = result;
         return `
   PR #${prId} - "${prTitle}":
-  - Strengths: ${feedback.strengths.map(s => s.text).join("; ")}
-  - Refinement Needs: ${(feedback.refinement_needs || feedback.areas_for_improvement || []).map(r => r.text).join("; ")}
-  - Learning Pathways: ${(feedback.learning_pathways || feedback.growth_opportunities || []).map(o => o.text).join("; ")}
-  - Quality Score: ${feedback.overall_quality || 'N/A'}
+  - Strengths: ${feedback.strengths.map((s) => s.text).join("; ")}
+  - Refinement Needs: ${(
+    feedback.refinement_needs ||
+    feedback.areas_for_improvement ||
+    []
+  )
+    .map((r) => r.text)
+    .join("; ")}
+  - Learning Pathways: ${(
+    feedback.learning_pathways ||
+    feedback.growth_opportunities ||
+    []
+  )
+    .map((o) => o.text)
+    .join("; ")}
+  - Quality Score: ${feedback.overall_quality || "N/A"}
         `;
-      }).join("\n\n");
+      })
+      .join("\n\n");
 
-      // Get the meta-analysis prompt with the formatted data
-      const prompt = getMetaAnalysisPrompt(analysisData);
+    // Get the meta-analysis prompt with the formatted data
+    const prompt = getMetaAnalysisPrompt(analysisData);
 
-      let metaAnalysisText = "";
-    
-      // Choose API provider based on config
-      if (config.provider === "openai") {
-        // OpenAI implementation
-        const response = await fetch("/api/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.apiKey}`,
-          },
-          body: JSON.stringify({
-            model: config.model || "gpt-4",
-            messages: [
-              {
-                role: "system",
-                content: getSystemMessage("openai"),
-              },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.6,
-          }),
-        });
+    let metaAnalysisText = "";
 
-        if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.status}`);
-        }
+    // Choose API provider based on config
+    if (config.provider === "openai") {
+      // OpenAI implementation
+      const response = await fetch("/api/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model || "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: getSystemMessage("openai"),
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.6,
+        }),
+      });
 
-        const data = await response.json();
-        metaAnalysisText = data.choices[0].message.content;
-      } else if (config.provider === "anthropic") {
-        // Anthropic implementation
-        metaAnalysisText = await generateClaudeText(prompt, config, 3000);
-      } else if (config.provider === "gemini") {
-        // Gemini implementation
-        const genAI = new GoogleGenerativeAI(config.apiKey);
-        const model = genAI.getGenerativeModel({
-          model: config.model || "gemini-1.5-flash-latest",
-        });
-        const result = await model.generateContent(prompt);
-        metaAnalysisText = result.response.text();
-      } else {
-        throw new Error(`Unsupported provider for meta-analysis: ${config.provider}`);
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
       }
 
-      // Parse the JSON response
-      try {
-        // Clean up the response to handle potential markdown or text formatting
-        const cleanedText = metaAnalysisText.replace(/```json|```/g, '').trim();
-        return JSON.parse(cleanedText);
-      } catch (parseError) {
-        console.error("Error parsing meta-analysis response:", parseError);
-        throw new Error("Failed to parse meta-analysis result");
-      }
-    } catch (error) {
-      console.error("Error generating meta-analysis:", error);
-      throw error;
+      const data = await response.json();
+      metaAnalysisText = data.choices[0].message.content;
+    } else if (config.provider === "anthropic") {
+      // Anthropic implementation
+      metaAnalysisText = await generateClaudeText(prompt, config, 3000);
+    } else if (config.provider === "gemini") {
+      // Gemini implementation
+      const genAI = new GoogleGenerativeAI(config.apiKey);
+      const model = genAI.getGenerativeModel({
+        model: config.model || "gemini-1.5-flash-latest",
+      });
+      const result = await model.generateContent(prompt);
+      metaAnalysisText = result.response.text();
+    } else {
+      throw new Error(
+        `Unsupported provider for meta-analysis: ${config.provider}`
+      );
     }
-  }
 
-  // Export the new theme calculation function if needed elsewhere, or keep it internal
-  export { calculateCommonThemes };
+    // Parse the JSON response
+    try {
+      // Clean up the response to handle potential markdown or text formatting
+      const cleanedText = metaAnalysisText.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error("Error parsing meta-analysis response:", parseError);
+      throw new Error("Failed to parse meta-analysis result");
+    }
+  } catch (error) {
+    console.error("Error generating meta-analysis:", error);
+    throw error;
+  }
+}
+
+// Export the new theme calculation function if needed elsewhere, or keep it internal
+export { calculateCommonThemes };

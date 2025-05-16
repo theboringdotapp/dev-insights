@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { PullRequestItem, PullRequestMetrics } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { Timeframe } from "./TimeframeSelector";

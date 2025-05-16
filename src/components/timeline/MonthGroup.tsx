@@ -1,4 +1,4 @@
-import React from "react";
+
 import { PullRequestItem, PullRequestMetrics } from "../../lib/types";
 import PullRequestCard from "./PullRequestCard";
 

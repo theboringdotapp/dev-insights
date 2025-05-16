@@ -1,22 +1,22 @@
-import React, { useEffect, useRef, useCallback } from "react";
-import MetricsSummary from "./insights/MetricsSummary";
+import { useCallback, useEffect, useRef } from "react";
 import EmptyState from "./insights/EmptyState";
+import MetricsSummary from "./insights/MetricsSummary";
 
 // Import the extracted localStorage utility functions
 import { CachedMetaAnalysisResult } from "../lib/localStorageUtils";
 
 // Import the new custom hooks
-import { usePatternAnalysisCache } from "../hooks/usePatternAnalysisCache";
 import { useConfigurationManagement } from "../hooks/useConfigurationManagement";
 import { useInitialPRDiscovery } from "../hooks/useInitialPRDiscovery";
+import { usePatternAnalysisCache } from "../hooks/usePatternAnalysisCache";
 import { usePRAnalysisManager } from "../hooks/usePRAnalysisManager";
 
-import { PullRequestItem, PRAnalysisResult } from "../lib/types";
-import { useAnalysisStore } from "../stores/analysisStore";
 import {
   calculateCommonThemes,
   generateMetaAnalysis,
 } from "../lib/aiAnalysisService";
+import { PRAnalysisResult, PullRequestItem } from "../lib/types";
+import { useAnalysisStore } from "../stores/analysisStore";
 
 import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import ConfigurationPanel from "./code-quality/ConfigurationPanel";
@@ -24,8 +24,8 @@ import ConfigurationPanel from "./code-quality/ConfigurationPanel";
 // import AnalysisResults from "./code-quality/AnalysisResults";
 // import AnalysisLoadingIndicator from "./code-quality/AnalysisLoadingIndicator";
 // import PRSelectionPanel from "./code-quality/components/PRSelectionPanel";
-import MetaAnalysis from "./code-quality/MetaAnalysis";
 import { useDeveloperContext } from "../contexts/DeveloperContext";
+import MetaAnalysis from "./code-quality/MetaAnalysis";
 
 import cacheService from "../lib/cacheService";
 

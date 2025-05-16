@@ -1,4 +1,3 @@
-import * as React from "react";
 import { FocusArea } from "../../lib/types";
 import FocusAreaItem from "./FocusAreaItem";
 

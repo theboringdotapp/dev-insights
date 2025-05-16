@@ -1,4 +1,4 @@
-import React from "react";
+
 import { PullRequestItem } from "../../lib/types";
 import { AIProvider } from "../../hooks/useAPIConfiguration";
 import {

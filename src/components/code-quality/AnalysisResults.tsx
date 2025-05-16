@@ -1,7 +1,6 @@
-import React from "react";
+import { FeedbackFrequency } from "../../lib/types";
 import OverallSummary from "./analysis/OverallSummary";
 import PRFeatureList from "./analysis/PRFeatureList";
-import { FeedbackFrequency } from "../../lib/types";
 
 // REMOVED unused interface definition
 // interface AnalysisResultsDisplayProps { ... }

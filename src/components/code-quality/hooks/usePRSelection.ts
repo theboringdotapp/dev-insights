@@ -1,9 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { PullRequestItem } from "../../../lib/types";
-import {
-  AIAnalysisConfig,
-  PRAnalysisResult,
-} from "../../../lib/aiAnalysisService";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AIAnalysisConfig } from "../../../lib/aiAnalysisService";
+import { PRAnalysisResult, PullRequestItem } from "../../../lib/types";
 
 /**
  * Custom hook to manage PR selection functionality

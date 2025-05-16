@@ -1,9 +1,8 @@
-import React from "react";
 import { CommitItem } from "../../lib/types";
 import {
   Collapsible,
-  CollapsibleTrigger,
   CollapsibleContent,
+  CollapsibleTrigger,
 } from "../ui/Collapsible";
 
 interface CommitsListProps {

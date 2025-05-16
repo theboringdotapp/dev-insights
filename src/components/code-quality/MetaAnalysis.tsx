@@ -1,4 +1,4 @@
-import React from "react";
+
 import { MetaAnalysisResult } from "../../lib/types";
 import { GanttChartIcon, Users2Icon } from "lucide-react";
 import {

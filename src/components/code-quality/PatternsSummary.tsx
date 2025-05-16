@@ -1,4 +1,3 @@
-import * as React from "react";
 import { RecurringPattern } from "../../lib/types";
 
 // Category icons
@@ -86,9 +85,7 @@ interface PatternsSummaryProps {
   patterns: RecurringPattern[];
 }
 
-export function PatternsSummary({
-  patterns
-}: PatternsSummaryProps) {
+export function PatternsSummary({ patterns }: PatternsSummaryProps) {
   if (!patterns || patterns.length === 0) {
     return null;
   }
@@ -101,42 +98,53 @@ export function PatternsSummary({
   }, {} as Record<string, number>);
 
   // Get trending patterns count (formerly very common)
-  const trendingCount = patterns.filter(pattern => 
+  const trendingCount = patterns.filter((pattern) =>
     pattern.frequency.toLowerCase().includes("very common")
   ).length;
-  
+
   return (
     <div className="flex flex-wrap items-center gap-2 mb-3">
       {/* Patterns count badge */}
       <div className="flex items-center bg-purple-50/60 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 text-xs px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-700/50">
         <PatternIcon />
-        <span className="ml-1">{patterns.length} pattern{patterns.length !== 1 ? 's' : ''}</span>
+        <span className="ml-1">
+          {patterns.length} pattern{patterns.length !== 1 ? "s" : ""}
+        </span>
       </div>
-      
+
       {/* Strength count with icon */}
       {countByCategory.strength > 0 && (
         <div className="flex items-center border border-zinc-200 dark:border-zinc-700 bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 text-xs px-2.5 py-1 rounded-full">
           <StrengthIcon />
-          <span className="ml-1">{countByCategory.strength} strength{countByCategory.strength !== 1 ? 's' : ''}</span>
+          <span className="ml-1">
+            {countByCategory.strength} strength
+            {countByCategory.strength !== 1 ? "s" : ""}
+          </span>
         </div>
       )}
-      
+
       {/* Refinement count with icon */}
       {countByCategory.refinement > 0 && (
         <div className="flex items-center border border-zinc-200 dark:border-zinc-700 bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 text-xs px-2.5 py-1 rounded-full">
           <RefinementIcon />
-          <span className="ml-1">{countByCategory.refinement} refinement{countByCategory.refinement !== 1 ? 's' : ''}</span>
+          <span className="ml-1">
+            {countByCategory.refinement} refinement
+            {countByCategory.refinement !== 1 ? "s" : ""}
+          </span>
         </div>
       )}
-      
+
       {/* Learning paths count with icon */}
       {countByCategory.learning > 0 && (
         <div className="flex items-center border border-zinc-200 dark:border-zinc-700 bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 text-xs px-2.5 py-1 rounded-full">
           <LearningIcon />
-          <span className="ml-1">{countByCategory.learning} learning path{countByCategory.learning !== 1 ? 's' : ''}</span>
+          <span className="ml-1">
+            {countByCategory.learning} learning path
+            {countByCategory.learning !== 1 ? "s" : ""}
+          </span>
         </div>
       )}
-      
+
       {/* Trending patterns indicator (formerly very common) */}
       {trendingCount > 0 && (
         <div className="flex items-center border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 text-xs px-2.5 py-1 rounded-full">

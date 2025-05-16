@@ -1,7 +1,6 @@
-import React from "react";
-import { FeedbackInstance, CodeContext } from "../../../lib/types";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { CodeContext, FeedbackInstance } from "../../../lib/types";
 
 interface Feature {
   text: string;

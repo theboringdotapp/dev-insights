@@ -1,5 +1,3 @@
-import * as React from "react";
-
 type BadgeVariant = "category" | "frequency";
 type CategoryType = "strength" | "refinement" | "learning" | "default";
 type FrequencyType = "trending" | "common" | "case specific" | "rare";
@@ -19,8 +17,9 @@ export function PatternBadge({
 }: PatternBadgeProps) {
   const getVariantStyles = (): string => {
     // Base styles for all badges
-    const baseStyle = "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border";
-    
+    const baseStyle =
+      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border";
+
     if (variant === "category") {
       // For categories, use a consistent style with no color differentiation
       return `${baseStyle} bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700`;
@@ -35,16 +34,12 @@ export function PatternBadge({
         return `${baseStyle} bg-blue-50/60 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800/50`;
       }
     }
-    
+
     // Fallback
     return `${baseStyle} bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700`;
   };
 
-  return (
-    <span className={`${getVariantStyles()} ${className}`}>
-      {label}
-    </span>
-  );
+  return <span className={`${getVariantStyles()} ${className}`}>{label}</span>;
 }
 
 export default PatternBadge;
