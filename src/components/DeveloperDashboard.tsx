@@ -271,30 +271,35 @@ export default function DeveloperDashboard() {
             </div>
           )}
 
-          {/* Activity Charts */}
+          {/* Activity Charts and Key Metrics - Side by side */}
           {filteredPRs.length > 0 && (
-            <Suspense fallback={<ComponentLoader />}>
-              <ActivityCharts
-                pullRequests={filteredPRs}
-                showOnlyImportantPRs={showOnlyImportantPRs}
-                onCommitDataLoaded={(count, isLoading) => {
-                  setRealCommitCount(count);
-                  setIsLoadingCommits(isLoading);
-                }}
-              />
-            </Suspense>
-          )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Activity Charts - Takes 2/3 of the space on large screens */}
+              <div className="lg:col-span-2">
+                <Suspense fallback={<ComponentLoader />}>
+                  <ActivityCharts
+                    pullRequests={filteredPRs}
+                    showOnlyImportantPRs={showOnlyImportantPRs}
+                    onCommitDataLoaded={(count, isLoading) => {
+                      setRealCommitCount(count);
+                      setIsLoadingCommits(isLoading);
+                    }}
+                  />
+                </Suspense>
+              </div>
 
-          {/* Key Metrics */}
-          {filteredPRs.length > 0 && (
-            <Suspense fallback={<ComponentLoader />}>
-              <KeyMetrics
-                pullRequests={filteredPRs}
-                timeframe={timeframe}
-                realCommitCount={realCommitCount}
-                isLoadingCommits={isLoadingCommits}
-              />
-            </Suspense>
+              {/* Key Metrics - Takes 1/3 of the space */}
+              <div className="lg:col-span-1">
+                <Suspense fallback={<ComponentLoader />}>
+                  <KeyMetrics
+                    pullRequests={filteredPRs}
+                    timeframe={timeframe}
+                    realCommitCount={realCommitCount}
+                    isLoadingCommits={isLoadingCommits}
+                  />
+                </Suspense>
+              </div>
+            </div>
           )}
 
           {/* Two-column layout for Dashboard and Timeline */}
