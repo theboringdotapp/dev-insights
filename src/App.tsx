@@ -138,7 +138,7 @@ function AppContent() {
                   Privacy Policy
                 </a>
                 <a
-                  href="https://github.com/carbonaut/github-review"
+                  href="https://github.com/theboringdotapp/dev-insights"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors flex items-center"

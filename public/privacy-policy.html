@@ -6,15 +6,6 @@
     <title>Privacy Policy | DevInsight by theboring.app</title>
     <link rel="icon" href="/favicon.png" type="image/png">
     
-    <!-- Add back inline theme script to prevent FOUC -->
-    <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
-        }
-    </script>
-    
     <!-- Tailwind CSS - Note: In production, this should be replaced with a proper build -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -23,7 +14,6 @@
     
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -32,25 +22,19 @@
                         },
                         background: {
                             DEFAULT: '#FFFFFF',
-                            dark: '#0E1116',
                         },
                         foreground: {
                             DEFAULT: '#18181B',
-                            dark: '#E4E4E7',
                         },
                         card: {
                             DEFAULT: '#FFFFFF',
-                            dark: '#1E1E2C',
                         },
                         muted: {
                             DEFAULT: '#F4F4F5',
                             foreground: '#71717A',
-                            dark: '#27272A',
-                            'foreground-dark': '#A1A1AA',
                         },
                         border: {
                             DEFAULT: '#E4E4E7',
-                            dark: '#2E2E3A',
                         },
                     },
                 },
@@ -68,35 +52,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-        }
-        
-        .dark {
-            background-color: #0E1116;
-            color: #E4E4E7;
-        }
-        
-        .dark .prose {
-            color: #E4E4E7;
-        }
-        
-        .dark .prose h1,
-        .dark .prose h2,
-        .dark .prose h3,
-        .dark .prose h4,
-        .dark .prose strong {
-            color: #FFFFFF;
-        }
-        
-        .dark .prose a {
-            color: #A78BFA;
-        }
-        
-        .dark .bg-card {
-            background-color: #1E1E2C;
-        }
-        
-        .dark .border-border {
-            border-color: #2E2E3A;
+            background-color: #FFFFFF;
+            color: #18181B;
         }
         
         .btn-brand {
@@ -112,46 +69,23 @@
             outline: 2px solid #8B5CF6;
             outline-offset: 2px;
         }
-        
-        .theme-toggle {
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-        }
-        
-        .theme-toggle:hover {
-            background-color: #F4F4F5;
-        }
-        
-        .dark .theme-toggle:hover {
-            background-color: #27272A;
-        }
-        
-        .theme-toggle svg {
-            width: 1.25rem;
-            height: 1.25rem;
-        }
     </style>
     
     <!-- Umami Analytics -->
     <script defer src="https://cloud.umami.is/script.js" data-website-id="2ae0d0a0-78ae-4c42-9f01-be8104391628"></script>
 </head>
-<body class="min-h-screen flex flex-col bg-background text-foreground dark:bg-background-dark dark:text-foreground-dark">
+<body class="min-h-screen flex flex-col bg-background text-foreground">
 
     <!-- Static Navigation Bar -->
-    <nav class="sticky top-0 z-50 bg-card border-b border-border dark:bg-card-dark dark:border-border-dark">
+    <nav class="sticky top-0 z-50 bg-card border-b border-border">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
                     <a href="/" class="flex items-center cursor-pointer hover:opacity-90 transition-opacity">
-                        <span class="font-semibold text-xl text-purple-600 dark:text-purple-400">DevInsight</span>
+                        <span class="font-semibold text-xl text-purple-600">DevInsight</span>
                     </a>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <!-- Theme toggle button -->
-                    <button id="theme-toggle" class="theme-toggle focus-ring">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="sun-icon" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="moon-icon" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-                    </button>
+                <div class="flex items-center">
                     <!-- Back to app button -->
                     <a href="/" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
                         Back to App
@@ -164,7 +98,7 @@
     <!-- Main Content Area -->
     <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Tailwind prose class handles typography -->
-        <div class="max-w-3xl mx-auto prose dark:prose-invert prose-purple">
+        <div class="max-w-3xl mx-auto prose prose-purple">
             <h1>Privacy Policy</h1>
             
             <p>Last Updated: May 15, 2025</p>
@@ -189,7 +123,7 @@
             <h2>Data Storage and Security</h2>
             <p>We are committed to protecting your data. Here's how we handle storage and security:</p>
             <ul>
-                <li><strong>Browser-Only Processing:</strong> DevInsight is a browser-only application. Your GitHub data and code are processed directly in your browser and are <strong class="text-purple-600 dark:text-purple-400">never stored on our servers</strong>.</li>
+                <li><strong>Browser-Only Processing:</strong> DevInsight is a browser-only application. Your GitHub data and code are processed directly in your browser and are <strong class="text-purple-600">never stored on our servers</strong>.</li>
                 <li><strong>Authentication Tokens:</strong> Your GitHub personal access token is stored securely in your browser's local storage and is never transmitted to our servers.
                     <ul>
                         <li>The token is used directly from your browser to communicate with GitHub's API.</li>
@@ -235,33 +169,33 @@
             </ul>
 
             <h2>Open Source</h2>
-            <p>DevInsight is open source. You can review the code on <a href="https://github.com/carbonaut/github-review" target="_blank">GitHub</a> to verify how your data is handled.</p>
+            <p>DevInsight is open source. You can review the code on <a href="https://github.com/theboringdotapp/dev-insights" target="_blank">GitHub</a> to verify how your data is handled.</p>
 
             <h2>Changes to This Policy</h2>
             <p>We may update this Privacy Policy. We will notify you of any changes by posting the new policy on this page. You are advised to review this Privacy Policy periodically for any changes.</p>
 
             <h2>Contact Us</h2>
-            <p>If you have any questions about this Privacy Policy, please contact us via email at contact@theboring.app or by opening an issue on our <a href="https://github.com/carbonaut/github-review/issues" target="_blank">GitHub repository</a>.</p>
+            <p>If you have any questions about this Privacy Policy, please contact us via email at contact@theboring.app or by opening an issue on our <a href="https://github.com/theboringdotapp/dev-insights/issues" target="_blank">GitHub repository</a>.</p>
         </div>
     </main>
 
     <!-- Static Footer -->
-    <footer class="py-8 border-t border-border dark:border-border-dark mt-8">
+    <footer class="py-8 border-t border-border mt-8">
         <div class="container max-w-6xl mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="mb-4 md:mb-0">
                     <div class="flex items-center space-x-2">
                         <span class="font-semibold">
-                            <span class="text-purple-600 dark:text-purple-400">vibecoded</span> 
+                            <span class="text-purple-600">vibecoded</span> 
                             by <a href="https://theboring.app" target="_blank" class="hover:underline">theboring.app</a>
                         </span>
                     </div>
-                    <p class="text-sm text-muted-foreground dark:text-muted-foreground-dark mt-2">Freemium tools for improving your everyday life</p>
+                    <p class="text-sm text-muted-foreground mt-2">Freemium tools for improving your everyday life</p>
                 </div>
                 <div class="flex flex-col items-end">
                     <div class="flex space-x-4">
-                        <a href="/privacy-policy.html" class="text-muted-foreground dark:text-muted-foreground-dark hover:text-foreground dark:hover:text-foreground-dark transition-colors">Privacy Policy</a>
-                        <a href="https://github.com/carbonaut/github-review" target="_blank" class="text-muted-foreground dark:text-muted-foreground-dark hover:text-foreground dark:hover:text-foreground-dark transition-colors flex items-center">
+                        <a href="/privacy-policy.html" class="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
+                        <a href="https://github.com/theboringdotapp/dev-insights" target="_blank" class="text-muted-foreground hover:text-foreground transition-colors flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>
                             Source Code
                         </a>
@@ -270,35 +204,5 @@
             </div>
         </div>
     </footer>
-
-    <!-- Global JS for theme toggling -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            const sunIcon = themeToggle?.querySelector('.sun-icon');
-            const moonIcon = themeToggle?.querySelector('.moon-icon');
-            
-            function updateIcons(theme) {
-                if (!sunIcon || !moonIcon) return;
-                if (theme === 'dark') {
-                    sunIcon.style.display = 'block';
-                    moonIcon.style.display = 'none';
-                } else {
-                    sunIcon.style.display = 'none';
-                    moonIcon.style.display = 'block';
-                }
-            }
-
-            const currentTheme = localStorage.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            updateIcons(currentTheme);
-            
-            themeToggle?.addEventListener('click', function() {
-                const isDark = document.documentElement.classList.toggle('dark');
-                const newTheme = isDark ? 'dark' : 'light';
-                localStorage.theme = newTheme;
-                updateIcons(newTheme);
-            });
-        });
-    </script>
 </body>
 </html> 

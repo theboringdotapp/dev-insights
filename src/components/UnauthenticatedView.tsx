@@ -689,7 +689,7 @@ function UnauthenticatedView(): React.ReactElement {
             Privacy Policy
           </a>
           <a
-            href="https://github.com/carbonaut/github-review"
+            href="https://github.com/theboringdotapp/dev-insights"
             className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
           >
             GitHub
