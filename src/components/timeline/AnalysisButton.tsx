@@ -1,4 +1,3 @@
-
 import { PullRequestItem } from "../../lib/types";
 
 // Updated AI Icon SVG
@@ -38,7 +37,8 @@ export default function AnalysisButton({
   isAnalyzing,
   onAnalyze,
   onReanalyze,
-}: AnalysisButtonProps) {
+  hasError,
+}: AnalysisButtonProps & { hasError?: boolean }) {
   if (isAnalyzing) {
     return (
       <div className="text-xs border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 py-0.5 px-2.5 rounded-full inline-flex items-center">
@@ -63,6 +63,48 @@ export default function AnalysisButton({
           ></path>
         </svg>
         Analyzing...
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center">
+        <span className="text-xs border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 py-0.5 px-2.5 rounded-full inline-flex items-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-3.5 w-3.5 mr-1"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Analysis Failed
+        </span>
+        <button
+          onClick={() => onReanalyze(pr)}
+          title="Retry analysis"
+          className="ml-1.5 p-0.5 rounded-full text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50/60 dark:hover:bg-red-900/10 transition-colors cursor-pointer"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
       </div>
     );
   }

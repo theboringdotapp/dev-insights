@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import { useDeveloperContext } from "../contexts/DeveloperContext";
 import {
   AIAnalysisConfig,
@@ -63,9 +64,11 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       }
 
       if (!apiKey || !apiProvider || !selectedModel) {
-        alert(
-          "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first."
-        );
+        toast.error("API Configuration Required", {
+          description:
+            "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first.",
+          duration: 5000,
+        });
         return;
       }
 
@@ -137,7 +140,17 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       } catch (error) {
         console.error(`Error in handleAnalyzePR for PR #${pr.number}:`, error);
         failAnalysis(pr.id);
-        alert(`An error occurred while analyzing PR #${pr.number}.`);
+
+        // Show detailed error toast instead of alert
+        let errorMessage = "An unknown error occurred during analysis";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        toast.error(`Analysis Error (PR #${pr.number})`, {
+          description: errorMessage,
+          duration: 7000,
+        });
       }
     },
     [
@@ -164,9 +177,11 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
       }
 
       if (!apiKey || !apiProvider || !selectedModel) {
-        alert(
-          "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first."
-        );
+        toast.error("API Configuration Required", {
+          description:
+            "Please select an AI provider, model, and enter your API key in the AI Code Quality Insights section first.",
+          duration: 5000,
+        });
         return;
       }
 

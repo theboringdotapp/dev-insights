@@ -127,7 +127,13 @@ async function analyzeWithOpenAI(
   const prompt = getPRAnalysisBasePrompt(prContent);
 
   try {
-    const response = await fetch("/api/openai/v1/chat/completions", {
+    // Determine if we're in production by checking the current URL
+    const isProduction = window.location.hostname !== "localhost";
+    const apiUrl = isProduction
+      ? "https://api.openai.com/v1/chat/completions" // Direct API call in production
+      : "/api/openai/v1/chat/completions"; // Use proxy in development
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -150,6 +156,11 @@ async function analyzeWithOpenAI(
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 404) {
+        throw new Error(
+          `Cannot connect to OpenAI API (404 Not Found). If you're using our website, please use direct API URLs in production.`
+        );
+      }
       throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
     }
 
@@ -237,13 +248,19 @@ async function analyzeWithClaude(
   const prompt = getPRAnalysisBasePrompt(prContent);
 
   try {
-    const response = await fetch("/api/anthropic/v1/messages", {
+    // Determine if we're in production by checking the current URL
+    const isProduction = window.location.hostname !== "localhost";
+    const apiUrl = isProduction
+      ? "https://api.anthropic.com/v1/messages" // Direct API call in production
+      : "/api/anthropic/v1/messages"; // Use proxy in development
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": config.apiKey,
         "anthropic-dangerous-direct-browser-access": "true",
-        // Note: The "anthropic-version" header is already set in the proxy configuration
+        "anthropic-version": "2023-06-01", // Add this for production use
       },
       body: JSON.stringify({
         model,
@@ -259,6 +276,11 @@ async function analyzeWithClaude(
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 404) {
+        throw new Error(
+          `Cannot connect to Claude API (404 Not Found). If you're using our website, please use direct API URLs in production.`
+        );
+      }
       throw new Error(`Claude API error (${response.status}): ${errorText}`);
     }
 
@@ -746,7 +768,12 @@ export async function generateMetaAnalysis(
     // Choose API provider based on config
     if (config.provider === "openai") {
       // OpenAI implementation
-      const response = await fetch("/api/openai/v1/chat/completions", {
+      const isProduction = window.location.hostname !== "localhost";
+      const apiUrl = isProduction
+        ? "https://api.openai.com/v1/chat/completions" // Direct API call in production
+        : "/api/openai/v1/chat/completions"; // Use proxy in development
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -766,7 +793,13 @@ export async function generateMetaAnalysis(
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorText = await response.text();
+        if (response.status === 404) {
+          throw new Error(
+            `Cannot connect to OpenAI API (404 Not Found). If you're using our website, please use direct API URLs in production.`
+          );
+        }
+        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
