@@ -6,6 +6,7 @@ import { useRepositoryColors } from "../hooks/useRepositoryColors";
 import { usePRAnalysis } from "../hooks/usePRAnalysis";
 import { usePRGroups } from "../hooks/usePRGroups";
 import { useTimeframeInfo } from "../hooks/useTimeframeInfo";
+import { useAPIConfiguration } from "../hooks/useAPIConfiguration";
 import TimelineHeader from "./timeline/TimelineHeader";
 import MonthGroup from "./timeline/MonthGroup";
 import TimelineMessages from "./timeline/TimelineMessages";
@@ -28,13 +29,13 @@ export function Timeline({
   const { repoColors, getRepoName } = useRepositoryColors(pullRequests);
 
   // Use PR analysis hook
-  const {
-    hasApiKeys,
-    isAnalyzingPR,
-    isPRAnalyzed,
-    handleAnalyzePR,
-    handleReanalyzePR,
-  } = usePRAnalysis(pullRequests);
+  const { isAnalyzingPR, isPRAnalyzed, handleAnalyzePR, handleReanalyzePR } =
+    usePRAnalysis(pullRequests);
+
+  // Get API key status directly to ensure reactivity
+  const { apiKey } = useAPIConfiguration();
+  const hasApiKey = !!apiKey;
+  console.log(`[Timeline] Rendering. hasApiKey from config hook: ${hasApiKey}`);
 
   // Use PR grouping hook
   const { groupedPRs, sortedMonths } = usePRGroups(pullRequests);
@@ -71,7 +72,7 @@ export function Timeline({
   };
 
   return (
-    <div className="mt-8 border border-zinc-200 dark:border-zinc-700/50 rounded-lg p-4 sm:p-6 bg-white dark:bg-zinc-900/30 shadow-sm">
+    <div className="p-1 sm:p-6 bg-white dark:bg-zinc-900/30">
       {/* Header */}
       <TimelineHeader
         timeframeLabel={timeframeLabel}
@@ -81,10 +82,7 @@ export function Timeline({
         isLikelyHittingLimit={isLikelyHittingLimit}
       />
 
-      <div className="relative">
-        {/* Timeline line - Hide on mobile */}
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-zinc-700 hidden sm:block"></div>
-
+      <div className="relative pt-2">
         {/* Month groups */}
         {sortedMonths.map((month) => (
           <MonthGroup
@@ -97,7 +95,7 @@ export function Timeline({
             loadPRMetrics={loadPRMetrics}
             isPRAnalyzed={isPRAnalyzed}
             isAnalyzingPR={isAnalyzingPR}
-            hasApiKeys={hasApiKeys}
+            hasApiKeys={hasApiKey}
             handleAnalyzePR={handleAnalyzePR}
             handleReanalyzePR={handleReanalyzePR}
           />

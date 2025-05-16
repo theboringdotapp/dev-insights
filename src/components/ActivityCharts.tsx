@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { PullRequestItem } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
+import { motion } from "framer-motion";
 
 // Interface for the component props
 interface ActivityChartsProps {
@@ -30,12 +31,26 @@ export function ActivityCharts({
   const [realCommitCount, setRealCommitCount] = useState(0);
   const [loadedPRCount, setLoadedPRCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Define chart colors to match stats display
+  // Define chart colors to match design system
   const colors = {
-    pullRequests: "#3b82f6", // Blue 500
-    commits: "#22c55e", // Green 500
+    pullRequests: "#8b5cf6", // Purple 500 - matching purple theme for interactive elements
+    commits: "#10b981", // Emerald 500 - complementary to purple
   };
+
+  // Handle window resize for responsive adjustments
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   // Load PR metrics for all PRs if not already loaded
   useEffect(() => {
@@ -44,6 +59,9 @@ export function ActivityCharts({
       onCommitDataLoaded?.(0, false);
       return;
     }
+
+    // Track if component is still mounted/effect is current
+    let isCurrent = true;
 
     try {
       setIsLoading(true);
@@ -77,13 +95,19 @@ export function ActivityCharts({
         return;
       }
 
+      // Keep track of loading promises to facilitate cleanup
+      const loadingPromises: Promise<void>[] = [];
+
       // Load metrics for each PR that doesn't have them
       pullRequests.forEach((pr) => {
         const metrics = getPRMetrics(pr);
         if (!metrics?.isLoaded && !metrics?.isLoading) {
           // Start loading metrics for this PR
-          loadPRMetrics(pr)
+          const loadPromise = loadPRMetrics(pr)
             .then((loadedMetrics) => {
+              // Skip updating state if component unmounted or PR list changed
+              if (!isCurrent) return;
+
               if (loadedMetrics) {
                 completedPRs++;
                 totalCommits += loadedMetrics.commits?.length || 0;
@@ -105,6 +129,9 @@ export function ActivityCharts({
               }
             })
             .catch((err) => {
+              // Skip updating state if component unmounted or PR list changed
+              if (!isCurrent) return;
+
               console.error("Error loading PR metrics:", err);
               // Continue even if one PR fails to load
               completedPRs++;
@@ -114,8 +141,22 @@ export function ActivityCharts({
                 onCommitDataLoaded?.(totalCommits, false);
               }
             });
+
+          loadingPromises.push(loadPromise);
         }
       });
+
+      // Return cleanup function
+      return () => {
+        // Mark current effect as stale to prevent further state updates
+        isCurrent = false;
+
+        // Reset loading state in parent component on cleanup
+        if (isLoading) {
+          console.log("[ActivityCharts] Cleaning up ongoing data loading");
+          onCommitDataLoaded?.(0, false);
+        }
+      };
     } catch (err) {
       console.error("Error in ActivityCharts useEffect:", err);
       setError("Failed to load PR metrics data");
@@ -153,7 +194,7 @@ export function ActivityCharts({
       const currentDate = new Date(oldestPR);
       while (currentDate <= latestPR) {
         const weekKey = getWeekKey(currentDate);
-        const formattedDate = formatDateForDisplay(currentDate);
+        const formattedDate = formatDateForDisplay(currentDate, isMobile);
 
         weekMap[weekKey] = {
           date: formattedDate,
@@ -190,7 +231,7 @@ export function ActivityCharts({
       setError("Failed to process activity data");
       return [];
     }
-  }, [pullRequests, getPRMetrics]);
+  }, [pullRequests, getPRMetrics, isMobile]);
 
   // Calculate loading progress percentage
   const loadingProgress = pullRequests.length
@@ -200,7 +241,7 @@ export function ActivityCharts({
   // If there's no data, show a message
   if (!pullRequests.length) {
     return (
-      <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+      <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
         No pull request data available for analysis.
       </div>
     );
@@ -209,72 +250,147 @@ export function ActivityCharts({
   // If there was an error, show error message
   if (error) {
     return (
-      <div className="bg-red-50 p-4 rounded-lg text-center text-red-500">
+      <div className="bg-red-50 p-6 rounded-lg text-center text-red-500">
         {error}
       </div>
     );
   }
 
+  // Get chart height based on screen size
+  const chartHeight = isMobile ? 250 : 280;
+
+  // Responsive margins for the chart
+  const chartMargins = isMobile
+    ? { top: 5, right: 10, left: 10, bottom: 50 }
+    : { top: 5, right: 30, left: 20, bottom: 20 };
+
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium">
-          Developer Activity
-          {showOnlyImportantPRs && (
-            <span className="text-sm font-normal text-gray-500 ml-2">
-              (Important PRs only)
-            </span>
-          )}
-        </h3>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200"
+    >
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900 text-left">
+            PR-Based Activity
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Activity visualized from pull request data{" "}
+            {showOnlyImportantPRs && "(important PRs only)"}
+          </p>
+        </div>
 
-        {isLoading && (
-          <div className="flex items-center text-sm text-gray-600">
-            <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-2">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full"
-                style={{ width: `${loadingProgress}%` }}
-              ></div>
+        {isLoading ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-lg self-start"
+          >
+            <div className="w-20 sm:w-32 bg-gray-200 rounded-full h-2.5 mr-2 overflow-hidden">
+              <motion.div
+                className="bg-purple-600 h-2.5 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${loadingProgress}%` }}
+                transition={{ duration: 0.5 }}
+              ></motion.div>
             </div>
-            <span>
-              Loading commits data ({loadedPRCount}/{pullRequests.length} PRs)
+            <span className="whitespace-nowrap">
+              {isMobile
+                ? `${loadedPRCount}/${pullRequests.length}`
+                : `Loading data (${loadedPRCount}/${pullRequests.length} PRs)`}
             </span>
-          </div>
-        )}
-
-        {!isLoading && (
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">{realCommitCount}</span> commits from{" "}
-            <span className="font-medium">{pullRequests.length}</span> PRs
+          </motion.div>
+        ) : (
+          <div className="text-sm font-medium bg-gray-50 px-3 py-2 rounded-lg self-start">
+            <span className="text-purple-700">{realCommitCount}</span> commits
+            from <span className="text-purple-700">{pullRequests.length}</span>{" "}
+            PRs
           </div>
         )}
       </div>
 
       {activityData.length > 0 ? (
-        <div className="h-80 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={activityData}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+        <div
+          className="p-2 sm:p-4 rounded-lg"
+          style={{ height: `${chartHeight}px` }}
+        >
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <ComposedChart data={activityData} margin={chartMargins}>
+              <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.4} />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#6b7280", fontSize: isMobile ? 10 : 12 }}
+                tickLine={{ stroke: "#9ca3af" }}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 60 : 30}
+              />
               <YAxis
                 yAxisId="left"
-                label={{ value: "Commits", angle: -90, position: "insideLeft" }}
+                label={
+                  isMobile
+                    ? undefined
+                    : {
+                        value: "Commits",
+                        angle: -90,
+                        position: "insideLeft",
+                        fill: "#10b981",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        dy: 40,
+                      }
+                }
+                tick={{ fill: "#6b7280", fontSize: isMobile ? 10 : 12 }}
+                tickLine={{ stroke: "#9ca3af" }}
+                width={isMobile ? 30 : 50}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                label={{ value: "PRs", angle: 90, position: "insideRight" }}
+                label={
+                  isMobile
+                    ? undefined
+                    : {
+                        value: "PRs",
+                        angle: 90,
+                        position: "insideRight",
+                        fill: "#8b5cf6",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        dy: -40,
+                      }
+                }
+                tick={{ fill: "#6b7280", fontSize: isMobile ? 10 : 12 }}
+                tickLine={{ stroke: "#9ca3af" }}
+                width={isMobile ? 30 : 50}
               />
-              <Tooltip />
-              <Legend />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  border: "1px solid #e5e7eb",
+                  fontSize: isMobile ? "12px" : "14px",
+                }}
+              />
+              <Legend
+                wrapperStyle={{
+                  paddingTop: isMobile ? 0 : 20,
+                  fontSize: isMobile ? 10 : 12,
+                  marginBottom: isMobile ? 10 : 0,
+                }}
+                verticalAlign={isMobile ? "bottom" : "bottom"}
+                height={isMobile ? 30 : 36}
+              />
               <Bar
                 yAxisId="left"
                 dataKey="commits"
-                name="Commits"
+                name="Commits in PRs"
                 fill={colors.commits}
-                barSize={20}
+                barSize={isMobile ? 16 : 24}
+                radius={[4, 4, 0, 0]}
               />
               <Line
                 yAxisId="right"
@@ -282,13 +398,20 @@ export function ActivityCharts({
                 dataKey="prs"
                 name="Pull Requests"
                 stroke={colors.pullRequests}
-                activeDot={{ r: 8 }}
+                strokeWidth={3}
+                activeDot={{ r: isMobile ? 6 : 8, fill: colors.pullRequests }}
+                dot={{
+                  r: isMobile ? 3 : 4,
+                  strokeWidth: 2,
+                  fill: "white",
+                  stroke: colors.pullRequests,
+                }}
               />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="h-80 bg-gray-50 p-4 rounded-lg flex items-center justify-center">
+        <div className="h-64 bg-gray-50 p-4 rounded-lg flex items-center justify-center">
           <div className="text-gray-500">
             {isLoading
               ? "Loading chart data..."
@@ -296,7 +419,14 @@ export function ActivityCharts({
           </div>
         </div>
       )}
-    </div>
+
+      <div className="mt-4 text-xs text-gray-500 border-t border-gray-100 pt-4">
+        <p>
+          Note: This chart only shows commits included in pull requests, not all
+          repository commits.
+        </p>
+      </div>
+    </motion.div>
   );
 }
 
@@ -308,7 +438,14 @@ function getWeekKey(date: Date): string {
   return `${year}-W${weekNum.toString().padStart(2, "0")}`;
 }
 
-function formatDateForDisplay(date: Date): string {
+function formatDateForDisplay(date: Date, isMobile: boolean = false): string {
+  if (isMobile) {
+    // More concise format for mobile
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  }
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

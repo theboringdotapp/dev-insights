@@ -1,0 +1,29 @@
+name: Update Git Time Stats
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push the updated README
+
+    steps:
+      - name: Checkout Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for accurate stats
+
+      - name: Calculate Git Time Stats
+        id: git-time-stats
+        uses: theboringdotapp/git-time-stats-action@1.1
+        with:
+          session-gap: 30 # Minutes gap between sessions
+          min-session: 5 # Minimum session duration in minutes
+          max-session: 8 # Maximum session duration in hours
+          readme-path: "README.md"
+          commit-changes: "true"
+          commit-message: "docs: update time stats [skip ci]"

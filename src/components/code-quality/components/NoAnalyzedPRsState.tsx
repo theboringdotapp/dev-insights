@@ -2,30 +2,23 @@ import React from "react";
 
 interface NoAnalyzedPRsStateProps {
   handleAnalyze: () => void;
-  hasApiKey: boolean;
   maxPRs: number;
-  setMaxPRs: (maxPRs: number) => void;
-  cachedCount: number;
+  hasApiKey: boolean;
+  setIsConfigVisible: (visible: boolean) => void;
 }
 
 /**
- * Component to display when no PRs have been analyzed but user has an API key
+ * Component to display when no PRs have been analyzed
  * Redesigned to be more visually appealing and action-oriented
  */
 export default function NoAnalyzedPRsState({
   handleAnalyze,
-  hasApiKey,
   maxPRs,
-  setMaxPRs,
-  cachedCount,
+  hasApiKey,
+  setIsConfigVisible,
 }: NoAnalyzedPRsStateProps) {
-  // Determine CTA text based on state
-  const buttonText =
-    cachedCount === maxPRs
-      ? "Show Analysis"
-      : cachedCount > 0
-      ? `Analyze ${maxPRs - cachedCount} New PRs`
-      : `Analyze last ${maxPRs} PRs`;
+  // Simplified button text
+  const buttonText = `Analyze last ${maxPRs} PRs`;
 
   return (
     <div className="rounded-lg border border-border overflow-hidden bg-card">
@@ -55,7 +48,7 @@ export default function NoAnalyzedPRsState({
             <select
               className="px-3 py-2 border border-input rounded-md text-sm bg-card shadow-sm focus:ring-ring focus:border-primary"
               value={maxPRs}
-              onChange={(e) => setMaxPRs(Number(e.target.value))}
+              disabled
             >
               <option value="3">3 PRs</option>
               <option value="5">5 PRs</option>
@@ -64,35 +57,46 @@ export default function NoAnalyzedPRsState({
             </select>
           </div>
 
-          {hasApiKey ? (
-            <div>
-              <button
-                onClick={handleAnalyze}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center"
+          <div>
+            <button
+              onClick={handleAnalyze}
+              disabled={!hasApiKey}
+              className={`px-6 py-3 rounded-md transition-colors text-sm font-medium shadow-sm hover:shadow-md flex items-center ${
+                hasApiKey
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                ></path>
+              </svg>
+              {buttonText}
+            </button>
+            {!hasApiKey && (
+              <div className="mt-4">
+                <p className="text-sm text-red-600 mb-2">
+                  An API key is required to analyze pull requests.
+                </p>
+                <button
+                  onClick={() => setIsConfigVisible(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  ></path>
-                </svg>
-                {buttonText}
-              </button>
-            </div>
-          ) : (
-            <p className="text-destructive text-sm bg-muted p-3 rounded-md border border-border">
-              Please configure your API key in settings to analyze pull
-              requests.
-            </p>
-          )}
+                  Click here to configure your API key.
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right decorative area */}

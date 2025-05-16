@@ -1,0 +1,109 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-in-out forwards;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.2s ease-in-out forwards;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.2s ease-in forwards;
+}
+
+.animate-smoothTransition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Specific animation for pattern items */
+.pattern-item-enter {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out,
+    margin 0.2s ease-in-out;
+}
+
+.pattern-item-enter-active {
+  max-height: 1000px;
+  opacity: 1;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pattern-item-exit {
+  max-height: 1000px;
+  opacity: 1;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  transition: max-height 0.2s ease-in-out, opacity 0.1s ease-in-out,
+    margin 0.1s ease-in-out;
+}
+
+.pattern-item-exit-active {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+@keyframes subtle-gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-subtle-gradient {
+  background-size: 300% 300%; /* Increased size for smoother, slower animation */
+  animation: subtle-gradient-animation 15s ease infinite;
+}

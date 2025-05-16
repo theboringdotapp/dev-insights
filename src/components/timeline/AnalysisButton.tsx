@@ -9,7 +9,7 @@ const AIIcon = () => (
     height="14"
     fill="none"
     viewBox="0 0 16 16"
-    className="inline-block"
+    className="inline-block text-purple-600 dark:text-purple-400"
   >
     <path
       stroke="currentColor"
@@ -41,9 +41,9 @@ export default function AnalysisButton({
 }: AnalysisButtonProps) {
   if (isAnalyzing) {
     return (
-      <div className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 py-0.5 px-2.5 rounded-full inline-flex items-center">
+      <div className="text-xs border border-purple-200 dark:border-purple-700/50 bg-purple-50/60 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 py-0.5 px-2.5 rounded-full inline-flex items-center">
         <svg
-          className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-zinc-500 dark:text-zinc-400"
+          className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-purple-600 dark:text-purple-400"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -70,13 +70,13 @@ export default function AnalysisButton({
   if (isAnalyzed) {
     return (
       <div className="flex items-center">
-        <span className="text-xs border border-purple-300 dark:border-purple-700 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 py-0.5 px-2.5 rounded-full inline-flex items-center">
+        <span className="text-xs border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 py-0.5 px-2.5 rounded-full inline-flex items-center">
           Analyzed
         </span>
         <button
           onClick={() => onReanalyze(pr)}
           title="Re-analyze PR"
-          className="ml-1.5 p-0.5 rounded text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+          className="ml-1.5 p-0.5 rounded-full text-purple-400 dark:text-purple-500 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50/60 dark:hover:bg-purple-900/10 transition-colors cursor-pointer"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -100,12 +100,12 @@ export default function AnalysisButton({
   return (
     <button
       onClick={() => onAnalyze(pr)}
-      className="text-xs border border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 py-0.5 px-2.5 rounded-full inline-flex items-center transition-colors cursor-pointer"
+      className="text-xs border border-purple-200 dark:border-purple-700/50 bg-white dark:bg-zinc-800/50 text-purple-600 dark:text-purple-400 hover:bg-purple-50/60 dark:hover:bg-purple-900/10 py-0.5 px-2.5 rounded-full inline-flex items-center transition-colors cursor-pointer"
     >
       <span className="mr-1.5">
         <AIIcon />
       </span>
-      Analyze PR
+      Analyze
     </button>
   );
 }

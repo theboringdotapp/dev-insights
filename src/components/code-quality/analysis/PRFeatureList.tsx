@@ -5,9 +5,6 @@ import { FeedbackFrequency } from "../../../lib/types";
 interface PRFeatureListProps {
   features: FeedbackFrequency[];
   type: "strength" | "weakness" | "suggestion";
-  // Keep these props for backward compatibility but don't use them
-  cachedPRIds: number[];
-  newlyAnalyzedPRIds: number[];
   displayedPRIds?: number[];
 }
 
@@ -50,6 +47,8 @@ export default function PRFeatureList({
 
   return (
     <div className="space-y-3">
+      {/* TEMP: Slice to test rendering limits - REVERTED */}
+      {/* {features.slice(0, 5).map((feature, i) => ( */}
       {features.map((feature, i) => (
         <PRFeatureItem
           key={i}

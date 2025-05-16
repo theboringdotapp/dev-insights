@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | DevInsight by theboring.app</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
+    
+    <!-- Tailwind CSS - Note: In production, this should be replaced with a proper build -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Add CDN for Tailwind Typography Plugin -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script> 
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#6D28D9',
+                        },
+                        background: {
+                            DEFAULT: '#FFFFFF',
+                        },
+                        foreground: {
+                            DEFAULT: '#18181B',
+                        },
+                        card: {
+                            DEFAULT: '#FFFFFF',
+                        },
+                        muted: {
+                            DEFAULT: '#F4F4F5',
+                            foreground: '#71717A',
+                        },
+                        border: {
+                            DEFAULT: '#E4E4E7',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <!-- Defer non-critical CSS -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <!-- Fallback for browsers that don't support onload -->
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    </noscript>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF;
+            color: #18181B;
+        }
+        
+        .btn-brand {
+            background-color: #6D28D9;
+            color: white;
+        }
+        
+        .btn-brand:hover {
+            background-color: #5B21B6;
+        }
+        
+        .focus-ring:focus {
+            outline: 2px solid #8B5CF6;
+            outline-offset: 2px;
+        }
+    </style>
+    
+    <!-- Umami Analytics -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="2ae0d0a0-78ae-4c42-9f01-be8104391628"></script>
+</head>
+<body class="min-h-screen flex flex-col bg-background text-foreground">
+
+    <!-- Static Navigation Bar -->
+    <nav class="sticky top-0 z-50 bg-card border-b border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center cursor-pointer hover:opacity-90 transition-opacity">
+                        <span class="font-semibold text-xl text-purple-600">DevInsight</span>
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <!-- Back to app button -->
+                    <a href="/" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">
+                        Back to App
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tailwind prose class handles typography -->
+        <div class="max-w-3xl mx-auto prose prose-purple">
+            <h1>Privacy Policy</h1>
+            
+            <p>Last Updated: May 15, 2025</p>
+            <p>Welcome to DevInsight ("we," "us," or "our"). This Privacy Policy explains how we handle your information when you use our web application (the "Service"). By using the Service, you agree to the terms outlined in this policy.</p>
+            
+            <h2>Information We Access</h2>
+            <p>When you authenticate with your GitHub account, we request permission to access certain information from your GitHub account solely for the purpose of providing the Service:</p>
+            <ul>
+                <li><strong>Pull Request Data:</strong> We access information about your pull requests, including titles, descriptions, commit messages, and related metadata.</li>
+                <li><strong>Repository Information:</strong> We access basic information about repositories you contribute to for contextual analysis.</li>
+                <li><strong>User Profile:</strong> We access your GitHub username and profile information to identify your contributions.</li>
+            </ul>
+
+            <h2>How We Use Information</h2>
+            <ul>
+                <li><strong>Pull Request Analysis:</strong> We analyze your pull requests to generate insights about code quality, patterns, and development habits.</li>
+                <li><strong>Activity Charts:</strong> We create visualizations of your GitHub activity based on pull requests and commits.</li>
+                <li><strong>AI-Powered Feedback:</strong> When you choose to analyze specific PRs, we use AI to generate constructive feedback about your code quality and patterns.</li>
+                <li><strong>Meta-Analysis:</strong> We identify recurring patterns across your pull requests to provide broader insights into your coding style and habits.</li>
+            </ul>
+
+            <h2>Data Storage and Security</h2>
+            <p>We are committed to protecting your data. Here's how we handle storage and security:</p>
+            <ul>
+                <li><strong>Browser-Only Processing:</strong> DevInsight is a browser-only application. Your GitHub data and code are processed directly in your browser and are <strong class="text-purple-600">never stored on our servers</strong>.</li>
+                <li><strong>Authentication Tokens:</strong> Your GitHub personal access token is stored securely in your browser's local storage and is never transmitted to our servers.
+                    <ul>
+                        <li>The token is used directly from your browser to communicate with GitHub's API.</li>
+                        <li>All communication between your browser and GitHub's servers uses HTTPS encryption to protect data in transit.</li>
+                    </ul>
+                </li>
+                <li><strong>AI Analysis:</strong> When you choose to analyze your code with AI:
+                    <ul>
+                        <li>Your code is sent directly from your browser to the AI provider (e.g., OpenAI, Anthropic) using your own API keys.</li>
+                        <li>We do not store, see, or process your code or API keys on our servers.</li>
+                        <li>The AI provider's privacy policy applies to how they handle your data during analysis.</li>
+                    </ul>
+                </li>
+                <li><strong>Local Caching:</strong> Analysis results may be cached in your browser's local storage for performance reasons. This data remains on your device and is never transmitted to our servers.</li>
+            </ul>
+
+            <h2>Data Retention and Deletion</h2>
+            <p>We believe in minimizing data retention. Here's our policy:</p>
+            <ul>
+                <li><strong>GitHub Data:</strong> Since we do not store your GitHub data on our servers, there is no server-side data to delete. Your data is fetched directly from GitHub's API to your browser during each session.</li>
+                <li><strong>Browser Data:</strong> Data stored in your browser's local storage (such as authentication tokens, cached analysis results) can be cleared by:
+                    <ul>
+                        <li>Logging out of the application</li>
+                        <li>Clearing your browser cache</li>
+                        <li>Revoking the GitHub token from your GitHub account settings</li>
+                    </ul>
+                </li>
+                <li><strong>Account Deletion / Revocation:</strong> You have full control over the application's access to your GitHub Account. You can revoke DevInsight's permissions at any time by deleting your personal access token in your GitHub security settings.</li>
+            </ul>
+
+            <h2>Third-Party Services</h2>
+            <ul>
+                <li><strong>GitHub API:</strong> We access GitHub's API using your personal access token. Your interaction with GitHub is governed by GitHub's Privacy Policy.</li>
+                <li><strong>AI Providers:</strong> If you choose to use AI analysis features, you will use your own API keys to communicate directly with providers like OpenAI, Anthropic, or Google. Their respective privacy policies apply to how they handle your data.</li>
+                <li><strong>Analytics:</strong> We use Umami for simple, privacy-focused analytics (page views, feature usage) to improve the service. Umami does not use cookies and anonymizes IP addresses.</li>
+            </ul>
+
+            <h2>Your Choices and Rights</h2>
+            <ul>
+                <li><strong>Token Management:</strong> You can delete your GitHub personal access token at any time through your GitHub security settings.</li>
+                <li><strong>Local Data:</strong> You can clear locally stored data by logging out or clearing your browser cache.</li>
+                <li><strong>AI API Keys:</strong> You have full control over your AI provider API keys and can choose whether to use the AI analysis features.</li>
+            </ul>
+
+            <h2>Open Source</h2>
+            <p>DevInsight is open source. You can review the code on <a href="https://github.com/theboringdotapp/dev-insights" target="_blank">GitHub</a> to verify how your data is handled.</p>
+
+            <h2>Changes to This Policy</h2>
+            <p>We may update this Privacy Policy. We will notify you of any changes by posting the new policy on this page. You are advised to review this Privacy Policy periodically for any changes.</p>
+
+            <h2>Contact Us</h2>
+            <p>If you have any questions about this Privacy Policy, please contact us via email at contact@theboring.app or by opening an issue on our <a href="https://github.com/theboringdotapp/dev-insights/issues" target="_blank">GitHub repository</a>.</p>
+        </div>
+    </main>
+
+    <!-- Static Footer -->
+    <footer class="py-8 border-t border-border mt-8">
+        <div class="container max-w-6xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-semibold">
+                            <span class="text-purple-600">vibecoded</span> 
+                            by <a href="https://theboring.app" target="_blank" class="hover:underline">theboring.app</a>
+                        </span>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-2">Freemium tools for improving your everyday life</p>
+                </div>
+                <div class="flex flex-col items-end">
+                    <div class="flex space-x-4">
+                        <a href="/privacy-policy.html" class="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
+                        <a href="https://github.com/theboringdotapp/dev-insights" target="_blank" class="text-muted-foreground hover:text-foreground transition-colors flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>
+                            Source Code
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html> 
