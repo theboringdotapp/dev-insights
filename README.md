@@ -74,3 +74,9 @@ This project is open source and available under the [GNU General Public License 
 ## Acknowledgments
 
 - Built by [theboring.app](https://theboring.app)
+
+## Project Stats
+
+<!-- START_GIT_TIME_STATS -->
+<!-- END_GIT_TIME_STATS -->
+
