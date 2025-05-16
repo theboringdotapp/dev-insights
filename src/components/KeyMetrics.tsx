@@ -11,6 +11,16 @@ interface KeyMetricsProps {
   isLoadingCommits: boolean;
 }
 
+// Define interface for calculated metrics
+interface CalculatedMetrics {
+  prsPerTimeUnit: string;
+  commitsPerPR: string;
+  avgDaysToClose: string;
+  avgChangesPerPR: string;
+  closedPRCount: number;
+  prCount: number;
+}
+
 export function KeyMetrics({
   pullRequests,
   timeframe,
@@ -19,8 +29,10 @@ export function KeyMetrics({
 }: KeyMetricsProps) {
   const { getPRMetrics, loadPRMetrics, metricsCache } = usePRMetrics();
   const [isLoadingChangeRequests, setIsLoadingChangeRequests] = useState(false);
+  const [calculatedMetrics, setCalculatedMetrics] =
+    useState<CalculatedMetrics | null>(null);
 
-  // Proactively load metrics for all PRs if not already loaded
+  // This effect loads the PR metrics from GitHub when needed
   useEffect(() => {
     if (!pullRequests.length) return;
 
@@ -64,9 +76,19 @@ export function KeyMetrics({
     return "month";
   }, [timeframe]);
 
-  // Calculate metrics for the specified timeframe
-  const metrics = React.useMemo(() => {
-    if (!pullRequests.length) return null;
+  // Calculate metrics whenever PR data changes or loading state changes
+  useEffect(() => {
+    if (!pullRequests.length) return;
+
+    // Check if any metrics are still loading
+    const anyMetricsLoading = pullRequests.some(
+      (pr) => metricsCache[pr.id]?.isLoading
+    );
+
+    // If metrics are loading or we're loading commits, wait
+    if (anyMetricsLoading || isLoadingChangeRequests || isLoadingCommits) {
+      return;
+    }
 
     // Calculate time period counts
     let timeUnitCount = 1; // Default to avoid division by zero
@@ -94,38 +116,43 @@ export function KeyMetrics({
     const prsPerTimeUnit = (prCount / timeUnitCount).toFixed(1);
 
     // Calculate commits per PR
-    const commitsPerPR = isLoadingCommits
-      ? null
-      : (realCommitCount / Math.max(1, prCount)).toFixed(1);
+    const commitsPerPR = (realCommitCount / Math.max(1, prCount)).toFixed(1);
 
     // Calculate PR velocity and change request metrics
     let closedPRCount = 0;
     let totalDurationDays = 0;
     let changeRequestCount = 0;
 
-    pullRequests.forEach((pr) => {
-      const metrics = getPRMetrics(pr);
+    // Collect PR metrics from all loaded PRs
+    const loadedPRs = pullRequests
+      .map((pr) => {
+        const metrics = getPRMetrics(pr);
+        return { pr, metrics };
+      })
+      .filter((item) => item.metrics?.isLoaded);
 
+    // Reset counters
+    closedPRCount = 0;
+    totalDurationDays = 0;
+    changeRequestCount = 0;
+
+    // Process all loaded PRs
+    loadedPRs.forEach(({ pr, metrics }) => {
       if (pr.closed_at) {
         closedPRCount++;
 
-        // Calculate duration if we don't have metrics yet
-        if (!metrics?.isLoaded) {
+        if (metrics?.durationInDays) {
+          totalDurationDays += metrics.durationInDays;
+        } else {
           const created = new Date(pr.created_at).getTime();
           const closed = new Date(pr.closed_at).getTime();
           totalDurationDays += Math.round(
             (closed - created) / (1000 * 60 * 60 * 24)
           );
         }
-      }
 
-      // Use stored metrics if available
-      if (metrics?.isLoaded) {
-        if (metrics.durationInDays) {
-          totalDurationDays += metrics.durationInDays;
-        }
-
-        if (metrics.changeRequestCount > 0) {
+        // Count change requests for closed PRs only
+        if (typeof metrics?.changeRequestCount === "number") {
           changeRequestCount += metrics.changeRequestCount;
         }
       }
@@ -133,30 +160,40 @@ export function KeyMetrics({
 
     // Calculate average days to close
     const avgDaysToClose =
-      closedPRCount > 0 ? (totalDurationDays / closedPRCount).toFixed(1) : null;
+      closedPRCount > 0 ? (totalDurationDays / closedPRCount).toFixed(1) : "0";
 
-    // Calculate average changes per PR across all PRs (including those with zero changes)
+    // Calculate average changes per PR across all closed PRs
     const avgChangesPerPR =
       closedPRCount > 0 ? (changeRequestCount / closedPRCount).toFixed(1) : "0";
 
-    return {
+    // Store calculated metrics
+    setCalculatedMetrics({
       prsPerTimeUnit,
       commitsPerPR,
       avgDaysToClose,
       avgChangesPerPR,
       closedPRCount,
       prCount,
-    };
+    });
   }, [
     pullRequests,
     timeUnit,
     timeframe,
     realCommitCount,
     isLoadingCommits,
+    isLoadingChangeRequests,
     getPRMetrics,
+    metricsCache,
   ]);
 
-  if (!pullRequests.length || !metrics) {
+  // Loading state for entire metrics component
+  const isLoading =
+    isLoadingCommits ||
+    isLoadingChangeRequests ||
+    pullRequests.some((pr) => metricsCache[pr.id]?.isLoading) ||
+    !calculatedMetrics;
+
+  if (!pullRequests.length) {
     return (
       <div className="bg-gray-50 p-6 rounded-lg text-center text-gray-500">
         No data available for performance analysis.
@@ -164,26 +201,23 @@ export function KeyMetrics({
     );
   }
 
-  // Helper function to render loading state or value
-  const renderValue = (value: string | null, suffix: string = "") => {
-    if (value === null && isLoadingCommits) {
-      return <span className="text-gray-400">Loading...</span>;
-    }
+  if (isLoading) {
     return (
-      <span>
-        {value || "0"}
-        {suffix}
-      </span>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="bg-white p-6 rounded-xl border border-gray-200 h-full"
+      >
+        <h3 className="text-xl font-semibold text-gray-900 mb-6 text-left">
+          Key Performance Metrics
+        </h3>
+        <div className="flex items-center justify-center h-48 text-gray-400">
+          Loading metrics...
+        </div>
+      </motion.div>
     );
-  };
-
-  // Helper function to render change request value with its own loading state
-  const renderChangeRequestValue = (value: string) => {
-    if (isLoadingChangeRequests) {
-      return <span className="text-gray-400">Loading...</span>;
-    }
-    return <span>{value || "0"}</span>;
-  };
+  }
 
   return (
     <motion.div
@@ -206,10 +240,10 @@ export function KeyMetrics({
         >
           <div className="text-sm text-gray-600 mb-1">PRs per {timeUnit}</div>
           <div className="text-3xl font-semibold text-purple-700">
-            {renderValue(metrics.prsPerTimeUnit)}
+            {calculatedMetrics.prsPerTimeUnit}
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            Based on {metrics.prCount} PRs
+            Based on {calculatedMetrics.prCount} PRs
           </div>
         </motion.div>
 
@@ -224,10 +258,10 @@ export function KeyMetrics({
             Avg. days to close PR
           </div>
           <div className="text-3xl font-semibold text-purple-700">
-            {renderValue(metrics.avgDaysToClose)}
+            {calculatedMetrics.avgDaysToClose}
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            From {metrics.closedPRCount} closed PRs
+            From {calculatedMetrics.closedPRCount} closed PRs
           </div>
         </motion.div>
 
@@ -240,7 +274,7 @@ export function KeyMetrics({
         >
           <div className="text-sm text-gray-600 mb-1">Commits per PR</div>
           <div className="text-3xl font-semibold text-purple-700">
-            {renderValue(metrics.commitsPerPR)}
+            {calculatedMetrics.commitsPerPR}
           </div>
           <div className="text-xs text-gray-500 mt-2">
             From PR-based commit data
@@ -256,7 +290,7 @@ export function KeyMetrics({
         >
           <div className="text-sm text-gray-600 mb-1">Avg. change requests</div>
           <div className="text-3xl font-semibold text-purple-700">
-            {renderChangeRequestValue(metrics.avgChangesPerPR)}
+            {calculatedMetrics.avgChangesPerPR}
           </div>
           <div className="text-xs text-gray-500 mt-2">Per closed PR</div>
         </motion.div>
