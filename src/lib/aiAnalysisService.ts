@@ -478,8 +478,13 @@ async function analyzeWithGemini(
     });
 
     const prompt = getPRAnalysisBasePrompt(prContent);
+    const systemMessage = getSystemMessage("gemini");
+
+    // Combine system message and user prompt for Gemini
+    const combinedPrompt = `${systemMessage}\n\nUser: ${prompt}`;
+
     // Make the API call
-    const result = await geminiModel.generateContent(prompt);
+    const result = await geminiModel.generateContent(combinedPrompt);
     const response = await result.response;
     const responseText = response.text();
 
@@ -810,10 +815,18 @@ export async function generateMetaAnalysis(
     } else if (config.provider === "gemini") {
       // Gemini implementation
       const genAI = new GoogleGenerativeAI(config.apiKey);
+      const systemMessage = getSystemMessage("gemini"); // Get system message
       const model = genAI.getGenerativeModel({
         model: config.model || "gemini-1.5-flash-latest",
+        generationConfig: {
+          // Add generationConfig
+          responseMimeType: "application/json",
+          temperature: 0.6, // Match temperature with OpenAI for meta-analysis
+        },
       });
-      const result = await model.generateContent(prompt);
+      // Combine system message and user prompt
+      const combinedPrompt = `${systemMessage}\n\nUser: ${prompt}`;
+      const result = await model.generateContent(combinedPrompt);
       metaAnalysisText = result.response.text();
     } else {
       throw new Error(
