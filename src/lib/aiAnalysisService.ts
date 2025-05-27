@@ -378,58 +378,6 @@ async function analyzeWithClaude(
   }
 }
 
-/**
- * Helper function to generate simple text using the Claude API.
- */
-async function generateClaudeText(
-  prompt: string,
-  config: AIAnalysisConfig,
-  max_tokens = 500 // Allow overriding max_tokens, default to a reasonable value for summary
-): Promise<string> {
-  const model = config.model;
-  if (!model) {
-    throw new Error("Claude model not specified in config.");
-  }
-
-  try {
-    const response = await fetch("/api/anthropic/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": config.apiKey,
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: max_tokens, // Use provided or default max tokens
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.6, // Slightly lower temp for more factual summary
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    const textContent = data.content?.[0]?.text;
-
-    if (!textContent) {
-      throw new Error("No text content found in Claude response");
-    }
-
-    return textContent.trim();
-  } catch (error) {
-    console.error("Error in generateClaudeText:", error);
-    throw new Error(
-      `Claude text generation failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
-
 // Placeholder for the Gemini analysis function
 /**
  * Analyze code with Gemini
@@ -810,8 +758,49 @@ export async function generateMetaAnalysis(
       const data = await response.json();
       metaAnalysisText = data.choices[0].message.content;
     } else if (config.provider === "anthropic") {
-      // Anthropic implementation
-      metaAnalysisText = await generateClaudeText(prompt, config, 3000);
+      // Anthropic implementation - match OpenAI pattern
+      const isProduction = window.location.hostname !== "localhost";
+      const apiUrl = isProduction
+        ? "https://api.anthropic.com/v1/messages" // Direct API call in production
+        : "/api/anthropic/v1/messages"; // Use proxy in development
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": config.apiKey,
+          "anthropic-dangerous-direct-browser-access": "true",
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: config.model || "claude-3-sonnet-20240229",
+          max_tokens: 3000, // Match the token limit from generateClaudeText
+          messages: [
+            { role: "system", content: getSystemMessage("anthropic") },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.6, // Match temperature with OpenAI for meta-analysis
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 404) {
+          throw new Error(
+            `Cannot connect to Claude API (404 Not Found). If you're using our website, please use direct API URLs in production.`
+          );
+        }
+        throw new Error(`Claude API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      const textContent = data.content?.[0]?.text;
+
+      if (!textContent) {
+        throw new Error("No text content found in Claude response");
+      }
+
+      metaAnalysisText = textContent;
     } else if (config.provider === "gemini") {
       // Gemini implementation
       const genAI = new GoogleGenerativeAI(config.apiKey);
