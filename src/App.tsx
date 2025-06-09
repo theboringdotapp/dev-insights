@@ -9,6 +9,9 @@ import { AuthProvider, useAuth } from "./lib/auth";
 const DeveloperDashboard = lazy(
   () => import("./components/DeveloperDashboard")
 );
+const HealthApp = lazy(
+  () => import("./components/health/HealthApp")
+);
 
 // Loading component
 const Loading = () => (
@@ -50,6 +53,23 @@ function AppContent() {
                   Developer Insights
                 </span>
               </a>
+              
+              {/* Navigation Links */}
+              <nav className="ml-8 flex space-x-6">
+                <a
+                  href="/"
+                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+                >
+                  Dashboard
+                </a>
+                <a
+                  href="/health"
+                  className="text-gray-600 hover:text-green-600 transition-colors font-medium flex items-center space-x-1"
+                >
+                  <span>🏠</span>
+                  <span>Health Companion</span>
+                </a>
+              </nav>
             </div>
             {isAuthenticated ? (
               <div className="relative">
@@ -121,6 +141,7 @@ function AppContent() {
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<DeveloperDashboard />} />
+              <Route path="/health" element={<HealthApp />} />
             </Routes>
           </Suspense>
         </div>

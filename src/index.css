@@ -1,3 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import health theme styles */
+@import './styles/health-theme.css';
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
