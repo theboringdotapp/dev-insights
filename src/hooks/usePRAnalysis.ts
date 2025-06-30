@@ -84,6 +84,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
+          // Only add to analyzed PRs if analysis succeeded
           if (!wasPreviouslyAnalyzed) {
             addAnalyzedPRIds([pr.id]);
           }
@@ -135,13 +136,18 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
             // setCalculatedThemes({ commonStrengths: [], commonWeaknesses: [], commonSuggestions: [], averageScore: 0 });
           }
         } else {
-          console.warn(`Analysis function returned null for PR #${pr.number}`);
+          // Analysis failed - show error but don't mark as analyzed
+          console.warn(`Analysis failed for PR #${pr.number}`);
+          failAnalysis(pr.id);
+
+          // The error toast is already shown by analyzeAdditionalPR/analyzePRCode
+          // so we don't need to show another one here
         }
       } catch (error) {
         console.error(`Error in handleAnalyzePR for PR #${pr.number}:`, error);
         failAnalysis(pr.id);
 
-        // Show detailed error toast instead of alert
+        // Show detailed error toast
         let errorMessage = "An unknown error occurred during analysis";
         if (error instanceof Error) {
           errorMessage = error.message;
@@ -198,6 +204,7 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
         const result = await analyzeAdditionalPR(pr, config);
 
         if (result) {
+          // Only add to analyzed PRs if re-analysis succeeded
           addAnalyzedPRIds([pr.id]);
           toggleSelectedPR(pr.id);
 
@@ -226,15 +233,25 @@ export function usePRAnalysis(pullRequests: PullRequestItem[]) {
             // setCalculatedThemes({ commonStrengths: [], commonWeaknesses: [], commonSuggestions: [], averageScore: 0 });
           }
         } else {
-          console.warn(
-            `Re-analysis function returned null for PR #${pr.number}`
-          );
+          console.warn(`Re-analysis failed for PR #${pr.number}`);
           failAnalysis(pr.id);
+
+          // The error toast is already shown by analyzeAdditionalPR/analyzePRCode
         }
       } catch (error) {
         console.error(`Error re-analyzing PR #${pr.number}:`, error);
         failAnalysis(pr.id);
-        alert(`An error occurred while re-analyzing PR #${pr.number}.`);
+
+        // Show detailed error toast
+        let errorMessage = "An unknown error occurred during re-analysis";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        toast.error(`Re-analysis Error (PR #${pr.number})`, {
+          description: errorMessage,
+          duration: 7000,
+        });
       }
     },
     [

@@ -41,15 +41,21 @@ import { AIProvider } from "../../../hooks/useAPIConfiguration";
 
 // Base template for PR code analysis
 export const getPRAnalysisBasePrompt = (prContent: string): string => `
-  You are an experienced software engineer tasked with reviewing a GitHub pull request (PR) diff to provide constructive feedback for a developer's career growth. Your goal is to analyze the code changes and offer insights that will help the developer improve their skills and advance in their career.
+  You are an experienced software engineer tasked with reviewing a GitHub pull request (PR) to provide constructive feedback for a developer's career growth. Your goal is to analyze the code changes and offer insights that will help the developer improve their skills and advance in their career.
 
-  Here is the content of the pull request:
+  The PR content has been structured to clearly separate what code was removed and what code was added for each file, making it easier to understand the changes:
 
   <pr_content>
   ${prContent}
   </pr_content>
 
-  Please analyze this PR content carefully and provide feedback in the following categories:
+  Please analyze this PR content carefully. Pay special attention to:
+  - The "Removed Code" sections showing what was deleted
+  - The "Added Code" sections showing what was implemented
+  - The "Context" sections providing surrounding code for better understanding
+  - The relationship between removed and added code to understand the nature of changes
+
+  Provide feedback in the following categories:
 
   1. Strengths: Highlight code practices that demonstrate technical excellence and good software engineering principles.
   2. Refinement Needs: Identify specific areas where the current code could be improved for better quality, maintainability, or performance.

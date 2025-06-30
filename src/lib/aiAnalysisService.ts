@@ -3,6 +3,7 @@ import {
   HarmBlockThreshold,
   HarmCategory,
 } from "@google/generative-ai"; // Import Gemini SDK
+import { AIProvider } from "../hooks/useAPIConfiguration";
 import {
   AggregatedFeedback,
   AICodeFeedback,
@@ -21,51 +22,143 @@ export interface AIAnalysisConfig {
 }
 
 /**
- * Format PR files data for analysis, ensuring it doesn't exceed token limits
+ * Parse a git diff patch into structured changes for better LLM comprehension
+ */
+function parseDiffPatch(patch: string): {
+  removed: string[];
+  added: string[];
+  context: string[];
+  metadata: {
+    oldFile?: string;
+    newFile?: string;
+    fileMode?: string;
+    hunks: number;
+  };
+} {
+  const lines = patch.split('\n');
+  const removed: string[] = [];
+  const added: string[] = [];
+  const context: string[] = [];
+  const metadata: {
+    oldFile?: string;
+    newFile?: string;
+    fileMode?: string;
+    hunks: number;
+  } = { hunks: 0 };
+
+  for (const line of lines) {
+    if (line.startsWith('---')) {
+      metadata.oldFile = line.substring(4).trim();
+    } else if (line.startsWith('+++')) {
+      metadata.newFile = line.substring(4).trim();
+    } else if (line.startsWith('@@')) {
+      metadata.hunks++;
+    } else if (line.startsWith('-') && !line.startsWith('---')) {
+      removed.push(line.substring(1));
+    } else if (line.startsWith('+') && !line.startsWith('+++')) {
+      added.push(line.substring(1));
+    } else if (line.startsWith(' ')) {
+      context.push(line.substring(1));
+    }
+  }
+
+  return { removed, added, context, metadata };
+}
+
+/**
+ * Format a single file's changes in a structured, LLM-friendly format
+ */
+function formatFileChanges(filename: string, patch: string): string {
+  const parsed = parseDiffPatch(patch);
+  let output = `## File: ${filename}\n`;
+
+  // Add metadata if significant
+  if (parsed.metadata.hunks > 1) {
+    output += `*${parsed.metadata.hunks} change sections*\n\n`;
+  }
+
+  // Format removed code
+  if (parsed.removed.length > 0) {
+    output += `### Removed Code:\n`;
+    output += '```\n';
+    output += parsed.removed.join('\n');
+    output += '\n```\n\n';
+  }
+
+  // Format added code
+  if (parsed.added.length > 0) {
+    output += `### Added Code:\n`;
+    output += '```\n';
+    output += parsed.added.join('\n');
+    output += '\n```\n\n';
+  }
+
+  // Add context if it helps understanding (limit to prevent bloat)
+  if (parsed.context.length > 0 && parsed.context.length <= 10) {
+    output += `### Context:\n`;
+    output += '```\n';
+    output += parsed.context.slice(0, 10).join('\n');
+    if (parsed.context.length > 10) {
+      output += '\n[... additional context omitted]';
+    }
+    output += '\n```\n\n';
+  }
+
+  return output;
+}
+
+/**
+ * Format PR files data for analysis with improved diff readability for LLMs
  */
 export function formatPRFilesForAnalysis(
   files: { filename: string; patch?: string }[],
   prTitle: string,
   prNumber: number
 ): string {
-  let formattedContent = `PR #${prNumber}: ${prTitle}\n\nChanges:\n`;
+  let formattedContent = `# PR #${prNumber}: ${prTitle}\n\n`;
   const MAX_TOKENS = 8000; // Conservative limit to leave room for response
 
-  // First pass: Add all small files
-  for (const file of files) {
+  // Sort files by size (smaller first) for better token utilization
+  const sortedFiles = [...files]
+    .filter(file => file.patch)
+    .sort((a, b) => (a.patch?.length || 0) - (b.patch?.length || 0));
+
+  let processedFiles = 0;
+  let omittedFiles = 0;
+
+  for (const file of sortedFiles) {
     if (!file.patch) continue;
 
-    // Skip very large files at first to prioritize smaller ones
-    if (file.patch.length > 1000) continue;
-
-    formattedContent += `\nFile: ${file.filename}\n${file.patch}\n`;
-
-    // Check if we're approaching token limit
-    if (formattedContent.length > MAX_TOKENS * 4) {
-      // Rough char to token ratio
-      formattedContent += "\n[Some files omitted due to size constraints]";
-      break;
+    // Format the file changes in structured format
+    const fileChanges = formatFileChanges(file.filename, file.patch);
+    
+    // Check if adding this file would exceed token limit
+    if (formattedContent.length + fileChanges.length > MAX_TOKENS * 4) {
+      // If this is a small file, try to include a summary
+      if (file.patch.length <= 500) {
+        const parsed = parseDiffPatch(file.patch);
+        const summary = `## File: ${file.filename}\n*Summary: ${parsed.added.length} lines added, ${parsed.removed.length} lines removed*\n\n`;
+        
+        if (formattedContent.length + summary.length <= MAX_TOKENS * 4) {
+          formattedContent += summary;
+          processedFiles++;
+        } else {
+          omittedFiles++;
+        }
+      } else {
+        omittedFiles++;
+      }
+    } else {
+      formattedContent += fileChanges;
+      processedFiles++;
     }
   }
 
-  // Second pass: Add parts of larger files if we have space
-  if (formattedContent.length < MAX_TOKENS * 3) {
-    for (const file of files) {
-      if (!file.patch || file.patch.length <= 1000) continue;
-
-      // Only include the first N characters of large files
-      const excerpt =
-        file.patch.substring(0, 800) + "\n[... rest of file omitted]";
-      const potentialAddition = `\nFile: ${file.filename}\n${excerpt}\n`;
-
-      if (formattedContent.length + potentialAddition.length < MAX_TOKENS * 4) {
-        formattedContent += potentialAddition;
-      } else {
-        formattedContent +=
-          "\n[Additional files omitted due to size constraints]";
-        break;
-      }
-    }
+  // Add summary footer
+  if (omittedFiles > 0) {
+    formattedContent += `\n---\n*Analysis includes ${processedFiles} files. ${omittedFiles} files omitted due to size constraints.*\n`;
+  } else {
+    formattedContent += `\n---\n*Analysis includes all ${processedFiles} changed files.*\n`;
   }
 
   return formattedContent;
@@ -840,3 +933,91 @@ export async function generateMetaAnalysis(
 
 // Export the new theme calculation function if needed elsewhere, or keep it internal
 export { calculateCommonThemes };
+
+/**
+ * Fetch available models from Claude/Anthropic
+ */
+export async function fetchClaudeModels(
+  apiKey: string
+): Promise<{ id: string; name: string }[]> {
+  try {
+    const isProduction = window.location.hostname !== "localhost";
+    const baseUrl = isProduction
+      ? "https://api.anthropic.com/v1/models"
+      : "/api/anthropic/v1/models";
+
+    const allModels: { id: string; name: string }[] = [];
+    let hasMore = true;
+    let afterId: string | null = null;
+
+    // Paginate through all available models
+    while (hasMore) {
+      const url = new URL(baseUrl, window.location.origin);
+      if (afterId) {
+        url.searchParams.append("after_id", afterId);
+      }
+      url.searchParams.append("limit", "100"); // Get max models per page
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true", // For browser requests
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Invalid API key");
+        }
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch models: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // Transform the API response to our format
+      if (data.data && Array.isArray(data.data)) {
+        const models = data.data.map(
+          (model: { id: string; display_name: string; type: string }) => ({
+            id: model.id,
+            name: model.display_name || model.id,
+          })
+        );
+        allModels.push(...models);
+      }
+
+      // Check if there are more pages
+      hasMore = data.has_more || false;
+      afterId = data.last_id || null;
+    }
+
+    // Sort models by name for better UX (newest models typically have higher version numbers)
+    return allModels.sort((a, b) => b.name.localeCompare(a.name));
+  } catch (error) {
+    console.error("Error fetching Claude models:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch available models based on provider
+ */
+export async function fetchAvailableModels(
+  provider: AIProvider,
+  apiKey: string
+): Promise<{ id: string; name: string }[]> {
+  switch (provider) {
+    case "anthropic":
+      return fetchClaudeModels(apiKey);
+    case "openai":
+      // TODO: Implement OpenAI models fetching
+      throw new Error("OpenAI model fetching not implemented yet");
+    case "gemini":
+      // TODO: Implement Gemini models fetching
+      throw new Error("Gemini model fetching not implemented yet");
+    default:
+      throw new Error(`Unknown provider: ${provider}`);
+  }
+}

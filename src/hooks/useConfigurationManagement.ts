@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
-import { useAnalysisStore } from "../stores/analysisStore";
-import { MODEL_OPTIONS } from "../lib/models";
+import { useCallback, useEffect, useState } from "react";
 import { AIProvider } from "../hooks/useAPIConfiguration";
+import { MODEL_OPTIONS } from "../lib/models";
+import { useAnalysisStore } from "../stores/analysisStore";
 
 interface UseConfigurationManagementProps {
   // Initial configuration values
-  initialApiKey?: string;
   initialSaveToken?: boolean;
 }
 
@@ -40,11 +39,19 @@ interface UseConfigurationManagementResult {
  * related to the configuration panel.
  */
 export function useConfigurationManagement({
-  initialApiKey = null,
   initialSaveToken = true,
 }: UseConfigurationManagementProps = {}): UseConfigurationManagementResult {
-  // Local state for API configuration
-  const [apiKey, setApiKey] = useState<string | null>(initialApiKey);
+  // Get API key from store instead of local state
+  const {
+    apiKey,
+    setApiKey: storeSetApiKey,
+    apiProvider,
+    selectedModel,
+    setApiProvider,
+    setSelectedModel: storeSetSelectedModel,
+  } = useAnalysisStore();
+
+  // Local state for save token preference
   const [saveToken, setSaveToken] = useState<boolean>(initialSaveToken);
 
   // UI state for configuration panel
@@ -54,13 +61,32 @@ export function useConfigurationManagement({
   const [useAllPRs, setUseAllPRs] = useState<boolean>(false);
   const [maxPRs, setMaxPRs] = useState<number>(5);
 
-  // Get provider and model from store
-  const {
-    apiProvider,
-    selectedModel,
-    setApiProvider,
-    setSelectedModel: storeSetSelectedModel,
-  } = useAnalysisStore();
+  // Load saved token preference on mount
+  useEffect(() => {
+    const savedSaveToken = localStorage.getItem("github-review-save-token");
+    if (savedSaveToken !== null) {
+      setSaveToken(savedSaveToken === "true");
+    }
+  }, []);
+
+  // Load API key from localStorage when provider changes
+  useEffect(() => {
+    const storageKey = `github-review-${apiProvider}-key`;
+    const savedKey = localStorage.getItem(storageKey);
+    if (savedKey) {
+      storeSetApiKey(savedKey);
+      console.log(`[ConfigMgmt] Loaded saved API key for ${apiProvider}`);
+    }
+  }, [apiProvider, storeSetApiKey]);
+
+  // Wrapper for setting API key that updates the store
+  const setApiKey = useCallback(
+    (key: string | null) => {
+      console.log(`[ConfigMgmt] Setting API key, length: ${key?.length || 0}`);
+      storeSetApiKey(key || "");
+    },
+    [storeSetApiKey]
+  );
 
   // Handle provider change
   const handleProviderChange = useCallback(
@@ -69,6 +95,15 @@ export function useConfigurationManagement({
 
       // Update store with new provider
       setApiProvider(provider);
+
+      // Skip auto-selection for providers that support dynamic model loading
+      if (provider === "anthropic") {
+        // For Anthropic, models are loaded dynamically
+        console.log(
+          `[ConfigMgmt] Skipping auto-selection for ${provider} (dynamic models)`
+        );
+        return;
+      }
 
       // Auto-select first model if only one is available
       const models = MODEL_OPTIONS[provider] || [];
@@ -100,6 +135,12 @@ export function useConfigurationManagement({
 
   // Effect to handle model auto-selection on provider change
   useEffect(() => {
+    // Skip auto-selection for providers that support dynamic model loading
+    if (apiProvider === "anthropic") {
+      // For Anthropic, we load models dynamically, so don't auto-select from static list
+      return;
+    }
+
     const models = MODEL_OPTIONS[apiProvider] || [];
     const currentProviderModels = models.map((m) => m.id);
 
@@ -133,6 +174,8 @@ export function useConfigurationManagement({
           `[ConfigMgmt] Saved API key for ${apiProvider} to localStorage`
         );
       }
+      // Save the saveToken preference
+      localStorage.setItem("github-review-save-token", String(saveToken));
     } catch (error) {
       console.error("[ConfigMgmt] Error saving API key:", error);
     }
@@ -141,7 +184,7 @@ export function useConfigurationManagement({
   // Reset API key
   const handleResetApiKey = useCallback(() => {
     try {
-      setApiKey(null);
+      storeSetApiKey("");
       const key = `github-review-${apiProvider}-key`;
       localStorage.removeItem(key);
       console.log(
@@ -150,7 +193,7 @@ export function useConfigurationManagement({
     } catch (error) {
       console.error("[ConfigMgmt] Error removing API key:", error);
     }
-  }, [apiProvider]);
+  }, [apiProvider, storeSetApiKey]);
 
   return {
     apiKey,
