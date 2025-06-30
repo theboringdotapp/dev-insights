@@ -54,6 +54,14 @@ export const getPRAnalysisBasePrompt = (prContent: string): string => `
   - The "Added Code" sections showing what was implemented
   - The "Context" sections providing surrounding code for better understanding
   - The relationship between removed and added code to understand the nature of changes
+  - **Coverage indicators** at the bottom showing if this is a complete or partial analysis
+  - **Omitted Files Summary** if present, indicating what code changes were not included
+
+  **IMPORTANT**: If you see indicators that this is a "Partial Analysis" or that files were omitted:
+  - Acknowledge the incomplete context in your feedback
+  - Focus your analysis on the files that were included
+  - Avoid making broad generalizations about the entire PR
+  - Note when analysis may be limited due to missing context
 
   Provide feedback in the following categories:
 
@@ -111,7 +119,11 @@ export const getPRAnalysisBasePrompt = (prContent: string): string => `
         }
       }
     ],
-    "overall_quality": N
+    "overall_quality": N,
+    "analysis_completeness": {
+      "is_complete": true/false,
+      "limitation_note": "Optional note about analysis limitations if incomplete"
+    }
   }
 
   Notes:

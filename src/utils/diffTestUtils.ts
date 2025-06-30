@@ -139,6 +139,104 @@ export function compareDiffFormats(files: { filename: string; patch?: string }[]
 }
 
 /**
+ * Create a large PR scenario to test token limit handling
+ */
+export function createLargePRScenario(): { filename: string; patch: string }[] {
+  const files = [];
+  
+  // Add many small files
+  for (let i = 1; i <= 20; i++) {
+    files.push({
+      filename: `src/components/Component${i}.tsx`,
+      patch: `@@ -1,5 +1,10 @@
+-import React from 'react';
++import React, { useState, useEffect } from 'react';
++import { useTheme } from '../hooks/useTheme';
+
+-export function Component${i}() {
++export function Component${i}({ data }: { data: any }) {
++  const [loading, setLoading] = useState(false);
++  const theme = useTheme();
+   return (
+-    <div>Component ${i}</div>
++    <div className={theme.container}>
++      {loading ? 'Loading...' : \`Component \${data.name}\`}
++    </div>
+   );
+ }`
+    });
+  }
+  
+  // Add some large files
+  const largeFile = `@@ -1,50 +1,100 @@
+${Array.from({ length: 50 }, (_, i) => `-  // Old line ${i + 1}`).join('\n')}
+${Array.from({ length: 100 }, (_, i) => `+  // New line ${i + 1}`).join('\n')}`;
+  
+  files.push({
+    filename: 'src/services/LargeService.ts',
+    patch: largeFile
+  });
+  
+  files.push({
+    filename: 'src/utils/LargeUtils.ts', 
+    patch: largeFile
+  });
+  
+  // Add config files (lower priority)
+  files.push({
+    filename: 'package.json',
+    patch: `@@ -10,3 +10,6 @@
+   "dependencies": {
+     "react": "^18.0.0"
++    "axios": "^1.0.0",
++    "lodash": "^4.17.0"
+   }`
+  });
+  
+  return files;
+}
+
+/**
+ * Test large PR handling and prioritization
+ */
+export function testLargePRHandling(): void {
+  console.log('=== Testing Large PR Handling ===\n');
+  
+  const largePR = createLargePRScenario();
+  console.log(`Created test PR with ${largePR.length} files`);
+  
+  const formatted = formatPRFilesForAnalysis(
+    largePR,
+    'Major refactoring with many file changes',
+    456
+  );
+  
+  console.log('\n=== Analysis Results ===');
+  console.log(`Total formatted length: ${formatted.length} characters`);
+  
+  // Check for key indicators
+  const hasCompleteAnalysis = formatted.includes('✅ **Complete Analysis**');
+  const hasPartialAnalysis = formatted.includes('⚠️ **Partial Analysis**');
+  const hasOmittedSummary = formatted.includes('## Omitted Files Summary');
+  const hasCoverage = formatted.includes('**Coverage**');
+  
+  console.log('\nFormat indicators:');
+  console.log(`- Complete analysis: ${hasCompleteAnalysis}`);
+  console.log(`- Partial analysis: ${hasPartialAnalysis}`);
+  console.log(`- Omitted files summary: ${hasOmittedSummary}`);
+  console.log(`- Coverage percentage: ${hasCoverage}`);
+  
+  if (hasPartialAnalysis && hasOmittedSummary) {
+    console.log('✅ Large PR handling working correctly');
+  } else {
+    console.log('❌ Large PR handling may have issues');
+  }
+  
+  console.log('\n=== Sample Output ===');
+  console.log(formatted.substring(0, 1000) + '...\n[truncated]');
+}
+
+/**
  * Validate that the diff parsing works correctly
  */
 export function validateDiffParsing(): boolean {

@@ -108,7 +108,80 @@ function formatFileChanges(filename: string, patch: string): string {
 }
 
 /**
- * Format PR files data for analysis with improved diff readability for LLMs
+ * Calculate file importance for prioritization in large PRs
+ */
+function calculateFileImportance(filename: string, patch: string): number {
+  let score = 0;
+  const parsed = parseDiffPatch(patch);
+  
+  // File type scoring
+  if (filename.match(/\.(ts|tsx|js|jsx)$/)) score += 10; // Core logic files
+  else if (filename.match(/\.(py|java|cpp|c|go|rs)$/)) score += 10; // Other core languages
+  else if (filename.match(/\.(css|scss|less)$/)) score += 3; // Styling
+  else if (filename.match(/\.(json|yaml|yml|toml)$/)) score += 5; // Config files
+  else if (filename.match(/\.(md|txt)$/)) score += 1; // Documentation
+  else if (filename.match(/test|spec/)) score += 7; // Test files
+  
+  // Change impact scoring
+  const totalChanges = parsed.added.length + parsed.removed.length;
+  if (totalChanges > 50) score += 8; // Large changes likely important
+  else if (totalChanges > 20) score += 5;
+  else if (totalChanges > 5) score += 3;
+  
+  // Path importance
+  if (filename.includes('src/')) score += 3;
+  if (filename.includes('lib/')) score += 3;
+  if (filename.includes('components/')) score += 2;
+  if (filename.includes('utils/')) score += 2;
+  
+  return score;
+}
+
+/**
+ * Create intelligent summary for omitted files
+ */
+function createOmittedFilesSummary(omittedFiles: { filename: string; patch: string; importance: number }[]): string {
+  if (omittedFiles.length === 0) return '';
+  
+  // Group by file type
+  const byType: Record<string, typeof omittedFiles> = {};
+  omittedFiles.forEach(file => {
+    const ext = file.filename.split('.').pop() || 'other';
+    if (!byType[ext]) byType[ext] = [];
+    byType[ext].push(file);
+  });
+  
+  let summary = '\n## Omitted Files Summary\n';
+  summary += `*${omittedFiles.length} files were omitted due to size constraints. Here's what was excluded:*\n\n`;
+  
+  // Show top 5 most important omitted files
+  const topOmitted = omittedFiles
+    .sort((a, b) => b.importance - a.importance)
+    .slice(0, 5);
+    
+  summary += '### Most Significant Omitted Files:\n';
+  topOmitted.forEach(file => {
+    const parsed = parseDiffPatch(file.patch);
+    summary += `- **${file.filename}**: ${parsed.added.length} additions, ${parsed.removed.length} deletions\n`;
+  });
+  
+  // Show breakdown by file type
+  summary += '\n### Omitted Files by Type:\n';
+  Object.entries(byType).forEach(([type, files]) => {
+    const totalChanges = files.reduce((sum, f) => {
+      const parsed = parseDiffPatch(f.patch);
+      return sum + parsed.added.length + parsed.removed.length;
+    }, 0);
+    summary += `- **${type}** files: ${files.length} files, ~${totalChanges} total changes\n`;
+  });
+  
+  summary += '\n*Note: Analysis may be incomplete due to these omissions. Consider reviewing the full PR diff for complete context.*\n';
+  
+  return summary;
+}
+
+/**
+ * Format PR files data for analysis with intelligent prioritization for large PRs
  */
 export function formatPRFilesForAnalysis(
   files: { filename: string; patch?: string }[],
@@ -117,48 +190,82 @@ export function formatPRFilesForAnalysis(
 ): string {
   let formattedContent = `# PR #${prNumber}: ${prTitle}\n\n`;
   const MAX_TOKENS = 8000; // Conservative limit to leave room for response
+  const CHAR_PER_TOKEN_ESTIMATE = 4; // Rough estimate
+  const maxChars = MAX_TOKENS * CHAR_PER_TOKEN_ESTIMATE;
 
-  // Sort files by size (smaller first) for better token utilization
-  const sortedFiles = [...files]
+  // Filter and score files by importance
+  const scoredFiles = files
     .filter(file => file.patch)
-    .sort((a, b) => (a.patch?.length || 0) - (b.patch?.length || 0));
+    .map(file => ({
+      ...file,
+      importance: calculateFileImportance(file.filename, file.patch!),
+      formattedLength: formatFileChanges(file.filename, file.patch!).length
+    }))
+    .sort((a, b) => {
+      // First sort by importance, then by size (smaller first for same importance)
+      if (b.importance !== a.importance) return b.importance - a.importance;
+      return a.formattedLength - b.formattedLength;
+    });
 
-  let processedFiles = 0;
-  let omittedFiles = 0;
+  const processedFiles: typeof scoredFiles = [];
+  const omittedFiles: typeof scoredFiles = [];
+  let currentLength = formattedContent.length;
 
-  for (const file of sortedFiles) {
-    if (!file.patch) continue;
-
-    // Format the file changes in structured format
-    const fileChanges = formatFileChanges(file.filename, file.patch);
+  // First pass: Include high-priority files that fit
+  for (const file of scoredFiles) {
+    const fileChanges = formatFileChanges(file.filename, file.patch!);
     
-    // Check if adding this file would exceed token limit
-    if (formattedContent.length + fileChanges.length > MAX_TOKENS * 4) {
-      // If this is a small file, try to include a summary
-      if (file.patch.length <= 500) {
-        const parsed = parseDiffPatch(file.patch);
-        const summary = `## File: ${file.filename}\n*Summary: ${parsed.added.length} lines added, ${parsed.removed.length} lines removed*\n\n`;
-        
-        if (formattedContent.length + summary.length <= MAX_TOKENS * 4) {
-          formattedContent += summary;
-          processedFiles++;
-        } else {
-          omittedFiles++;
-        }
-      } else {
-        omittedFiles++;
-      }
-    } else {
+    if (currentLength + fileChanges.length <= maxChars) {
       formattedContent += fileChanges;
-      processedFiles++;
+      processedFiles.push(file);
+      currentLength += fileChanges.length;
+    } else {
+      omittedFiles.push(file);
     }
   }
 
-  // Add summary footer
-  if (omittedFiles > 0) {
-    formattedContent += `\n---\n*Analysis includes ${processedFiles} files. ${omittedFiles} files omitted due to size constraints.*\n`;
+  // Second pass: Try to include summaries of important omitted files
+  const importantOmitted = omittedFiles.filter(f => f.importance >= 8);
+  
+  for (const file of importantOmitted) {
+    const parsed = parseDiffPatch(file.patch!);
+    const summary = `## File: ${file.filename}\n*High-priority file omitted - Summary: ${parsed.added.length} additions, ${parsed.removed.length} deletions*\n\n`;
+    
+    if (currentLength + summary.length <= maxChars) {
+      formattedContent += summary;
+      processedFiles.push(file);
+      // Remove from omittedFiles array
+      const index = omittedFiles.indexOf(file);
+      if (index > -1) omittedFiles.splice(index, 1);
+      currentLength += summary.length;
+    }
+  }
+
+  // Add comprehensive summary of what was included/omitted
+  let statusSummary = '\n---\n';
+  
+  if (omittedFiles.length === 0) {
+    statusSummary += `✅ **Complete Analysis**: All ${processedFiles.length} changed files included.\n`;
   } else {
-    formattedContent += `\n---\n*Analysis includes all ${processedFiles} changed files.*\n`;
+    statusSummary += `⚠️ **Partial Analysis**: ${processedFiles.length} of ${files.length} files included.\n`;
+    statusSummary += `**Coverage**: ~${Math.round((processedFiles.length / files.length) * 100)}% of changed files analyzed.\n`;
+    
+    // Add important context about what's missing
+    if (omittedFiles.some(f => f.importance >= 8)) {
+      statusSummary += `🔥 **Important**: Some high-priority files were omitted and may affect analysis accuracy.\n`;
+    }
+  }
+  
+  formattedContent += statusSummary;
+  
+  // Add detailed summary of omitted files
+  if (omittedFiles.length > 0) {
+    // Filter out files without patch (shouldn't happen, but for type safety)
+    const omittedWithPatches = omittedFiles.filter((f): f is typeof f & { patch: string } => !!f.patch);
+    const omittedSummary = createOmittedFilesSummary(omittedWithPatches);
+    if (currentLength + omittedSummary.length <= maxChars * 1.1) { // Allow slight overflow for summary
+      formattedContent += omittedSummary;
+    }
   }
 
   return formattedContent;
