@@ -144,15 +144,22 @@ export default function DeveloperDashboard() {
 
   const handleSearch = (newUsername: string, newTimeframe: Timeframe) => {
     console.log(
-      `[DeveloperDashboard] Search triggered for: ${newUsername} (current: ${username})`
+      `[DeveloperDashboard] Search triggered for: ${newUsername} with timeframe: ${newTimeframe} (current: ${username}, ${timeframe})`
     );
 
     try {
       // Set flag to prevent the URL effect from reacting while we're handling search
       isHandlingSearchRef.current = true;
 
-      // Only update if username is actually changing
+      // Always update timeframe first, regardless of username change
+      if (newTimeframe !== timeframe) {
+        console.log(`[DeveloperDashboard] Updating timeframe from ${timeframe} to ${newTimeframe}`);
+        setTimeframe(newTimeframe);
+      }
+
+      // Handle username changes
       if (newUsername !== username) {
+        console.log(`[DeveloperDashboard] Updating username from ${username} to ${newUsername}`);
         clearAnalysisData();
         setDeveloperId(newUsername);
         setUsername(newUsername);
@@ -163,9 +170,6 @@ export default function DeveloperDashboard() {
 
         // Update URL with the username
         setSearchParams({ username: newUsername });
-      } else if (newTimeframe !== timeframe) {
-        // If only timeframe changed
-        setTimeframe(newTimeframe);
       }
 
       // Increment the search trigger to cause a re-fetch

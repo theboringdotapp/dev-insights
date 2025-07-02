@@ -23,6 +23,11 @@ export function SearchForm({
     setUsername(initialUsername);
   }, [initialUsername]);
 
+  // Update form when initialTimeframe changes (from parent component)
+  useEffect(() => {
+    setTimeframe(initialTimeframe);
+  }, [initialTimeframe]);
+
   // Handle form submission - the only place where search is triggered
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
