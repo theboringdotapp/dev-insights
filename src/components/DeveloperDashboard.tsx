@@ -275,35 +275,34 @@ export default function DeveloperDashboard() {
             </div>
           )}
 
-          {/* Activity Charts and Key Metrics - Side by side */}
+          {/* Activity Charts - Full width */}
           {filteredPRs.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Activity Charts - Takes 2/3 of the space on large screens */}
-              <div className="lg:col-span-2">
-                <Suspense fallback={<ComponentLoader />}>
-                  <ActivityCharts
-                    pullRequests={filteredPRs}
-                    showOnlyImportantPRs={showOnlyImportantPRs}
-                    onCommitDataLoaded={(count, isLoading) => {
-                      setRealCommitCount(count);
-                      setIsLoadingCommits(isLoading);
-                    }}
-                  />
-                </Suspense>
-              </div>
+            <div className="mb-6">
+              <Suspense fallback={<ComponentLoader />}>
+                <ActivityCharts
+                  pullRequests={filteredPRs}
+                  showOnlyImportantPRs={showOnlyImportantPRs}
+                  onCommitDataLoaded={(count, isLoading) => {
+                    setRealCommitCount(count);
+                    setIsLoadingCommits(isLoading);
+                  }}
+                />
+              </Suspense>
+            </div>
+          )}
 
-              {/* Key Metrics - Takes 1/3 of the space */}
-              <div className="lg:col-span-1">
-                <Suspense fallback={<ComponentLoader />}>
-                  <KeyMetrics
-                    pullRequests={filteredPRs}
-                    timeframe={timeframe}
-                    realCommitCount={realCommitCount}
-                    isLoadingCommits={isLoadingCommits}
-                    developerStats={developerData.stats}
-                  />
-                </Suspense>
-              </div>
+          {/* Key Performance Metrics - Full width below charts */}
+          {filteredPRs.length > 0 && (
+            <div className="mb-8">
+              <Suspense fallback={<ComponentLoader />}>
+                <KeyMetrics
+                  pullRequests={filteredPRs}
+                  timeframe={timeframe}
+                  realCommitCount={realCommitCount}
+                  isLoadingCommits={isLoadingCommits}
+                  developerStats={developerData.stats}
+                />
+              </Suspense>
             </div>
           )}
 
