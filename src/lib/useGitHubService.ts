@@ -84,6 +84,7 @@ export function useDeveloperPerformance(
   const [data, setData] = useState<DeveloperPerformanceData>({
     pullRequests: [],
     reviews: [],
+    reviewMetrics: [],
     stats: null,
     isLoading: false,
     error: null,
@@ -99,22 +100,23 @@ export function useDeveloperPerformance(
       try {
         const since = getTimeframeDate(timeframe);
 
+        // Calculate maxItems for review metrics
+        const maxItems = timeframe === "3months"
+          ? 300
+          : timeframe === "6months"
+          ? 500
+          : timeframe === "1year"
+          ? 750
+          : 150;
+
         // Get data in parallel
-        const [pullRequests, reviews, stats] = await Promise.all([
+        const [pullRequests, reviews, stats, reviewMetricsData] = await Promise.all([
           service!.getUserPullRequests({
             username,
             org,
             repo,
             since,
-            // Increase maxItems for longer timeframes
-            maxItems:
-              timeframe === "3months"
-                ? 300
-                : timeframe === "6months"
-                ? 500
-                : timeframe === "1year"
-                ? 750
-                : 150,
+            maxItems,
           }),
           service!.getUserReviews({ username, org, repo, since }),
           service!.getUserStats({
@@ -123,12 +125,26 @@ export function useDeveloperPerformance(
             repo,
             since,
           }),
+          service!.getUserReviewMetrics({
+            username,
+            org,
+            repo,
+            since,
+            maxItems,
+          }),
         ]);
+
+        // Combine basic stats with review stats
+        const enhancedStats = stats ? {
+          ...stats,
+          reviewStats: reviewMetricsData.reviewStats,
+        } : null;
 
         setData({
           pullRequests,
           reviews,
-          stats,
+          reviewMetrics: reviewMetricsData.reviewMetrics,
+          stats: enhancedStats,
           isLoading: false,
           error: null,
         });
@@ -142,6 +158,7 @@ export function useDeveloperPerformance(
 
         setData((prev) => ({
           ...prev,
+          reviewMetrics: [],
           isLoading: false,
           error: errorMessage,
         }));

@@ -308,4 +308,133 @@ export class GitHubDevService {
       );
     }
   }
+
+  /**
+   * Get detailed review metrics for PRs reviewed by a user
+   * Returns information about approvals and change requests
+   */
+  async getUserReviewMetrics({
+    username,
+    org,
+    repo,
+    since,
+    maxItems = 100,
+  }: {
+    username: string;
+    org?: string;
+    repo?: string;
+    since?: string;
+    maxItems?: number;
+  }) {
+    try {
+      // First, get PRs reviewed by the user
+      const reviewQuery = `reviewed-by:${username} type:pr${
+        org ? ` org:${org}` : ""
+      }${repo ? ` repo:${org}/${repo}` : ""}${
+        since ? ` updated:>=${since}` : ""
+      }`;
+
+      console.log(`[GitHubDevService] Fetching review metrics for user: ${username}`);
+      
+      const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
+        q: reviewQuery,
+        per_page: Math.min(maxItems, 100),
+        sort: "updated",
+        order: "desc",
+      });
+
+      console.log(`[GitHubDevService] Found ${searchResponse.data.items.length} PRs reviewed by ${username}`);
+
+      // For each PR, get the user's reviews
+      const reviewMetrics = await Promise.all(
+        searchResponse.data.items.map(async (pr) => {
+          try {
+            // Extract repo info from PR URL
+            const urlParts = pr.repository_url.split('/');
+            const owner = urlParts[urlParts.length - 2];
+            const repoName = urlParts[urlParts.length - 1];
+
+            // Get all reviews for this PR
+            const reviewsResponse = await this.octokit.rest.pulls.listReviews({
+              owner,
+              repo: repoName,
+              pull_number: pr.number,
+            });
+
+            // Filter reviews by the target user
+            const userReviews = reviewsResponse.data.filter(
+              (review) => review.user?.login === username
+            );
+
+            // Find the latest review state
+            const latestReview = userReviews.sort(
+              (a, b) => new Date(b.submitted_at || '').getTime() - new Date(a.submitted_at || '').getTime()
+            )[0];
+
+            const latestReviewState = latestReview?.state || null;
+            const hasApproved = userReviews.some(review => review.state === 'APPROVED');
+            const hasRequestedChanges = userReviews.some(review => review.state === 'CHANGES_REQUESTED');
+
+            return {
+              prNumber: pr.number,
+              prUrl: pr.html_url,
+              repository: `${owner}/${repoName}`,
+              userReviews: userReviews.map(review => ({
+                id: review.id,
+                user: {
+                  login: review.user?.login || '',
+                },
+                state: review.state as 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED',
+                body: review.body,
+                submitted_at: review.submitted_at || '',
+                pull_request_url: pr.html_url,
+              })),
+              latestReviewState: latestReviewState as 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | null,
+              totalReviews: userReviews.length,
+              hasApproved,
+              hasRequestedChanges,
+            };
+          } catch (error) {
+            console.warn(`[GitHubDevService] Failed to fetch reviews for PR #${pr.number}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out failed requests
+      const validMetrics = reviewMetrics.filter(Boolean);
+
+      // Calculate summary statistics
+      const stats = {
+        totalPRsReviewed: validMetrics.length,
+        prsApproved: validMetrics.filter(m => m!.latestReviewState === 'APPROVED').length,
+        prsWithChangesRequested: validMetrics.filter(m => m!.hasRequestedChanges).length,
+        prsCommentedOnly: validMetrics.filter(m => 
+          m!.latestReviewState === 'COMMENTED' && 
+          !m!.hasApproved && 
+          !m!.hasRequestedChanges
+        ).length,
+        approvalRate: validMetrics.length > 0 
+          ? (validMetrics.filter(m => m!.latestReviewState === 'APPROVED').length / validMetrics.length) * 100 
+          : 0,
+        changeRequestRate: validMetrics.length > 0 
+          ? (validMetrics.filter(m => m!.hasRequestedChanges).length / validMetrics.length) * 100 
+          : 0,
+      };
+
+      console.log(`[GitHubDevService] Review metrics calculated:`, stats);
+
+      return {
+        reviewMetrics: validMetrics,
+        reviewStats: stats,
+      };
+    } catch (error) {
+      const octokitError = error as OctokitError;
+      console.error(`[GitHubDevService] Failed to fetch review metrics:`, octokitError);
+      throw new GitHubServiceError(
+        `Failed to fetch review metrics: ${octokitError.message}`,
+        octokitError.status
+      );
+    }
+  }
 }

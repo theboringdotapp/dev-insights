@@ -300,6 +300,7 @@ export default function DeveloperDashboard() {
                     timeframe={timeframe}
                     realCommitCount={realCommitCount}
                     isLoadingCommits={isLoadingCommits}
+                    developerStats={developerData.stats}
                   />
                 </Suspense>
               </div>

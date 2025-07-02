@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { PullRequestItem } from "../lib/types";
+import { PullRequestItem, DeveloperStats } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
 import { Timeframe } from "./TimeframeSelector";
 import { motion } from "framer-motion";
@@ -9,6 +9,7 @@ interface KeyMetricsProps {
   timeframe: Timeframe;
   realCommitCount: number;
   isLoadingCommits: boolean;
+  developerStats?: DeveloperStats | null;
 }
 
 // Define interface for calculated metrics
@@ -26,6 +27,7 @@ export function KeyMetrics({
   timeframe,
   realCommitCount,
   isLoadingCommits,
+  developerStats,
 }: KeyMetricsProps) {
   const { getPRMetrics, loadPRMetrics, metricsCache } = usePRMetrics();
   const [isLoadingChangeRequests, setIsLoadingChangeRequests] = useState(false);
@@ -230,7 +232,7 @@ export function KeyMetrics({
         Key Performance Metrics
       </h3>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {/* PRs per week */}
         <motion.div
           initial={{ opacity: 0, y: 5 }}
@@ -293,6 +295,40 @@ export function KeyMetrics({
             {calculatedMetrics.avgChangesPerPR}
           </div>
           <div className="text-xs text-gray-500 mt-2">Per closed PR</div>
+        </motion.div>
+
+        {/* PRs Approved */}
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.6 }}
+          className="bg-green-50 rounded-lg p-4"
+        >
+          <div className="text-sm text-gray-600 mb-1">PRs Approved</div>
+          <div className="text-3xl font-semibold text-green-700">
+            {developerStats?.reviewStats?.prsApproved || 0}
+          </div>
+          <div className="text-xs text-gray-500 mt-2">
+            Out of {developerStats?.reviewStats?.totalPRsReviewed || 0} reviewed
+          </div>
+        </motion.div>
+
+        {/* PRs with Changes Requested */}
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.7 }}
+          className="bg-orange-50 rounded-lg p-4"
+        >
+          <div className="text-sm text-gray-600 mb-1">Changes Requested</div>
+          <div className="text-3xl font-semibold text-orange-700">
+            {developerStats?.reviewStats?.prsWithChangesRequested || 0}
+          </div>
+          <div className="text-xs text-gray-500 mt-2">
+            {developerStats?.reviewStats?.totalPRsReviewed 
+              ? `${Math.round(developerStats.reviewStats.changeRequestRate)}% of reviews`
+              : 'No reviews yet'}
+          </div>
         </motion.div>
       </div>
 

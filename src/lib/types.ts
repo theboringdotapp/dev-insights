@@ -54,17 +54,56 @@ export interface PullRequestMetrics {
   error?: string;
 }
 
+// PR Review states from GitHub API
+export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
+
+// Individual PR review details
+export interface PullRequestReview {
+  id: number;
+  user: {
+    login: string;
+  };
+  state: ReviewState;
+  body: string | null;
+  submitted_at: string;
+  pull_request_url: string;
+}
+
+// Review metrics for a single PR
+export interface ReviewMetrics {
+  prNumber: number;
+  prUrl: string;
+  repository: string;
+  userReviews: PullRequestReview[];
+  latestReviewState: ReviewState | null;
+  totalReviews: number;
+  hasApproved: boolean;
+  hasRequestedChanges: boolean;
+}
+
+// Developer review statistics
+export interface DeveloperReviewStats {
+  totalPRsReviewed: number;
+  prsApproved: number;
+  prsWithChangesRequested: number;
+  prsCommentedOnly: number;
+  approvalRate: number; // percentage of PRs where latest review was APPROVED
+  changeRequestRate: number; // percentage of PRs where user requested changes
+}
+
 // Developer statistics
 export interface DeveloperStats {
   pullRequestCount: number;
   commitCount: number;
   reviewCount: number;
+  reviewStats?: DeveloperReviewStats;
 }
 
 // Developer performance data
 export interface DeveloperPerformanceData {
   pullRequests: unknown[];
   reviews: unknown[];
+  reviewMetrics: ReviewMetrics[];
   stats: DeveloperStats | null;
   isLoading: boolean;
   error: string | null;
