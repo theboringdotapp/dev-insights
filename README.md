@@ -90,16 +90,18 @@ This project is open source and available under the [GNU General Public License 
 
 
 
-- Total time spent: 26h 1m (1561.4 minutes)
-- Number of sessions: 27
-- Total commits: 122
-- Average session length: 57m
+
+- Total time spent: 28h 9m (1689.8 minutes)
+- Number of sessions: 32
+- Total commits: 130
+- Average session length: 52m
 - Average time per commit: 12m
 
 #### Time by Author:
-- Arthur Floriani: 24h 22m (93.7%)
-- Arthur: 49m (3.2%)
-- theboring.app: 49m (3.2%)
+- Arthur Floriani: 26h 30m (94.1%)
+- theboring.app: 49m (2.9%)
+- Arthur: 49m (2.9%)
+
 
 
 
