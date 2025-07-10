@@ -1,0 +1,20 @@
+---
+description: AI rules derived by SpecStory from the project AI interaction history
+globs: *
+---
+
+<headers/>
+
+TECH STACK
+
+PROJECT DOCUMENTATION & CONTEXT SYSTEM
+
+WORKFLOW & RELEASE RULES
+
+CODING STANDARDS
+
+DEBUGGING
+
+VISUALIZATION
+- When adding new metrics to graphs, use a color that matches the brand. For reviews, use pastel orange, specifically `#fb923c` (Orange 400).
+- When a chart displays multiple metrics, update the Y-axis label to be more generic to reflect all metrics shown. For example, change "PRs" to "PRs & Reviews".

@@ -153,13 +153,17 @@ export default function DeveloperDashboard() {
 
       // Always update timeframe first, regardless of username change
       if (newTimeframe !== timeframe) {
-        console.log(`[DeveloperDashboard] Updating timeframe from ${timeframe} to ${newTimeframe}`);
+        console.log(
+          `[DeveloperDashboard] Updating timeframe from ${timeframe} to ${newTimeframe}`
+        );
         setTimeframe(newTimeframe);
       }
 
       // Handle username changes
       if (newUsername !== username) {
-        console.log(`[DeveloperDashboard] Updating username from ${username} to ${newUsername}`);
+        console.log(
+          `[DeveloperDashboard] Updating username from ${username} to ${newUsername}`
+        );
         clearAnalysisData();
         setDeveloperId(newUsername);
         setUsername(newUsername);
@@ -282,6 +286,7 @@ export default function DeveloperDashboard() {
                 <ActivityCharts
                   pullRequests={filteredPRs}
                   showOnlyImportantPRs={showOnlyImportantPRs}
+                  reviewMetrics={developerData.reviewMetrics}
                   onCommitDataLoaded={(count, isLoading) => {
                     setRealCommitCount(count);
                     setIsLoadingCommits(isLoading);

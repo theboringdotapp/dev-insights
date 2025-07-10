@@ -1,29 +1,31 @@
+import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  Line,
 } from "recharts";
-import { PullRequestItem } from "../lib/types";
+import { PullRequestItem, ReviewMetrics } from "../lib/types";
 import { usePRMetrics } from "../lib/usePRMetrics";
-import { motion } from "framer-motion";
 
 // Interface for the component props
 interface ActivityChartsProps {
   pullRequests: PullRequestItem[];
   showOnlyImportantPRs: boolean;
+  reviewMetrics?: ReviewMetrics[];
   onCommitDataLoaded?: (commitCount: number, isLoading: boolean) => void;
 }
 
 export function ActivityCharts({
   pullRequests,
   showOnlyImportantPRs,
+  reviewMetrics = [],
   onCommitDataLoaded,
 }: ActivityChartsProps) {
   const { getPRMetrics, loadPRMetrics } = usePRMetrics();
@@ -33,10 +35,16 @@ export function ActivityCharts({
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  // Calculate total reviews count (count unique PRs reviewed, not individual review submissions)
+  const totalReviews = useMemo(() => {
+    return reviewMetrics.length; // Each reviewMetric represents one PR reviewed
+  }, [reviewMetrics]);
+
   // Define chart colors to match design system
   const colors = {
     pullRequests: "#8b5cf6", // Purple 500 - matching purple theme for interactive elements
     commits: "#10b981", // Emerald 500 - complementary to purple
+    reviews: "#fb923c", // Orange 400 - pastel orange for reviews that matches brand
   };
 
   // Handle window resize for responsive adjustments
@@ -177,6 +185,7 @@ export function ActivityCharts({
           date: string;
           prs: number;
           commits: number;
+          reviews: number;
         }
       > = {};
 
@@ -200,6 +209,7 @@ export function ActivityCharts({
           date: formattedDate,
           prs: 0,
           commits: 0,
+          reviews: 0,
         };
 
         // Move to next week
@@ -218,6 +228,25 @@ export function ActivityCharts({
           const metrics = getPRMetrics(pr);
           if (metrics?.isLoaded && metrics.commits) {
             weekMap[weekKey].commits += metrics.commits.length;
+          }
+        }
+      });
+
+      // Count reviews by week (count unique PRs reviewed, not individual review submissions)
+      reviewMetrics.forEach((reviewMetric) => {
+        // Get the earliest review date for this PR to represent when the user first reviewed it
+        const earliestReview = reviewMetric.userReviews.sort(
+          (a, b) =>
+            new Date(a.submitted_at).getTime() -
+            new Date(b.submitted_at).getTime()
+        )[0];
+
+        if (earliestReview) {
+          const date = new Date(earliestReview.submitted_at);
+          const weekKey = getWeekKey(date);
+
+          if (weekMap[weekKey]) {
+            weekMap[weekKey].reviews += 1;
           }
         }
       });
@@ -306,7 +335,7 @@ export function ActivityCharts({
           <div className="text-sm font-medium bg-gray-50 px-3 py-2 rounded-lg self-start">
             <span className="text-purple-700">{realCommitCount}</span> commits
             from <span className="text-purple-700">{pullRequests.length}</span>{" "}
-            PRs
+            PRs, <span className="text-orange-600">{totalReviews}</span> reviews
           </div>
         )}
       </div>
@@ -353,10 +382,10 @@ export function ActivityCharts({
                   isMobile
                     ? undefined
                     : {
-                        value: "PRs",
+                        value: "PRs & Reviews",
                         angle: 90,
                         position: "insideRight",
-                        fill: "#8b5cf6",
+                        fill: "#6b7280",
                         fontSize: 12,
                         fontWeight: 500,
                         dy: -40,
@@ -405,6 +434,21 @@ export function ActivityCharts({
                   strokeWidth: 2,
                   fill: "white",
                   stroke: colors.pullRequests,
+                }}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="reviews"
+                name="Reviews Made"
+                stroke={colors.reviews}
+                strokeWidth={3}
+                activeDot={{ r: isMobile ? 6 : 8, fill: colors.reviews }}
+                dot={{
+                  r: isMobile ? 3 : 4,
+                  strokeWidth: 2,
+                  fill: "white",
+                  stroke: colors.reviews,
                 }}
               />
             </ComposedChart>
