@@ -1,6 +1,6 @@
 import { Github } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
 import "./App.css";
 import { DeveloperProvider } from "./contexts/DeveloperContext";
 import { AuthProvider, useAuth } from "./lib/auth";
@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "./lib/auth";
 const DeveloperDashboard = lazy(
   () => import("./components/DeveloperDashboard")
 );
+const TeamsPage = lazy(() => import("./components/TeamsPage"));
 
 // Loading component
 const Loading = () => (
@@ -30,6 +31,7 @@ function App() {
 function AppContent() {
   const { isAuthenticated, userProfile, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const location = useLocation();
 
   const toggleDropdown = () => {
     setShowDropdown(!showDropdown);
@@ -41,15 +43,40 @@ function AppContent() {
       <header className="w-full bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <a
-                href="/"
+            <div className="flex items-center space-x-8">
+              <Link
+                to="/"
                 className="flex items-center cursor-pointer hover:opacity-90 transition-opacity"
               >
                 <span className="font-semibold text-xl text-purple-600">
                   Developer Insights
                 </span>
-              </a>
+              </Link>
+
+              {isAuthenticated && (
+                <nav className="flex space-x-6">
+                  <Link
+                    to="/"
+                    className={`text-sm font-medium transition-colors hover:text-purple-600 ${
+                      location.pathname === "/"
+                        ? "text-purple-600"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    Individual
+                  </Link>
+                  <Link
+                    to="/teams"
+                    className={`text-sm font-medium transition-colors hover:text-purple-600 ${
+                      location.pathname === "/teams"
+                        ? "text-purple-600"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    Teams
+                  </Link>
+                </nav>
+              )}
             </div>
             {isAuthenticated ? (
               <div className="relative">
@@ -121,6 +148,7 @@ function AppContent() {
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<DeveloperDashboard />} />
+              <Route path="/teams" element={<TeamsPage />} />
             </Routes>
           </Suspense>
         </div>

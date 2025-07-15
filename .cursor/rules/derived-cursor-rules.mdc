@@ -18,3 +18,14 @@ DEBUGGING
 VISUALIZATION
 - When adding new metrics to graphs, use a color that matches the brand. For reviews, use pastel orange, specifically `#fb923c` (Orange 400).
 - When a chart displays multiple metrics, update the Y-axis label to be more generic to reflect all metrics shown. For example, change "PRs" to "PRs & Reviews".
+- When displaying reviews in charts (e.g., ActivityCharts), always count unique PRs reviewed, not individual review submissions. This ensures consistency with other metrics like the "Out of X reviewed" metric card. Use the earliest review date for each PR to determine the week to count the review in.
+- When creating team views with user graphs, use the same vertical scale on all graphs for all users to enable easy comparison.
+- Ensure graphs show only the weeks of the selected timeline. Avoid displaying a longer timeframe with unpopulated sections.
+- In team views, ensure `maxChartYValue` doesn't have excessive padding, you can use the max value of PRs or Reviews and add just +1 for breathing room, with a minimum of 3.
+- Ensure Reviews data shown in charts is also affected by the "Important" PRs filter, mirroring the behavior of PR metrics.
+- When the "important" filter is active, do not include the "Important" keyword in the copy of the metrics.
+- When implementing TeamMemberChart, fix any graph overflow issues.
+- When implementing TeamMemberChart, ensure that you are using the right height, that `allowDataOverflow` is set to false, and that the domain is properly bounded.
+- Make sure the `maxChartYValue` doesn't have that much padding; you can use the max value of PRs or Reviews and add just +1 for breathing room, with a minimum of 3.
+- Ensure Reviews data shown in charts is also affected by the "Important" PRs filter, mirroring the behavior of PR metrics.
+- Do not add the "Important" keyword in the copy of the metrics whenever the "important" filter is active.
